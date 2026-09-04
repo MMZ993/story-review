@@ -54,6 +54,9 @@ sequenceDiagram
     F-->>PO: reply + issues + **session ID** [D]
 ```
 
+Constraint: the opening facilitator turn always emits `invoke` = none — the first
+re-review can only be requested from turn 2 onward, inside the dialogue loop.
+
 This is **Pattern 2**: sequential base (reviews → synthesis → facilitator) with parallel
 reviewer fan-out.
 
@@ -152,53 +155,69 @@ Sequence diagram (ASCII):
 
 ## 2. Dialogue loop — facilitator, PO and LLM-driven delegation
 
-Turn semantics: **one PO message = one request**. The turn holds a lock on the session;
-a delegated re-review runs *within* the same request (covered by the 120 s dialogue
-timeout) and the single response contains the facilitator reply plus — if a review was
-delegated — the updated synthesis. No partial/double responses; concurrent messages on
-the same session are rejected while a turn is in progress.
+Turn semantics: **one PO message = one request**. The turn takes a **lease-based lock**
+on the session (TTL 5 min, released after the response; a crashed holder expires with
+the lease — no permanently busy sessions). Concurrent messages on a locked session are
+rejected. The request has an **end-to-end deadline of 5 min** (covering delegated
+reviews, synthesis and their retries); the 120 s timeout applies only to the single
+facilitator LLM call. Input assembly is deterministic: FastAPI fetches story and latest
+artifacts (scoped to the **session lineage** of this story run — never a global
+"latest") via the Artifact MCP before invoking any agent.
 
 ```mermaid
 sequenceDiagram
     participant PO as PO (TUI/Web)
     participant F as FastAPI orchestration
     participant C as Cloud SQL
+    participant A as Artifact MCP
     participant T as Facilitator
     participant B as Business Reviewer
     participant E as Engineering Reviewer
     participant Y as Synthesis
-    participant A as Artifact MCP
 
-    loop until ready (gate) or cap 10
+    loop until gate: continue / finalize / park
         PO->>F: message (session ID) [D]
-        F->>C: resume session + turn lock [D]
-        C-->>F: session [D]
+        F->>C: resume session + turn lock (lease TTL 5 min) [D]
+        C-->>F: session + artifact references [D]
+        F->>A: fetch story + latest artifacts per perspective (session lineage) [MCP-D]
+        A-->>F: artifacts (payloads) [MCP-D]
         F->>T: invoke facilitator (session context) [D]
-        T->>A: read artifacts as extra context (optional) [MCP-L]
-        A-->>T: previous review artifacts [MCP-L]
         T-->>F: reply + structured DelegationDecision [LLM]
-        alt invoke = both reviewers
+        F->>C: persist turn + decision [D]
+        alt invoke = both reviewers (parallel)
             F->>B: invoke (story + prev + extra_context) [D]
             F->>E: invoke (story + prev + extra_context) [D]
             B-->>F: review (fresh single-turn) [LLM]
             E-->>F: review (fresh single-turn) [LLM]
-        else invoke = single reviewer
+            F->>A: save review artifacts (idempotent) [MCP-D]
+        else invoke = single reviewer (business or engineering)
             F->>B: invoke affected reviewer only [D]
-            B-->>F: review — paired with latest other-perspective artifact [LLM]
+            B-->>F: review (fresh single-turn) [LLM]
+            F->>A: save review artifact (idempotent) [MCP-D]
         else reuse_previous = true
-            F->>Y: re-synthesis only, existing latest artifacts [D]
+            Note over F: re-synthesis only, no reviewer run
         else invoke = none
-            Note over F: dialogue continues, no agent run
+            Note over F: dialogue only — no agent run, no artifact writes
         end
-        F->>A: save artifacts (idempotent) [MCP-D]
-        F->>Y: invoke synthesis (latest per perspective) [D]
-        Y-->>F: synthesis report [LLM]
-        F->>A: save synthesis artifact [MCP-D]
-        F->>C: persist turn + decision + agent runs [D]
-        F-->>PO: reply + updated synthesis (single response) [D]
+        opt new artifacts exist or reuse_previous = true
+            F->>A: fetch latest per perspective — pairing constructed here [MCP-D]
+            F->>Y: invoke synthesis (latest per perspective) [D]
+            Y-->>F: synthesis report [LLM]
+            F->>A: save synthesis artifact (idempotent) [MCP-D]
+            F->>C: append synthesis to session context (deterministic, not optional) [D]
+        end
+        F->>C: readiness gate — deterministic [D]
+        F-->>PO: reply + updated synthesis + gate outcome (single response) [D]
     end
-    F->>C: readiness gate — deterministic invariants [D]
 ```
+
+Gate semantics (evaluated **before** the response is sent):
+
+- `finalize` when: (`open_issues` empty AND `invoke` = none) **or** `po_accepted` flag
+  is set — the flag comes from an **explicit client action** (UI button/API field), never
+  from the LLM.
+- `park` when the loop cap (10) is reached — no gate evaluation, story parked.
+- Otherwise: `continue` (next turn).
 
 Pattern mapping of this flow:
 
@@ -207,173 +226,188 @@ Pattern mapping of this flow:
 - **Pattern 3**: the facilitator's DelegationDecision is LLM-driven delegation inside a
   User-in-the-Loop conversation; reviewer → synthesis is the simple sequential chain
   invoked from the hierarchy.
-- **Loop safety cap**: 10 iterations max → story parked (see observability.md).
-- Exit condition (deterministic gate, not LLM-trusted): all flagged issues resolved
-  **or** explicit PO acceptance, and no review in progress.
 
-`reuse_previous` semantics: `true` → re-synthesis only with existing latest artifacts
-(`invoke` must be empty); `false` → invoked reviewers run and each new artifact is paired
-with the latest artifact of the other perspective.
+Synthesis is invoked **at most once per turn**, only when new artifacts exist or
+`reuse_previous` = true. Updated synthesis is **always** appended to the session context
+so the facilitator never continues from stale state.
 
 Sequence diagram (ASCII):
 
 ```
-                                                                                                                    ,.-^^-._                                                                                                                        
-                                                                                                                   |-.____.-|                                                                                                                       
-                                                                                                                   |        |                                                                                                                       
-                                                                                                                   |        |                                                                                                                       
-                    ,--.                                       ,-------.                                           |        |          ,-----------.          ,---------.          ,---------.          ,---------.          ,-----------.          
-                    |PO|                                       |FastAPI|                                           '-.____.-'          |Facilitator|          |BusReview|          |EngReview|          |Synthesis|          |ArtifactMCP|          
-                    `-+'                                       `---+---'                                           CloudSQL            `-----+-----'          `----+----'          `----+----'          `----+----'          `-----+-----'          
-                      |                                            |                                                   |                     |                     |                    |                    |                     |                
-          _________________________________________________________________________________________________________________________________________________________________________________________________________________________________________ 
-          ! LOOP  /  until ready (gate) or cap 10                  |                                                   |                     |                     |                    |                    |                     |               !
-          !______/    |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |           message (session ID)             |                                                   |                     |                     |                    |                    |                     |               !
-          !           |------------------------------------------->|                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |        resume session by ID (+turn lock)          |                     |                     |                    |                    |                     |               !
-          !           |                                            |-------------------------------------------------->|                     |                     |                    |                    |                     |               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |                     session                       |                     |                     |                    |                    |                     |               !
-          !           |                                            |<- - - - - - - - - - - - - - - - - - - - - - - - - |                     |                     |                    |                    |                     |               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |                        invoke (session context)   |                     |                     |                    |                    |                     |               !
-          !           |                                            |------------------------------------------------------------------------>|                     |                    |                    |                     |               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |                                                   |                     |                     read artifacts as extra context (optional)|                     |               !
-          !           |                                            |                                                   |                     |------------------------------------------------------------------------------------>|               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |                                                   |                     |                     |               artifacts                 |                     |               !
-          !           |                                            |                                                   |                     |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |                       reply + DelegationDecision  |                     |                     |                    |                    |                     |               !
-          !           |                                            |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |                     |                    |                    |                     |               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                              _______________________________________________________________________________________________________________________________________________________________________       |               !
-          !           |                              ! ALT  /  decision.invoke = both                                  |                     |                     |                    |                    |              !      |               !
-          !           |                              !_____/       |                                                   |                     |                     |                    |                    |              !      |               !
-          !           |                              !             |                            invoke (story + prev + extra_context)        |                     |                    |                    |              !      |               !
-          !           |                              !             |---------------------------------------------------------------------------------------------->|                    |                    |              !      |               !
-          !           |                              !             |                                                   |                     |                     |                    |                    |              !      |               !
-          !           |                              !             |                                       invoke (story + prev + extra_context)                   |                    |                    |              !      |               !
-          !           |                              !             |------------------------------------------------------------------------------------------------------------------->|                    |              !      |               !
-          !           |                              !             |                                                   |                     |                     |                    |                    |              !      |               !
-          !           |                              !             |                                            review |                     |                     |                    |                    |              !      |               !
-          !           |                              !             |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |                    |                    |              !      |               !
-          !           |                              !             |                                                   |                     |                     |                    |                    |              !      |               !
-          !           |                              !             |                                                   |  review             |                     |                    |                    |              !      |               !
-          !           |                              !             |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                    |              !      |               !
-          !           |                              !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!      |               !
-          !           |                              ! [decision.invoke = single reviewer]                             |                     |                     |                    |                    |              !      |               !
-          !           |                              !             |                                invoke affected reviewer only            |                     |                    |                    |              !      |               !
-          !           |                              !             |---------------------------------------------------------------------------------------------->|                    |                    |              !      |               !
-          !           |                              !             |                                                   |                     |                     |                    |                    |              !      |               !
-          !           |                              !             |                    review (paired with latest other-perspective artifact)                     |                    |                    |              !      |               !
-          !           |                              !             |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |                    |                    |              !      |               !
-          !           |                              !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!      |               !
-          !           |                              ! [reuse_previous = true]                                         |                     |                     |                    |                    |              !      |               !
-          !           |                              !             |                                                 re-synthesis only (existing artifacts)        |                    |                    |              !      |               !
-          !           |                              !             |---------------------------------------------------------------------------------------------------------------------------------------->|              !      |               !
-          !           |                              !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!      |               !
-          !           |                              !~[invoke empty (no review)]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!      |               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |                                                   |             save artifacts (idempotent)   |                    |                    |                     |               !
-          !           |                                            |-------------------------------------------------------------------------------------------------------------------------------------------------------------->|               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |                                               invoke synthesis (latest per perspective)       |                    |                    |                     |               !
-          !           |                                            |---------------------------------------------------------------------------------------------------------------------------------------->|                     |               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |                                                   |        synthesis report                   |                    |                    |                     |               !
-          !           |                                            |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |                     |               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |                                                   |               save synthesis artifact     |                    |                    |                     |               !
-          !           |                                            |-------------------------------------------------------------------------------------------------------------------------------------------------------------->|               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |                                            |           persist turn, decision, runs            |                     |                     |                    |                    |                     |               !
-          !           |                                            |-------------------------------------------------->|                     |                     |                    |                    |                     |               !
-          !           |                                            |                                                   |                     |                     |                    |                    |                     |               !
-          !           |reply + updated synthesis (single response) |                                                   |                     |                     |                    |                    |                     |               !
-          !           |<- - - - - - - - - - - - - - - - - - - - - -|                                                   |                     |                     |                    |                    |                     |               !
-          !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-                      |                                            |                                                   |                     |                     |                    |                    |                     |                
-                      |                                            |readiness gate: open_issues empty or PO acceptance |                     |                     |                    |                    |                     |                
-                      |                                            |-------------------------------------------------->|                     |                     |                    |                    |                     |                
-                    ,-+.                                       ,---+---.                                           CloudSQL            ,-----+-----.          ,----+----.          ,----+----.          ,----+----.          ,-----+-----.          
-                    |PO|                                       |FastAPI|                                            ,.-^^-._           |Facilitator|          |BusReview|          |EngReview|          |Synthesis|          |ArtifactMCP|          
-                    `--'                                       `-------'                                           |-.____.-|          `-----------'          `---------'          `---------'          `---------'          `-----------'          
-                                                                                                                   |        |                                                                                                                       
-                                                                                                                   |        |                                                                                                                       
-                                                                                                                   |        |                                                                                                                       
-                                                                                                                   '-.____.-'
+                                                                                                                                    ,.-^^-._                                                                                                                                  
+                                                                                                                                   |-.____.-|                                                                                                                                 
+                                                                                                                                   |        |                                                                                                                                 
+                                                                                                                                   |        |                                                                                                                                 
+                    ,--.                                                      ,-------.                                            |        |          ,-----------.          ,-----------.          ,---------.          ,---------.          ,---------.                    
+                    |PO|                                                      |FastAPI|                                            '-.____.-'          |ArtifactMCP|          |Facilitator|          |BusReview|          |EngReview|          |Synthesis|                    
+                    `-+'                                                      `---+---'                                            CloudSQL            `-----+-----'          `-----+-----'          `----+----'          `----+----'          `----+----'                    
+                      |                                                           |                                                    |                     |                      |                     |                    |                    |                         
+          ___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________ 
+          ! LOOP  /  until gate: continue / finalize / park                       |                                                    |                     |                      |                     |                    |                    |                        !
+          !______/    |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                   message (session ID)                    |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |---------------------------------------------------------->|                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |   resume session + turn lock (lease TTL 5 min)     |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |--------------------------------------------------->|                     |                      |                     |                    |                    |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |           session + artifact references            |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |<- - - - - - - - - - - - - - - - - - - - - - - - - -|                     |                      |                     |                    |                    |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |    fetch story + latest artifacts per perspective (session lineage)      |                      |                     |                    |                    |                        !
+          !           |                                                           |------------------------------------------------------------------------->|                      |                     |                    |                    |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |                          artifacts (payloads)      |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                      |                     |                    |                    |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |                                    invoke (session context)              |                      |                     |                    |                    |                        !
+          !           |                                                           |------------------------------------------------------------------------------------------------>|                     |                    |                    |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |                                   reply + DelegationDecision             |                      |                     |                    |                    |                        !
+          !           |                                                           |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |                     |                    |                    |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |              persist turn + decision               |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |--------------------------------------------------->|                     |                      |                     |                    |                    |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                             __________________________________________________________________________________________________________________________________________________________________________      |                        !
+          !           |                                             ! ALT  /  invoke = both reviewers (parallel)                       |                     |                      |                     |                    |              !     |                        !
+          !           |                                             !_____/       |                                                    |                     |                      |                     |                    |              !     |                        !
+          !           |                                             !             |                                        invoke (story + prev + extra_context)                    |                     |                    |              !     |                        !
+          !           |                                             !             |---------------------------------------------------------------------------------------------------------------------->|                    |              !     |                        !
+          !           |                                             !             |                                                    |                     |                      |                     |                    |              !     |                        !
+          !           |                                             !             |                                                   invoke (story + prev + extra_context)         |                     |                    |              !     |                        !
+          !           |                                             !             |------------------------------------------------------------------------------------------------------------------------------------------->|              !     |                        !
+          !           |                                             !             |                                                    |                     |                      |                     |                    |              !     |                        !
+          !           |                                             !             |                                                    |   review            |                      |                     |                    |              !     |                        !
+          !           |                                             !             |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |                    |              !     |                        !
+          !           |                                             !             |                                                    |                     |                      |                     |                    |              !     |                        !
+          !           |                                             !             |                                                    |             review  |                      |                     |                    |              !     |                        !
+          !           |                                             !             |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|              !     |                        !
+          !           |                                             !             |                                                    |                     |                      |                     |                    |              !     |                        !
+          !           |                                             !             |                   save review artifacts (idempotent)                     |                      |                     |                    |              !     |                        !
+          !           |                                             !             |------------------------------------------------------------------------->|                      |                     |                    |              !     |                        !
+          !           |                                             !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!     |                        !
+          !           |                                             ! [invoke = single reviewer (business or engineering)]             |                     |                      |                     |                    |              !     |                        !
+          !           |                                             !             |                               invoke affected reviewer (story + prev + extra_context)           |                     |                    |              !     |                        !
+          !           |                                             !             |---------------------------------------------------------------------------------------------------------------------->|                    |              !     |                        !
+          !           |                                             !             |                                                    |                     |                      |                     |                    |              !     |                        !
+          !           |                                             !             |                                                    |   review            |                      |                     |                    |              !     |                        !
+          !           |                                             !             |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |                    |              !     |                        !
+          !           |                                             !             |                                                    |                     |                      |                     |                    |              !     |                        !
+          !           |                                             !             |                    save review artifact (idempotent)                     |                      |                     |                    |              !     |                        !
+          !           |                                             !             |------------------------------------------------------------------------->|                      |                     |                    |              !     |                        !
+          !           |                                             !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!     |                        !
+          !           |                                             !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!     |                        !
+          !           |                                             !~[invoke = none (dialogue only)]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!     |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                             _______________________________________________________________________________________________________________________________________________________________________________________________          !
+          !           |                                             ! OPT  /  new artifacts exist or reuse_previous                    |                     |                      |                     |                    |                    |              !         !
+          !           |                                             !_____/       |                                                    |                     |                      |                     |                    |                    |              !         !
+          !           |                                             !             |            fetch latest per perspective (pairing done here)              |                      |                     |                    |                    |              !         !
+          !           |                                             !             |------------------------------------------------------------------------->|                      |                     |                    |                    |              !         !
+          !           |                                             !             |                                                    |                     |                      |                     |                    |                    |              !         !
+          !           |                                             !             |                                                    |      invoke synthesis (latest per perspective)                   |                    |                    |              !         !
+          !           |                                             !             |---------------------------------------------------------------------------------------------------------------------------------------------------------------->|              !         !
+          !           |                                             !             |                                                    |                     |                      |                     |                    |                    |              !         !
+          !           |                                             !             |                                                    |                   synthesis report         |                     |                    |                    |              !         !
+          !           |                                             !             |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |              !         !
+          !           |                                             !             |                                                    |                     |                      |                     |                    |                    |              !         !
+          !           |                                             !             |                  save synthesis artifact (idempotent)                    |                      |                     |                    |                    |              !         !
+          !           |                                             !             |------------------------------------------------------------------------->|                      |                     |                    |                    |              !         !
+          !           |                                             !             |                                                    |                     |                      |                     |                    |                    |              !         !
+          !           |                                             !             |append synthesis to session context (deterministic) |                     |                      |                     |                    |                    |              !         !
+          !           |                                             !             |--------------------------------------------------->|                     |                      |                     |                    |                    |              !         !
+          !           |                                             !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!         !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |          readiness gate (deterministic)            |                     |                      |                     |                    |                    |                        !
+          !           |                                                           |--------------------------------------------------->|                     |                      |                     |                    |                    |                        !
+          !           |                                                           |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |reply + updated synthesis + gate outcome (single response) |                                                    |                     |                      |                     |                    |                    |                        !
+          !           |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - |                                                    |                     |                      |                     |                    |                    |                        !
+          !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
+                      |                                                           |                                                    |                     |                      |                     |                    |                    |                         
+                      |                                                           | ,----------------------------------------!.        |                     |                      |                     |                    |                    |                         
+                      |                                                           | |gate: open_issues empty AND invoke=none |_\       |                     |                      |                     |                    |                    |                         
+                      |                                                           | |-> finalize (flow 3);                     |       |                     |                      |                     |                    |                    |                         
+                      |                                                           | |po_accepted (client action) -> finalize;  |       |                     |                      |                     |                    |                    |                         
+                      |                                                           | |loop cap 10 -> park (no gate)             |       |                     |                      |                     |                    |                    |                         
+                    ,-+.                                                      ,---+-`------------------------------------------'   CloudSQL            ,-----+-----.          ,-----+-----.          ,----+----.          ,----+----.          ,----+----.                    
+                    |PO|                                                      |FastAPI|                                             ,.-^^-._           |ArtifactMCP|          |Facilitator|          |BusReview|          |EngReview|          |Synthesis|                    
+                    `--'                                                      `-------'                                            |-.____.-|          `-----------'          `-----------'          `---------'          `---------'          `---------'                    
+                                                                                                                                   |        |                                                                                                                                 
+                                                                                                                                   |        |                                                                                                                                 
+                                                                                                                                   |        |                                                                                                                                 
+                                                                                                                                   '-.____.-'
 ```
 
 ## 3. Readiness — final report
 
+Triggered by the gate outcome `finalize` from flow 2 (no second facilitator event).
 Session states: `active` → `finalizing` → `completed`. The session is marked `completed`
-only **after** the report artifact is successfully saved; a report failure leaves the
-session in `finalizing`, retryable.
+only **after** the report artifact is saved and its reference persisted; a report
+failure leaves the session in `finalizing`, retryable. The signed URL is produced from
+the GCS artifact.
 
 ```mermaid
 sequenceDiagram
     participant PO as PO (TUI/Web)
     participant F as FastAPI orchestration
     participant C as Cloud SQL
-    participant T as Facilitator
     participant R as Report MCP
     participant G as GCS
 
-    T-->>F: readiness = ready (proposal) [LLM]
-    F->>C: deterministic gate: open_issues empty or PO acceptance; invoke = none [D]
+    Note over F: readiness gate passed in flow 2
     F->>C: session -> finalizing [D]
     F->>R: render report (MD/PDF) from synthesis artifacts [MCP-D]
     R->>G: save report artifact [D]
     R-->>F: artifact reference [MCP-D]
-    F->>C: session -> completed [D]
+    F->>C: persist report reference + session -> completed [D]
+    G-->>F: signed URL [D]
     F-->>PO: final report download (signed URL) [D]
 ```
 
 Sequence diagram (ASCII):
 
 ```
-                                                                             ,.-^^-._                                                                
-                                                                            |-.____.-|                                                               
-                                                                            |        |                                                               
-                                                                            |        |                                                               
-     ,--.                        ,-------.                                  |        |          ,-----------.          ,---------.              ,---.
-     |PO|                        |FastAPI|                                  '-.____.-'          |Facilitator|          |ReportMCP|              |GCS|
-     `-+'                        `---+---'                                  CloudSQL            `-----+-----'          `----+----'              `-+-'
-       |                             |                 readiness = ready (proposal)                   |                     |                     |  
-       |                             |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                     |                     |  
-       |                             |                                          |                     |                     |                     |  
-       |                             |readiness gate (deterministic invariants) |                     |                     |                     |  
-       |                             |----------------------------------------->|                     |                     |                     |  
-       |                             |                                          |                     |                     |                     |  
-       |                             |          session -> finalizing           |                     |                     |                     |  
-       |                             |----------------------------------------->|                     |                     |                     |  
-       |                             |                                          |                     |                     |                     |  
-       |                             |                   render report (MD/PDF) from synthesis artifacts                    |                     |  
-       |                             |------------------------------------------------------------------------------------->|                     |  
-       |                             |                                          |                     |                     |                     |  
-       |                             |                                          |                     |                     |save report artifact |  
-       |                             |                                          |                     |                     |-------------------->|  
-       |                             |                                          |                     |                     |                     |  
-       |                             |                                 artifact reference             |                     |                     |  
-       |                             |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                     |  
-       |                             |                                          |                     |                     |                     |  
-       |                             |          session -> completed            |                     |                     |                     |  
-       |                             |----------------------------------------->|                     |                     |                     |  
-       |                             |                                          |                     |                     |                     |  
-       |report download (signed URL) |                                          |                     |                     |                     |  
-       |<- - - - - - - - - - - - - - |                                          |                     |                     |                     |  
-     ,-+.                        ,---+---.                                  CloudSQL            ,-----+-----.          ,----+----.              ,-+-.
-     |PO|                        |FastAPI|                                   ,.-^^-._           |Facilitator|          |ReportMCP|              |GCS|
-     `--'                        `-------'                                  |-.____.-|          `-----------'          `---------'              `---'
-                                                                            |        |                                                               
-                                                                            |        |                                                               
-                                                                            |        |                                                               
-                                                                            '-.____.-'
+                                                                                         ,.-^^-._                                         
+                                                                                        |-.____.-|                                        
+                                                                                        |        |                                        
+                                                                                        |        |                                        
+     ,--.                              ,-------.                                        |        |          ,---------.              ,---.
+     |PO|                              |FastAPI|                                        '-.____.-'          |ReportMCP|              |GCS|
+     `-+'                              `---+---'                                        CloudSQL            `----+----'              `-+-'
+       |                                   |        readiness gate passed in flow 2         |                    |                     |  
+       |                                   |----------------------------------------------->|                    |                     |  
+       |                                   |                                                |                    |                     |  
+       |                                   |             session -> finalizing              |                    |                     |  
+       |                                   |----------------------------------------------->|                    |                     |  
+       |                                   |                                                |                    |                     |  
+       |                                   |          render report (MD/PDF) from synthesis artifacts            |                     |  
+       |                                   |-------------------------------------------------------------------->|                     |  
+       |                                   |                                                |                    |                     |  
+       |                                   |                                                |                    |save report artifact |  
+       |                                   |                                                |                    |-------------------->|  
+       |                                   |                                                |                    |                     |  
+       |                                   |                         artifact reference     |                    |                     |  
+       |                                   |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |                     |  
+       |                                   |                                                |                    |                     |  
+       |                                   |persist report reference + session -> completed |                    |                     |  
+       |                                   |----------------------------------------------->|                    |                     |  
+       |                                   |                                                |                    |                     |  
+       |                                   |                                        signed URL                   |                     |  
+       |                                   |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |  
+       |                                   |                                                |                    |                     |  
+       |final report download (signed URL) |                                                |                    |                     |  
+       |<- - - - - - - - - - - - - - - - - |                                                |                    |                     |  
+     ,-+.                              ,---+---.                                        CloudSQL            ,----+----.              ,-+-.
+     |PO|                              |FastAPI|                                         ,.-^^-._           |ReportMCP|              |GCS|
+     `--'                              `-------'                                        |-.____.-|          `---------'              `---'
+                                                                                        |        |                                        
+                                                                                        |        |                                        
+                                                                                        |        |                                        
+                                                                                        '-.____.-'
 ```
 
 ## 4. Session restore — stateless server, client-held session ID
@@ -464,7 +498,8 @@ Sequence diagram (ASCII):
 
 ## Cross-cutting on every arrow
 
-- Correlation ID (session, story, agent, attempt) on all calls — logs, traces, metrics.
+- Correlation ID on all calls — a request ID exists from the first client call;
+  session/story/agent/attempt IDs attach as soon as they exist.
 - Agent version label on every agent invocation.
 - Retries/timeouts per `observability.md` (never applied to PO input).
 - **Idempotency**: every write carries a stable run ID / idempotency key (artifact saves,
