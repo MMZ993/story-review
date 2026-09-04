@@ -14,18 +14,31 @@ Conventions:
 - Every response carries `X-Correlation-Id`; the client may supply one via the same
   header on any request.
 - Errors use the single structured error model (code, message, agent, correlation ID,
-  retryable flag — see `schemas.md`).
+  retryable flag — see `schemas.md`); FastAPI's default free-form validation `detail`
+  responses are normalized to this envelope.
 - Hard end-to-end deadline of **5 minutes** per request that runs agent work — the
   initial story-selection request and every dialogue/finalization turn (see
   `observability.md`). Deadline exhaustion returns a retryable structured error.
 
-## Endpoints
+## Endpoint summary
+
+| Method and path | Input | Success | Purpose |
+|---|---|---|---|
+| `GET /api/v1/stories` | query `filter` | `StorySummary[]` | Browse the mock backlog. |
+| `GET /api/v1/stories/{story_id}` | path `story_id` | `StoryDetail` | Story + epic/roadmap context. |
+| `POST /api/v1/sessions` | `CreateSessionRequest` | `CreateSessionResponse` (`201`) | Select a story, run the initial flow. |
+| `GET /api/v1/sessions` | query `limit`/`cursor` | `SessionSummary[]` | List restorable sessions. |
+| `GET /api/v1/sessions/{session_id}` | path `session_id` | `SessionDetail` | History replay + artifact references. |
+| `POST /api/v1/sessions/{session_id}/turns` | `TurnRequest` | `TurnResponse` | One PO action; may finalize. |
+| `POST /api/v1/sessions/{session_id}/finalize` | empty body | `ReportResponse` | Finalization retry (flow 3). |
+| `GET /api/v1/sessions/{session_id}/report` | path `session_id` | `ReportResponse` | Regenerate signed report URLs. |
+| `GET /healthz` | none | health flags | Liveness; downstream reachability. |
 
 ### Stories (browse, before a session exists)
 
 | Method & path | Purpose |
 |---|---|
-| `GET /stories` | list available stories (proxy to story MCP `list_stories`) |
+| `GET /stories` | list available stories (proxy to story MCP `list_stories`; optional case-insensitive title `filter`; dataset-bounded, no pagination) |
 | `GET /stories/{story_id}` | story details + epic/roadmap context (proxy to `get_story`) |
 
 Responses: `200` with `StorySummary[]` / `StoryDetail`; `404` unknown story;
@@ -49,12 +62,17 @@ Selecting a story is done by creating a session — that triggers the initial fl
 Request:
 
 ```json
-{ "story_id": "story-07", "format_preference": "pdf" }
+{ "story_id": "story-07", "requested_formats": ["md", "pdf"] }
 ```
+
+`requested_formats` is a non-empty, duplicate-free list of `md`/`pdf` (or both),
+persisted with the session; finalization renders every requested format exactly once.
 
 Runs the deterministic initial pipeline (story artifact → parallel reviewers →
 synthesis → facilitator opening turn — flow 1 in `data-flow.md`) and responds when the
-opening reply is ready. Same 5-minute end-to-end deadline as a dialogue turn.
+opening reply is ready. The opening facilitator call is **turn 1** and counts toward
+the 10-turn cap; it always emits `invoke` = none. Same 5-minute end-to-end deadline as
+a dialogue turn.
 
 Response `201`:
 
@@ -72,13 +90,16 @@ Response `201`:
 ```
 
 Errors: `404` unknown story; `409` story already has an active session (client should
-restore it instead); `503` retryable deadline/upstream failure — the session creation is
-idempotent by `Idempotency-Key`, so the client retries the same request.
+restore it instead) or `IDEMPOTENCY_KEY_REUSED` (same key, different body); `503`
+retryable deadline/upstream failure — the session creation is idempotent by
+`Idempotency-Key`, so the client retries the same request.
 
 #### `GET /sessions` / `GET /sessions/{session_id}`
 
 `200` with `SessionSummary[]` / `SessionDetail` (history turns, artifact references —
 content fetched server-side via artifact MCP, payloads never carried in history alone).
+Session listing supports `limit` (default 50, max 100) and an opaque `cursor`, ordered
+by `updated_at` descending.
 `404` unknown session. Parked/completed sessions are read-only — a `POST` turn against
 them returns `409` with code `SESSION_READ_ONLY`; the client may instead create a **new
 session on the same story**.
@@ -97,7 +118,8 @@ Request:
 - `message` required unless `po_accepted` = true.
 - `po_accepted` = true is an **explicit client action** (UI button); it bypasses the
   facilitator and delegated work and finalizes immediately (synchronous continuation
-  into flow 3 within the same request).
+  into flow 3 within the same request). It does not increment
+  `facilitator_turn_count`, though it receives the next chronological API turn number.
 - Lease-based turn lock applies (TTL 6 min); a concurrent message on a locked session
   is rejected before any work starts.
 
@@ -117,15 +139,18 @@ it happens:
 }
 ```
 
-- `outcome = finalize`: `report` is populated (reference + signed URL), `state =
-  completed`.
-- `outcome = park`: session read-only; `state = parked`.
+- `outcome = finalize`: `report` contains one download entry per requested format
+  (reference + signed URL), `state` = `completed`. When a turn enters finalization,
+  orchestration first persists the deterministic `finalized-review` artifact (latest
+  synthesis + dialogue resolutions + PO acceptance state) and renders from it — see
+  `mcp-servers.md`.
+- `outcome = park`: session read-only; `state` = `parked`.
 
 Errors: `400` empty message; `404` unknown session; `409` locked
 (`SESSION_LOCKED`, non-retryable until lease expiry — retry a new request, not the same
-turn) or read-only session; `422` DelegationDecision schema validation failure after
-bounded corrective re-prompts (non-retryable with same input; code
-`DELEGATION_VALIDATION`); `503` retryable deadline/upstream failure — retry with the
+turn), read-only session, or `IDEMPOTENCY_KEY_REUSED`; `422` DelegationDecision schema
+validation failure after bounded corrective re-prompts (non-retryable with same input;
+code `DELEGATION_VALIDATION`); `503` retryable deadline/upstream failure — retry with the
 same `Idempotency-Key`.
 
 #### `POST /sessions/{session_id}/finalize` — finalization retry (flow 3)
@@ -139,14 +164,15 @@ Request: empty body + `Idempotency-Key`. Behavior by session state:
 | `active` | `409` code `NOT_FINALIZING` (use a turn instead) |
 | `parked` | `409` code `SESSION_READ_ONLY` |
 
-`200` response: `{ "report": { "artifact_id": "…", "format": "pdf", "signed_url": "…" } }`.
-Render failure: `503` retryable, session stays `finalizing`.
+`200` response: `{ "report": [{ "artifact_id": "…", "format": "md", "signed_url": "…" }, …] }`
+— one entry per requested format. Render failure: `503` retryable, session stays
+`finalizing`.
 
 #### `GET /sessions/{session_id}/report`
 
-Completed sessions only: regenerate an expiring signed URL for the persisted report
-(both `md` and `pdf` if rendered). `200` with report references + URLs; `404` unknown
-session; `409` no report yet (not completed). Never changes session state.
+Completed sessions only: regenerate an expiring signed URL per rendered format for the
+persisted report. `200` with report references + URLs; `404` unknown session; `409`
+code `REPORT_NOT_READY` (not completed). Never changes session state.
 
 ### Health
 
@@ -161,7 +187,7 @@ session; `409` no report yet (not completed). Never changes session state.
 | `200` / `201` | success (creation on `POST /sessions`) |
 | `400` | malformed request (e.g. empty message) |
 | `404` | unknown story/session |
-| `409` | locked session, read-only (parked/completed) session, duplicate active story session, finalize on non-finalizing state |
+| `409` | locked session, read-only (parked/completed) session, duplicate active story session, finalize on non-finalizing state, report not ready, idempotency-key reuse with different body |
 | `422` | structured-output validation failure after bounded re-prompts |
 | `503` | retryable: deadline exhaustion, retry-exhausted upstream (agent/MCP), report failure |
 
@@ -202,6 +228,8 @@ Client rules:
   backoff; idempotent endpoints make this safe.
 - While a turn/finalization is processing, the UI shows a spinner; the server responds
   exactly once per request (finalization is included in the turn response).
-- Parked/completed sessions offer: view history, regenerate report URL, start a **new
+- Parked/completed sessions offer: view history, regenerate report URLs, start a **new
   session on the same story** (`POST /sessions` with the same `story_id` after the
   active one is no longer active).
+- The TUI persists the idempotency key with the in-flight logical request so a lost
+  response can be replayed safely.
