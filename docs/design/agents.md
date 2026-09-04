@@ -6,7 +6,9 @@ Per-agent specifications. Each agent is a separate Agent Engine deployment.
 
 - **Role**: User-in-the-Loop dialogue with the Product Owner; presents synthesized
   feedback, guides clarification, tracks story readiness.
-- **Model config**: set via environment at deployment time (see tech-stack).
+- **Model config**: model ID and generation settings are versioned in the agent's
+  `config.yaml` and immutable for one deployment; environment variables supply only
+  infrastructure identifiers (see `../decisions/tech-stack.md`).
 - **Tools**: story MCP server (read), artifact MCP server (read previous review artifacts
   as extra context). For artifact reads, orchestration supplies lineage-scoped references;
   the facilitator decides whether supporting evidence is needed and performs the read as
@@ -27,7 +29,7 @@ Per-agent specifications. Each agent is a separate Agent Engine deployment.
 |---|---|
 | `invoke` | which reviewers to run: business, engineering, both, or none |
 | `extra_context` | PO clarifications to inject into the invoked reviewers |
-| `reuse_previous` | `true` = re-synthesis only, using existing latest artifacts per perspective (`invoke` must then be empty); `false` (default) = run invoked reviewers, pair each new artifact with the latest artifact of the other perspective. A re-synthesis turn always continues so the facilitator can evaluate the new output on the next turn. |
+| `reuse_previous` | `true` = re-synthesis only, using existing latest artifacts per perspective (`invoke` must be `none` and `extra_context` absent); `false` (default) = run invoked reviewers, pair each new artifact with the latest artifact of the other perspective. A re-synthesis turn always continues so the facilitator can evaluate the new output on the next turn. |
 | `open_issues` | currently unresolved issues |
 | `readiness` | `needs_work` / `review_requested` / `ready` |
 
@@ -45,7 +47,8 @@ parks the session instead of evaluating readiness.
 - **Input**: story artifact + optional previous review + optional PO extra context
   (assembled by orchestration; see session semantics below).
 - **Output**: structured review (Pydantic-validated) persisted as artifact by
-  orchestration (direct MCP call — the reviewer itself does not write artifacts).
+  orchestration (direct MCP call — the reviewer itself has no tools and does not write
+  artifacts).
 - **Tools**: none — all context is passed in; no MCP toolsets attached.
 
 ## Engineering Perspective Reviewer (execution layer)
@@ -63,7 +66,8 @@ parks the session instead of evaluating readiness.
   orchestration pairs the new artifact with the **latest artifact of the other
   perspective**. This catches cases where resolving one conflict creates a new conflict
   or gap on the other side.
-- **Output**: synthesis report (Pydantic-validated) persisted as artifact.
+- **Output**: synthesis report (Pydantic-validated) persisted as artifact by
+  orchestration.
 - **Tools**: none — all context is passed in.
 
 ## Session and invocation semantics
@@ -72,11 +76,13 @@ parks the session instead of evaluating readiness.
   many turns.
 - **Reviewers and Synthesis**: always a **fresh single-turn run** — no session state
   carried between invocations. The input is fully assembled by orchestration:
-  1. story artifact (persisted once at story selection on the orchestration level),
+  1. story artifact (persisted once by FastAPI at story selection),
   2. optionally the previous review result (for consecutive reviews),
   3. optionally new information provided by the PO during the dialogue.
 - All sessions (including single-turn reviewer runs) are **kept and logged** for audit
-  and observability.
+  and observability. Each logged invocation carries the agent version label and prompt
+  SHA-256 (see schemas.md); retries use idempotent output persistence so a timed-out
+  invocation never produces duplicate artifacts.
 
 ## Shared contracts
 
