@@ -16,6 +16,8 @@ findings, and resolving conflicts with the Product Owner in the loop.
    - [Architecture](design/architecture.md) — components, deployment model, session and state
    - [Data flow](design/data-flow.md) — flows between UI, orchestration, agents and MCP servers
    - [Agents](design/agents.md) — per-agent specifications and delegation schema
+   - [API contract](design/api-contract.md) — FastAPI endpoints, status/error codes, idempotency, TUI interaction states
+   - [Schemas](design/schemas.md) — shared Pydantic models, identifiers/lineage, audit records, error taxonomy, MCP field-level contracts
    - [MCP servers](design/mcp-servers.md) — server contracts
    - [Observability](design/observability.md) — telemetry, callbacks, retry and timeout policy
 4. **Quality**
@@ -24,6 +26,7 @@ findings, and resolving conflicts with the Product Owner in the loop.
    - [Requirements coverage](quality/requirements-coverage.md) — traceability matrix
 5. **Operations**
    - [Deployment](operations/deployment.md) — GCP layout, versioning, CI/CD pipelines
+   - [Repository layout](operations/repository-layout.md) — repo structure, prompts directory, shared packages, dataset, manifests
 
 ## Conventions
 
