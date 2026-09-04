@@ -47,6 +47,18 @@ review/synthesis calls because the facilitator prompt + session history is large
 With 120 s dialogue timeouts, dialogue retries are capped at 2 attempts to bound worst-case
 wait (~4 min) — short calls keep 3 attempts (~3 min worst case).
 
+Additional policies:
+
+- **End-to-end request deadline**: 5 min per PO turn — covers the facilitator call,
+  delegated reviews, synthesis and their retries (individual retry budgets are bounded
+  so the total fits the deadline; the deadline is never applied to waiting for PO
+  input).
+- **Session turn locks**: lease-based with 5 min TTL; released after the response; a
+  crashed holder expires with the lease — no permanently locked sessions.
+- **Corrective LLM re-prompt** (e.g. DelegationDecision schema violation) is *not* a
+  transport retry: bounded to 2 re-prompts, then surfaced as a structured validation
+  error. Transport retries never apply to validation errors.
+
 Retry exhaustion returns a structured error to the PO in the dialogue — no silent
 failures.
 

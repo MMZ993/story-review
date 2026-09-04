@@ -2,37 +2,47 @@
 participant PO
 participant "FastAPI" as F
 database "CloudSQL" as C
+participant "ArtifactMCP" as A
 participant "Facilitator" as T
 participant "BusReview" as B
 participant "EngReview" as E
 participant "Synthesis" as Y
-participant "ArtifactMCP" as A
-loop until ready (gate) or cap 10
+loop until gate: continue / finalize / park
 PO -> F: message (session ID)
-F -> C: resume session by ID (+turn lock)
-C --> F: session
+F -> C: resume session + turn lock (lease TTL 5 min)
+C --> F: session + artifact references
+F -> A: fetch story + latest artifacts per perspective (session lineage)
+A --> F: artifacts (payloads)
 F -> T: invoke (session context)
-T -> A: read artifacts as extra context (optional)
-A --> T: artifacts
 T --> F: reply + DelegationDecision
-alt decision.invoke = both
+F -> C: persist turn + decision
+alt invoke = both reviewers (parallel)
 F -> B: invoke (story + prev + extra_context)
 F -> E: invoke (story + prev + extra_context)
 B --> F: review
 E --> F: review
-else decision.invoke = single reviewer
-F -> B: invoke affected reviewer only
-B --> F: review (paired with latest other-perspective artifact)
+F -> A: save review artifacts (idempotent)
+else invoke = single reviewer (business or engineering)
+F -> B: invoke affected reviewer (story + prev + extra_context)
+B --> F: review
+F -> A: save review artifact (idempotent)
 else reuse_previous = true
-F -> Y: re-synthesis only (existing artifacts)
-else invoke empty (no review)
+else invoke = none (dialogue only)
 end
-F -> A: save artifacts (idempotent)
+opt new artifacts exist or reuse_previous
+F -> A: fetch latest per perspective (pairing done here)
 F -> Y: invoke synthesis (latest per perspective)
 Y --> F: synthesis report
-F -> A: save synthesis artifact
-F -> C: persist turn, decision, runs
-F --> PO: reply + updated synthesis (single response)
+F -> A: save synthesis artifact (idempotent)
+F -> C: append synthesis to session context (deterministic)
 end
-F -> C: readiness gate: open_issues empty or PO acceptance
+F -> C: readiness gate (deterministic)
+F --> PO: reply + updated synthesis + gate outcome (single response)
+end
+note right of F
+gate: open_issues empty AND invoke=none
+-> finalize (flow 3);
+po_accepted (client action) -> finalize;
+loop cap 10 -> park (no gate)
+end note
 @enduml

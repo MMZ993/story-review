@@ -12,8 +12,12 @@ Per-agent specifications. Each agent is a separate Agent Engine deployment.
   by orchestration (see data-flow.md).
 - **Structured output**: every facilitator turn ends with a **delegation decision** — a
   strict Pydantic model (see below). Orchestration interprets and executes it; the LLM
-  proposes, code disposes. Validation failure triggers a corrective retry and is recorded
-  as an observability event.
+  proposes, code disposes. Validation failure triggers a corrective LLM re-prompt
+  (bounded, distinct from transport retries — see observability.md) and is recorded as
+  an observability event. The opening turn always emits `invoke` = none.
+- **PO acceptance** is an explicit client action (UI button / API field `po_accepted`),
+  recorded by orchestration — never produced by the LLM; it feeds the deterministic
+  readiness gate.
 
 ### Delegation decision schema (fields)
 
