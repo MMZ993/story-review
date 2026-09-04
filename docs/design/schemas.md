@@ -493,7 +493,7 @@ class TurnRequest(StrictModel):
     @model_validator(mode="after")
     def validate_action(self):
         if self.po_accepted == (self.message is not None):
-            raise ValueError("provide either message or po_accepted=true, not both")
+            raise ValueError("provide exactly one of message or po_accepted=true")
         return self
 
 
@@ -594,13 +594,13 @@ class TurnResponse(StrictModel):
         if self.state != expected_state:
             raise ValueError("state does not match outcome")
         if (self.outcome == "finalize") != bool(self.report):
-            raise ValueError("report downloads are required only for a finalized turn")
+            raise ValueError("report downloads are required for a finalized turn and forbidden otherwise")
         if len({report.format for report in self.report}) != len(self.report):
             raise ValueError("report formats must be unique")
         if self.delegation is not None and self.issues != self.delegation.open_issues:
             raise ValueError("issues must mirror delegation.open_issues")
         if self.delegation is None and self.outcome != "finalize":
-            raise ValueError("only explicit acceptance omits a delegation decision")
+            raise ValueError("delegation is required unless the turn finalizes")
         if self.outcome != "finalize" and self.facilitator_reply is None:
             raise ValueError("continued and parked turns require a facilitator reply")
         if self.synthesis is not None and self.synthesis.type != "synthesis":
@@ -833,6 +833,8 @@ class AgentRunRecord(StrictModel):
         max_length=20,
     )
     state: RecordState = "pending"
+    # field bound is the global maximum (short calls, 3 attempts); the
+    # facilitator-specific limit of 2 is enforced by the validator below
     transport_attempts: Annotated[int, Field(ge=0, le=3)] = 0
     corrective_reprompts: Annotated[int, Field(ge=0, le=2)] = 0
     started_at: UtcDatetime
@@ -991,7 +993,7 @@ class RenderReportInput(StrictModel):
             self.final_review_reference.story_run_id != self.story_run_id
             or self.final_review_reference.type != "finalized-review"
         ):
-            raise ValueError("input must be this run's final-review artifact")
+            raise ValueError("input must be this run's finalized-review artifact")
         return self
 
 
