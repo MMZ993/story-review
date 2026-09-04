@@ -7,42 +7,75 @@ participant "Facilitator" as T
 participant "BusReview" as B
 participant "EngReview" as E
 participant "Synthesis" as Y
-loop until gate: continue / finalize / park
-PO -> F: message (session ID)
-F -> C: resume session + turn lock (lease TTL 5 min)
+loop while session active (max 10 facilitator turns)
+PO -> F: message (session ID, po_accepted)
+F -> C: resume session + turn lock (lease TTL 6 min)
 C --> F: session + artifact references
 F -> A: fetch story + latest artifacts per perspective (session lineage)
 A --> F: artifacts (payloads)
+alt po_accepted = true
+F -> C: persist explicit acceptance + outcome = finalize
+note over F: skip facilitator and delegated work
+else dialogue turn
 F -> T: invoke (session context)
+opt facilitator requests supporting evidence
+T -> A: read artifact by supplied session-lineage reference
+A --> T: artifact payload
+end
 T --> F: reply + DelegationDecision
 F -> C: persist turn + decision
-alt invoke = both reviewers (parallel)
+alt invoke = both reviewers
+par parallel fan-out (asyncio.gather)
 F -> B: invoke (story + prev + extra_context)
-F -> E: invoke (story + prev + extra_context)
 B --> F: review
+else
+F -> E: invoke (story + prev + extra_context)
 E --> F: review
+end
 F -> A: save review artifacts (idempotent)
-else invoke = single reviewer (business or engineering)
-F -> B: invoke affected reviewer (story + prev + extra_context)
+F -> C: persist reviewer run records (audit)
+else invoke = business
+F -> B: invoke (story + prev + extra_context)
 B --> F: review
 F -> A: save review artifact (idempotent)
+F -> C: persist business reviewer run (audit)
+else invoke = engineering
+F -> E: invoke (story + prev + extra_context)
+E --> F: review
+F -> A: save review artifact (idempotent)
+F -> C: persist engineering reviewer run (audit)
 else reuse_previous = true
-else invoke = none (dialogue only)
+note over F: re-synthesis only; no reviewer run
+else invoke = none
+note over F: dialogue only; no reviewer run or artifact write
 end
 opt new artifacts exist or reuse_previous
 F -> A: fetch latest per perspective (pairing done here)
 F -> Y: invoke synthesis (latest per perspective)
 Y --> F: synthesis report
 F -> A: save synthesis artifact (idempotent)
+F -> C: persist synthesis run (audit)
 F -> C: append synthesis to session context (deterministic)
 end
-F -> C: readiness gate (deterministic)
-F --> PO: reply + updated synthesis + gate outcome (single response)
+alt facilitator turn 10 reached
+F -> C: session -> parked + outcome = park
+else synthesis produced this turn
+F -> C: persist outcome = continue
+note over F: facilitator evaluates new synthesis next turn
+else open_issues empty AND invoke = none
+F -> C: persist outcome = finalize
+else unresolved issues remain
+F -> C: persist outcome = continue
 end
-note right of F
-gate: open_issues empty AND invoke=none
--> finalize (flow 3);
-po_accepted (client action) -> finalize;
-loop cap 10 -> park (no gate)
-end note
+end
+alt outcome = finalize
+note over F: continue to flow 3; no response yet
+else outcome = park
+F -> C: release turn lock
+F --> PO: reply + latest synthesis + park outcome (single response)
+else outcome = continue
+F -> C: release turn lock
+F --> PO: reply + latest/updated synthesis + continue outcome (single response)
+end
+end
 @enduml

@@ -28,9 +28,14 @@ F -> C: persist reviewer runs (audit)
 F -> Y: invoke (latest per perspective)
 Y --> F: synthesis + conflicts
 F -> A: save synthesis artifact
+F -> C: persist synthesis run (audit)
 F -> C: create facilitator session
 F -> C: append synthesis context
 F -> T: invoke (open dialogue, present synthesis)
+opt facilitator requests supporting evidence
+T -> A: read artifact by supplied story-run reference
+A --> T: artifact payload
+end
 T --> F: opening reply + DelegationDecision
 F -> C: persist turn + decision
 F --> PO: reply + issues + session ID

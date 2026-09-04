@@ -4,12 +4,38 @@ participant "FastAPI" as F
 database "CloudSQL" as C
 participant "ReportMCP" as R
 participant "GCS" as G
-F -> C: readiness gate passed in flow 2
-F -> C: session -> finalizing
+alt retry a completed session or lost response
+PO -> F: retry finalization/download (session ID, idempotency key)
+F -> C: load completed session + report reference
+C --> F: immutable report reference
+note over F: generate fresh signed URL; no render or write
+F --> PO: final report reference + signed URL (single response)
+PO -> G: download with signed URL
+G --> PO: report bytes
+else finalize active session or retry finalizing session
+alt entered from flow 2 gate
+note over F: existing turn lock remains held
+else retry an existing finalizing session
+PO -> F: retry finalization (session ID, idempotency key)
+F -> C: load finalizing session + acquire turn lock (lease TTL 6 min)
+C --> F: finalizing session + report references
+end
+F -> C: session -> finalizing (idempotent)
 F -> R: render report (MD/PDF) from synthesis artifacts
+alt report and download URL prepared
 R -> G: save report artifact
+G --> R: artifact metadata
 R --> F: artifact reference
+note over F: generate signed URL from artifact reference
 F -> C: persist report reference + session -> completed
-G --> F: signed URL
-F --> PO: final report download (signed URL)
+F -> C: release turn lock
+F --> PO: final report reference + signed URL (single response)
+PO -> G: download with signed URL
+G --> PO: report bytes
+else report or signed-URL generation fails, or deadline expires
+note over F,R: orchestration normalizes failure as structured error
+F -> C: keep finalizing + release turn lock
+F --> PO: structured retryable error (single response)
+end
+end
 @enduml

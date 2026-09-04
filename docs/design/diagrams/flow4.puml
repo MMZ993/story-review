@@ -14,7 +14,8 @@ F -> A: fetch artifacts by reference
 A --> F: artifacts
 F --> PO: history replay + artifacts
 note over PO,F
-completed sessions are read-only;
-option: new session on same story
+completed and parked sessions are read-only;
+report URLs can be regenerated;
+new sessions may use the same story
 end note
 @enduml
