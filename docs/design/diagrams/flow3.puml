@@ -2,6 +2,7 @@
 participant PO
 participant "FastAPI" as F
 database "CloudSQL" as C
+participant "ArtifactMCP" as A
 participant "ReportMCP" as R
 participant "GCS" as G
 alt retry a completed session or lost response
@@ -21,15 +22,17 @@ F -> C: load finalizing session + acquire turn lock (lease TTL 6 min)
 C --> F: finalizing session + report references
 end
 F -> C: session -> finalizing (idempotent)
-F -> R: render report (MD/PDF) from synthesis artifacts
-alt report and download URL prepared
-R -> G: save report artifact
+F -> A: save finalized-review artifact (synthesis + dialogue + acceptance)
+A --> F: finalized-review reference
+F -> R: render each requested format (MD/PDF) from finalized-review
+alt reports and download URLs prepared
+R -> G: save report artifacts (one per requested format)
 G --> R: artifact metadata
-R --> F: artifact reference
-note over F: generate signed URL from artifact reference
-F -> C: persist report reference + session -> completed
+R --> F: artifact references
+note over F: generate signed URLs from artifact references
+F -> C: persist report references + session -> completed
 F -> C: release turn lock
-F --> PO: final report reference + signed URL (single response)
+F --> PO: final report references + signed URLs (single response)
 PO -> G: download with signed URL
 G --> PO: report bytes
 else report or signed-URL generation fails, or deadline expires

@@ -59,7 +59,8 @@ sequenceDiagram
     F-->>PO: reply + issues + **session ID** [D]
 ```
 
-Constraint: the opening facilitator turn always emits `invoke` = none — the first
+Constraint: the opening facilitator turn is **turn 1** and counts toward the cap of
+10; it always emits `invoke` = none — the first
 re-review can only be requested from turn 2 onward, inside the dialogue loop.
 
 This is **Pattern 2**: sequential base (reviews → synthesis → facilitator) with parallel
@@ -287,7 +288,10 @@ Gate precedence (evaluated **before** the response is sent):
 4. Otherwise, `finalize` when `open_issues` is empty and `invoke` = none; else `continue`.
 
 On `finalize`, orchestration continues directly into flow 3 while retaining the turn
-lock. Flow 3 releases the lock and sends the request's only response. On `continue` or
+lock. Flow 3 first persists the deterministic `finalized-review` artifact (latest
+synthesis + dialogue resolutions + PO acceptance state), renders every format in the
+session's `requested_formats` from that artifact, releases the lock, and sends the
+request's only response. On `continue` or
 `park`, flow 2 releases the lock and sends the request's only response.
 
 Pattern mapping of this flow:
@@ -512,8 +516,9 @@ flow-2 path retains its turn lock; a `finalizing` retry atomically acquires the 
 and rejects a competing retry. A `completed` retry is read-only: it skips rendering and
 returns the persisted report reference with a fresh signed URL. Session states are
 `active`, `parked`, `finalizing`, and `completed`; the successful path is `active` →
-`finalizing` → `completed`. The session is marked `completed` only **after** the report
-artifact is saved and its reference persisted. A report failure leaves the session in
+`finalizing` → `completed`. The session is marked `completed` only **after** the
+`finalized-review` artifact and every requested report artifact are saved and their
+references persisted. A report failure leaves the session in
 `finalizing`, releases the turn lock, and returns a structured retryable error. FastAPI
 generates a signed URL from the persisted GCS artifact reference. The URL is not stored
 as session state because it expires and can be regenerated.
@@ -523,6 +528,7 @@ sequenceDiagram
     participant PO as PO (TUI/Web)
     participant F as FastAPI orchestration
     participant C as Cloud SQL
+    participant A as Artifact MCP
     participant R as Report MCP
     participant G as GCS
 
@@ -543,13 +549,15 @@ sequenceDiagram
             C-->>F: finalizing session + report references [D]
         end
         F->>C: session -> finalizing (idempotent) [D]
-        F->>R: render report (MD/PDF) from synthesis artifacts [MCP-D]
+        F->>A: save finalized-review artifact (synthesis + dialogue resolutions + acceptance) [MCP-D]
+        A-->>F: finalized-review reference [MCP-D]
+        F->>R: render each requested format (MD/PDF) from the finalized-review artifact [MCP-D]
         alt report and download URL prepared
-            R->>G: save report artifact [D]
+            R->>G: save report artifacts (one per requested format) [D]
             G-->>R: artifact metadata [D]
-            R-->>F: artifact reference [MCP-D]
+            R-->>F: artifact references [MCP-D]
             Note over F: generate signed URL from artifact reference [D]
-            F->>C: persist report reference + session -> completed [D]
+            F->>C: persist report references + session -> completed [D]
             F->>C: release turn lock [D]
             F-->>PO: final report reference + signed URL (single response) [D]
             PO->>G: download with signed URL [D]
@@ -565,112 +573,118 @@ sequenceDiagram
 Sequence diagram (ASCII):
 
 ```
-                                                                                                                                                       ,.-^^-._
-                                                                                                                                                      |-.____.-|
-                                                                                                                                                      |        |
-                                                                                                                                                      |        |
-                              ,--.                                                     ,-------.                                                      |        |          ,---------.              ,---.
-                              |PO|                                                     |FastAPI|                                                      '-.____.-'          |ReportMCP|              |GCS|
-                              `-+'                                                     `---+---'                                                      CloudSQL            `----+----'              `-+-'
-                                |                                                          |                                                              |                    |                     |
-          _________________________________________________________________________________________________________________________________________________________________________________________________________________
-          ! ALT  /  retry a completed session or lost response                             |                                                              |                    |                     |                     !
-          !_____/               |                                                          |                                                              |                    |                     |                     !
-          !                     |retry finalization/download (session ID, idempotency key) |                                                              |                    |                     |                     !
-          !                     |--------------------------------------------------------->|                                                              |                    |                     |                     !
-          !                     |                                                          |                                                              |                    |                     |                     !
-          !                     |                                                          |          load completed session + report reference           |                    |                     |                     !
-          !                     |                                                          |------------------------------------------------------------->|                    |                     |                     !
-          !                     |                                                          |                                                              |                    |                     |                     !
-          !                     |                                                          |                 immutable report reference                   |                    |                     |                     !
-          !                     |                                                          |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                    |                     |                     !
-          !                     |                                                          |                                                              |                    |                     |                     !
-          !                     |                                  ,---------------------------------------------!.                                       |                    |                     |                     !
-          !                     |                                  |generate fresh signed URL; no render or write|_\                                      |                    |                     |                     !
-          !                     |                                  `-----------------------------------------------'                                      |                    |                     |                     !
-          !                     |  final report reference + signed URL (single response)   |                                                              |                    |                     |                     !
-          !                     |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                                                              |                    |                     |                     !
-          !                     |                                                          |                                                              |                    |                     |                     !
-          !                     |                                                          |          download with signed URL                            |                    |                     |                     !
-          !                     |------------------------------------------------------------------------------------------------------------------------------------------------------------------->|                     !
-          !                     |                                                          |                                                              |                    |                     |                     !
-          !                     |                                                          |                report bytes                                  |                    |                     |                     !
-          !                     |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                     !
-          !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-          ! [finalize active session or retry finalizing session]                          |                                                              |                    |                     |                     !
-          !                     |                                                          |                                                              |                    |                     |                     !
-          !         _____________________________________________________________________________________________________________________________________________________      |                     |                     !
-          !         ! ALT  /  entered from flow 2 gate                                     |                                                              |              !     |                     |                     !
-          !         !_____/     |                                                          |                                                              |              !     |                     |                     !
-          !         !           |                                         ,-------------------------------!.                                              |              !     |                     |                     !
-          !         !           |                                         |existing turn lock remains held|_\                                             |              !     |                     |                     !
-          !         !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!     |                     |                     !
-          !         ! [retry an existing finalizing session]                               |                                                              |              !     |                     |                     !
-          !         !           |    retry finalization (session ID, idempotency key)      |                                                              |              !     |                     |                     !
-          !         !           |--------------------------------------------------------->|                                                              |              !     |                     |                     !
-          !         !           |                                                          |                                                              |              !     |                     |                     !
-          !         !           |                                                          |load finalizing session + acquire turn lock (lease TTL 6 min) |              !     |                     |                     !
-          !         !           |                                                          |------------------------------------------------------------->|              !     |                     |                     !
-          !         !           |                                                          |                                                              |              !     |                     |                     !
-          !         !           |                                                          |           finalizing session + report references             |              !     |                     |                     !
-          !         !           |                                                          |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|              !     |                     |                     !
-          !         !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!     |                     |                     !
-          !                     |                                                          |                                                              |                    |                     |                     !
-          !                     |                                                          |             session -> finalizing (idempotent)               |                    |                     |                     !
-          !                     |                                                          |------------------------------------------------------------->|                    |                     |                     !
-          !                     |                                                          |                                                              |                    |                     |                     !
-          !                     |                                                          |                 render report (MD/PDF) from synthesis artifacts                   |                     |                     !
-          !                     |                                                          |---------------------------------------------------------------------------------->|                     |                     !
-          !                     |                                                          |                                                              |                    |                     |                     !
-          !                     |                                                          |                                                              |                    |                     |                     !
-          !         _____________________________________________________________________________________________________________________________________________________________________________________________          !
-          !         ! ALT  /  report and download URL prepared                             |                                                              |                    |                     |           !         !
-          !         !_____/     |                                                          |                                                              |                    |                     |           !         !
-          !         !           |                                                          |                                                              |                    |save report artifact |           !         !
-          !         !           |                                                          |                                                              |                    |-------------------->|           !         !
-          !         !           |                                                          |                                                              |                    |                     |           !         !
-          !         !           |                                                          |                                                              |                    | artifact metadata   |           !         !
-          !         !           |                                                          |                                                              |                    |<- - - - - - - - - - |           !         !
-          !         !           |                                                          |                                                              |                    |                     |           !         !
-          !         !           |                                                          |                                artifact reference            |                    |                     |           !         !
-          !         !           |                                                          |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |                     |           !         !
-          !         !           |                                                          |                                                              |                    |                     |           !         !
-          !         !           |                                   ,-------------------------------------------!.                                        |                    |                     |           !         !
-          !         !           |                                   |generate signed URL from artifact reference|_\                                       |                    |                     |           !         !
-          !         !           |                                   `---------------------------------------------'                                       |                    |                     |           !         !
-          !         !           |                                                          |       persist report reference + session -> completed        |                    |                     |           !         !
-          !         !           |                                                          |------------------------------------------------------------->|                    |                     |           !         !
-          !         !           |                                                          |                                                              |                    |                     |           !         !
-          !         !           |                                                          |                      release turn lock                       |                    |                     |           !         !
-          !         !           |                                                          |------------------------------------------------------------->|                    |                     |           !         !
-          !         !           |                                                          |                                                              |                    |                     |           !         !
-          !         !           |  final report reference + signed URL (single response)   |                                                              |                    |                     |           !         !
-          !         !           |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                                                              |                    |                     |           !         !
-          !         !           |                                                          |                                                              |                    |                     |           !         !
-          !         !           |                                                          |          download with signed URL                            |                    |                     |           !         !
-          !         !           |------------------------------------------------------------------------------------------------------------------------------------------------------------------->|           !         !
-          !         !           |                                                          |                                                              |                    |                     |           !         !
-          !         !           |                                                          |                report bytes                                  |                    |                     |           !         !
-          !         !           |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|           !         !
-          !         !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!         !
-          !         ! [report or signed-URL generation fails, or deadline expires]         |                                                              |                    |                     |           !         !
-          !         !           |                                                     ,--------------------------------------------------------------------------------------------!.                |           !         !
-          !         !           |                                                     |orchestration normalizes failure as structured error                                        |_\               |           !         !
-          !         !           |                                                     `----------------------------------------------------------------------------------------------'               |           !         !
-          !         !           |                                                          |             keep finalizing + release turn lock              |                    |                     |           !         !
-          !         !           |                                                          |------------------------------------------------------------->|                    |                     |           !         !
-          !         !           |                                                          |                                                              |                    |                     |           !         !
-          !         !           |      structured retryable error (single response)        |                                                              |                    |                     |           !         !
-          !         !           |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                                                              |                    |                     |           !         !
-          !         !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!         !
-          !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-                              ,-+.                                                     ,---+---.                                                      CloudSQL            ,----+----.              ,-+-.
-                              |PO|                                                     |FastAPI|                                                       ,.-^^-._           |ReportMCP|              |GCS|
-                              `--'                                                     `-------'                                                      |-.____.-|          `---------'              `---'
-                                                                                                                                                      |        |
-                                                                                                                                                      |        |
-                                                                                                                                                      |        |
-                                                                                                                                                      '-.____.-'
+                                                                                                                                                       ,.-^^-._                                                                                                                
+                                                                                                                                                      |-.____.-|                                                                                                               
+                                                                                                                                                      |        |                                                                                                               
+                                                                                                                                                      |        |                                                                                                               
+                              ,--.                                                     ,-------.                                                      |        |          ,-----------.          ,---------.                                          ,---.                    
+                              |PO|                                                     |FastAPI|                                                      '-.____.-'          |ArtifactMCP|          |ReportMCP|                                          |GCS|                    
+                              `-+'                                                     `---+---'                                                      CloudSQL            `-----+-----'          `----+----'                                          `-+-'                    
+                                |                                                          |                                                              |                     |                     |                                                 |                      
+          ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________ 
+          ! ALT  /  retry a completed session or lost response                             |                                                              |                     |                     |                                                 |                     !
+          !_____/               |                                                          |                                                              |                     |                     |                                                 |                     !
+          !                     |retry finalization/download (session ID, idempotency key) |                                                              |                     |                     |                                                 |                     !
+          !                     |--------------------------------------------------------->|                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |          load completed session + report reference           |                     |                     |                                                 |                     !
+          !                     |                                                          |------------------------------------------------------------->|                     |                     |                                                 |                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |                 immutable report reference                   |                     |                     |                                                 |                     !
+          !                     |                                                          |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                     |                     |                                                 |                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !                     |                                  ,---------------------------------------------!.                                       |                     |                     |                                                 |                     !
+          !                     |                                  |generate fresh signed URL; no render or write|_\                                      |                     |                     |                                                 |                     !
+          !                     |                                  `-----------------------------------------------'                                      |                     |                     |                                                 |                     !
+          !                     |  final report reference + signed URL (single response)   |                                                              |                     |                     |                                                 |                     !
+          !                     |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |                                    download with signed URL  |                     |                     |                                                 |                     !
+          !                     |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->|                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |                                          report bytes        |                     |                     |                                                 |                     !
+          !                     |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |                     !
+          !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
+          ! [finalize active session or retry finalizing session]                          |                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !         _____________________________________________________________________________________________________________________________________________________       |                     |                                                 |                     !
+          !         ! ALT  /  entered from flow 2 gate                                     |                                                              |              !      |                     |                                                 |                     !
+          !         !_____/     |                                                          |                                                              |              !      |                     |                                                 |                     !
+          !         !           |                                         ,-------------------------------!.                                              |              !      |                     |                                                 |                     !
+          !         !           |                                         |existing turn lock remains held|_\                                             |              !      |                     |                                                 |                     !
+          !         !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!      |                     |                                                 |                     !
+          !         ! [retry an existing finalizing session]                               |                                                              |              !      |                     |                                                 |                     !
+          !         !           |    retry finalization (session ID, idempotency key)      |                                                              |              !      |                     |                                                 |                     !
+          !         !           |--------------------------------------------------------->|                                                              |              !      |                     |                                                 |                     !
+          !         !           |                                                          |                                                              |              !      |                     |                                                 |                     !
+          !         !           |                                                          |load finalizing session + acquire turn lock (lease TTL 6 min) |              !      |                     |                                                 |                     !
+          !         !           |                                                          |------------------------------------------------------------->|              !      |                     |                                                 |                     !
+          !         !           |                                                          |                                                              |              !      |                     |                                                 |                     !
+          !         !           |                                                          |           finalizing session + report references             |              !      |                     |                                                 |                     !
+          !         !           |                                                          |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|              !      |                     |                                                 |                     !
+          !         !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!      |                     |                                                 |                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |             session -> finalizing (idempotent)               |                     |                     |                                                 |                     !
+          !                     |                                                          |------------------------------------------------------------->|                     |                     |                                                 |                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |        save finalized-review artifact (synthesis + dialogue + acceptance)          |                     |                                                 |                     !
+          !                     |                                                          |----------------------------------------------------------------------------------->|                     |                                                 |                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |                            finalized-review reference        |                     |                     |                                                 |                     !
+          !                     |                                                          |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                     |                                                 |                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |                       render each requested format (MD/PDF) from finalized-review  |                     |                                                 |                     !
+          !                     |                                                          |--------------------------------------------------------------------------------------------------------->|                                                 |                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !                     |                                                          |                                                              |                     |                     |                                                 |                     !
+          !         ________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________          !
+          !         ! ALT  /  reports and download URLs prepared                           |                                                              |                     |                     |                                                 |           !         !
+          !         !_____/     |                                                          |                                                              |                     |                     |                                                 |           !         !
+          !         !           |                                                          |                                                              |                     |                     |save report artifacts (one per requested format) |           !         !
+          !         !           |                                                          |                                                              |                     |                     |------------------------------------------------>|           !         !
+          !         !           |                                                          |                                                              |                     |                     |                                                 |           !         !
+          !         !           |                                                          |                                                              |                     |                     |               artifact metadata                 |           !         !
+          !         !           |                                                          |                                                              |                     |                     |<- - - - - - - - - - - - - - - - - - - - - - - - |           !         !
+          !         !           |                                                          |                                                              |                     |                     |                                                 |           !         !
+          !         !           |                                                          |                                           artifact references|                     |                     |                                                 |           !         !
+          !         !           |                                                          |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                                                 |           !         !
+          !         !           |                                                          |                                                              |                     |                     |                                                 |           !         !
+          !         !           |                                  ,---------------------------------------------!.                                       |                     |                     |                                                 |           !         !
+          !         !           |                                  |generate signed URLs from artifact references|_\                                      |                     |                     |                                                 |           !         !
+          !         !           |                                  `-----------------------------------------------'                                      |                     |                     |                                                 |           !         !
+          !         !           |                                                          |      persist report references + session -> completed        |                     |                     |                                                 |           !         !
+          !         !           |                                                          |------------------------------------------------------------->|                     |                     |                                                 |           !         !
+          !         !           |                                                          |                                                              |                     |                     |                                                 |           !         !
+          !         !           |                                                          |                      release turn lock                       |                     |                     |                                                 |           !         !
+          !         !           |                                                          |------------------------------------------------------------->|                     |                     |                                                 |           !         !
+          !         !           |                                                          |                                                              |                     |                     |                                                 |           !         !
+          !         !           | final report references + signed URLs (single response)  |                                                              |                     |                     |                                                 |           !         !
+          !         !           |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                                                              |                     |                     |                                                 |           !         !
+          !         !           |                                                          |                                                              |                     |                     |                                                 |           !         !
+          !         !           |                                                          |                                    download with signed URL  |                     |                     |                                                 |           !         !
+          !         !           |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->|           !         !
+          !         !           |                                                          |                                                              |                     |                     |                                                 |           !         !
+          !         !           |                                                          |                                          report bytes        |                     |                     |                                                 |           !         !
+          !         !           |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |           !         !
+          !         !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!         !
+          !         ! [report or signed-URL generation fails, or deadline expires]         |                                                              |                     |                     |                                                 |           !         !
+          !         !           |                                                     ,-------------------------------------------------------------------------------------------------------------------!.                                            |           !         !
+          !         !           |                                                     |orchestration normalizes failure as structured error                                                               |_\                                           |           !         !
+          !         !           |                                                     `---------------------------------------------------------------------------------------------------------------------'                                           |           !         !
+          !         !           |                                                          |             keep finalizing + release turn lock              |                     |                     |                                                 |           !         !
+          !         !           |                                                          |------------------------------------------------------------->|                     |                     |                                                 |           !         !
+          !         !           |                                                          |                                                              |                     |                     |                                                 |           !         !
+          !         !           |      structured retryable error (single response)        |                                                              |                     |                     |                                                 |           !         !
+          !         !           |<- - - - - - - - - - - - - - - - - - - - - - - - - - - - -|                                                              |                     |                     |                                                 |           !         !
+          !         !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!         !
+          !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
+                              ,-+.                                                     ,---+---.                                                      CloudSQL            ,-----+-----.          ,----+----.                                          ,-+-.                    
+                              |PO|                                                     |FastAPI|                                                       ,.-^^-._           |ArtifactMCP|          |ReportMCP|                                          |GCS|                    
+                              `--'                                                     `-------'                                                      |-.____.-|          `-----------'          `---------'                                          `---'                    
+                                                                                                                                                      |        |                                                                                                               
+                                                                                                                                                      |        |                                                                                                               
+                                                                                                                                                      |        |                                                                                                               
+                                                                                                                                                      '-.____.-'                                                                                                               
 ```
 
 ## 4. Session restore — stateless server, client-held session ID
