@@ -8,7 +8,7 @@
 | Agent framework | Google ADK (Agent Development Kit) |
 | Deployment | Google Cloud: **Agent Engine** for agents, **Cloud Run** for MCP servers |
 | LLM backend | Vertex AI (`GOOGLE_GENAI_USE_VERTEXAI=true`) |
-| API layer | FastAPI |
+| API layer | FastAPI + **Pydantic** — strict schemas everywhere (agent I/O, delegation decisions, MCP contracts) |
 | Interface | TUI (preferred) — terminal chat with the Interaction Facilitator |
 | Tooling | All tools exposed via MCP servers |
 
@@ -51,8 +51,8 @@ GOOGLE_CLOUD_LOCATION=europe-west4
 
 ## Interface
 
-**TUI** — simple terminal client
-**Web UI** — simple web interface if needed
+**TUI** — simple terminal client (built first)
+**Web UI** — simple web interface later if needed (same FastAPI backend)
 
 - same fastAPI backend for both interfaces
 - conversational loop with the Interaction Facilitator (User-in-the-Loop),
