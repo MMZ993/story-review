@@ -7,7 +7,7 @@ real agents, real prompts, real MCP servers — no mocks of the agents themselve
 
 ## Approach: LLM-as-judge over mock scenarios
 
-- Test cases are stories from the **mock dataset** (see `mock-data.md`) with known
+- Test cases are stories from the **mock dataset** (see [mock-data.md](mock-data.md)) with known
   expected outcomes (conflicting reviews, gaps, clarification paths).
 - The full flow runs against the real deployed (or locally running) agents. Persistence
   cases never read a later story run: they restore and continue the original run, then
@@ -87,5 +87,5 @@ reported for trend analysis but never override a failed case.
 - Judge policy is fixed: one result per case, at most one transport retry, no best-of-N,
   and all required cases must pass for the pipeline gate.
 - Results logged with the observability correlation structure — a failed case traces to
-  the exact agent turns (see `observability.md`); test outputs saved as pipeline
+  the exact agent turns (see [observability.md](../design/observability.md)); test outputs saved as pipeline
   artifacts.

@@ -781,7 +781,7 @@ Sequence diagram (ASCII):
   downloads use the signed object reference; the run ID remains available in artifact
   metadata for trace correlation.
 - Agent version label on every agent invocation.
-- Retries/timeouts per `observability.md` (never applied to PO input).
+- Retries/timeouts per [observability.md](observability.md) (never applied to PO input).
 - **Idempotency**: every write carries a stable run ID / idempotency key (artifact saves,
   session creation, context appends, report generation); retries are safe — no duplicate
   artifacts, sessions or dialogue events. Unique constraints in Cloud SQL; turn locks

@@ -26,7 +26,7 @@
   runtime service account invokes the facilitator, reviewer, and synthesis Agent Engine
   resources; the facilitator's service account reaches only the read tools of the
   story/artifact MCP servers. Details are in
-  `repository-layout.md`.
+  [repository-layout.md](repository-layout.md).
 - Cloud Run scripts build from repository root (`-f mcp_servers/<service>/Dockerfile .`)
   so service images can copy the shared package. The story image copies only
   `dataset/stories`; expected outcomes never enter a service image.
@@ -59,7 +59,7 @@ to Google Artifact Registry.
 There is one pipeline per deployable unit:
 `pipelines/agents-{facilitator,business-reviewer,engineering-reviewer,synthesis}.yml` and
 `pipelines/services-{story,artifact,report,orchestration}.yml`. Each uses the exact
-unit/shared/deploy-manifest path filters documented in `repository-layout.md`, runs unit
+unit/shared/deploy-manifest path filters documented in [repository-layout.md](repository-layout.md), runs unit
 and contract checks, deploys only that unit to `dev`, then runs applicable smoke tests.
 `pipelines/evaluation.yml` evaluates against `dev` on prompts, model configuration, or
 agent code. A `judge.md`-only change runs evaluation only and never redeploys Agent

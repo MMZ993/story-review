@@ -81,7 +81,7 @@ agents.
 
 One pipeline exists for each deployable unit: four `agents-*.yml` files and four
 `services-*.yml` files under `pipelines/`. Their exact names and include-path filters are
-specified in `repository-layout.md`; all deploy to `dev`, not staging. A unit change
+specified in [repository-layout.md](../operations/repository-layout.md); all deploy to `dev`, not staging. A unit change
 does not redeploy runtime-discovered peers; an optional combined run is available via
 pipeline trigger / checkbox parameter. Prompt/model/agent-code changes also invoke
 `evaluation.yml`; a `judge.md`-only change invokes evaluation only.
