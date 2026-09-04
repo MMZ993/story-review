@@ -81,7 +81,7 @@ not attached to any agent.
 | Auth | service-account-only ingress; no public unauthenticated access |
 | Authorization | per-tool caller allowlist (tables above); save/report tools are orchestration-only |
 | Schemas | shared Pydantic models (single source, reused by agents, orchestration, tests) |
-| Errors | `ToolError(ErrorBody)` — structured error taxonomy (error code, retryable flag) per `observability.md`; stable codes include `UNAUTHENTICATED`, `FORBIDDEN`, `VALIDATION_ERROR`, `ARTIFACT_NOT_FOUND`, `IDEMPOTENCY_KEY_REUSED`, `RENDER_FAILED`; retry hints only where a retry is safe |
+| Errors | `ToolError(ErrorBody)` — structured error taxonomy (error code, retryable flag) per [observability.md](observability.md); stable codes include `UNAUTHENTICATED`, `FORBIDDEN`, `VALIDATION_ERROR`, `ARTIFACT_NOT_FOUND`, `IDEMPOTENCY_KEY_REUSED`, `RENDER_FAILED`; retry hints only where a retry is safe |
 | Timeouts/retries | client-side, per the shared instrumented wrapper — servers stay stateless |
 | Observability | every tool call logged + traced with correlation ID |
 

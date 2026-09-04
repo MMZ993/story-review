@@ -132,7 +132,7 @@ Lineage rules:
 - A **story run** is created exactly once, at story selection; everything the initial
   flow and the dialogue loop produce belongs to that `story_run_id`.
 - **Session lineage = story run**: artifact lookups for a session are always scoped to
-  its own `story_run_id` — never a global "latest" (see `mcp-servers.md`).
+  its own `story_run_id` — never a global "latest" (see [mcp-servers.md](mcp-servers.md)).
 - **Artifact versioning**: artifacts are immutable; each `save_artifact` with a new
   idempotency key appends `version = max(existing) + 1` for its
   (`story_run_id`, `type`). The **latest per perspective** is the highest `version`

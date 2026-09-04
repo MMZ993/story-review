@@ -131,6 +131,6 @@ Pattern mapping:
 Resolved design points:
 
 - Structured delegation output: strict Pydantic schema — fields and semantics in
-  `agents.md`.
+  [agents.md](agents.md).
 - Retries/timeouts and error handling: shared instrumented client wrapper — policy in
-  `observability.md`.
+  [observability.md](observability.md).

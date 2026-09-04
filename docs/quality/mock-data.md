@@ -3,7 +3,7 @@
 ## Purpose
 
 Single dataset reused for two purposes: **live demo/presentation** and
-**regression/integration tests** (see `evaluation-tests.md`). The project is a capstone,
+**regression/integration tests** (see [evaluation-tests.md](evaluation-tests.md)). The project is a capstone,
 not a production system — but designed so it could be promoted, so mock data mirrors a
 real backlog's shape.
 
