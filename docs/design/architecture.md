@@ -81,7 +81,17 @@ Pattern mapping:
 ## Session and State
 
 - **Conversation sessions** (facilitator ↔ PO): ADK sessions persisted in Cloud SQL
-  PostgreSQL; resumable by session ID.
+  PostgreSQL. The **server is stateless** — the client (TUI/Web) holds the session ID
+  and every interaction resumes the session server-side with a new prompt. The session
+  ID is generated at the start and persisted on the client side.
+- **Session lifecycle**: the client can list previous sessions, restore one, re-read its
+  history and continue. A session can be marked **completed** — then it is returned
+  read-only, with an option to start a **new session on the same story** (e.g. the story
+  was updated in the meantime). Retention of old sessions (all, or last X) is handled by
+  a separate housekeeping process — to be decided.
+- **Timeouts apply to LLM/agent calls, never to the PO** — there is no timeout on waiting
+  for the user's answer; the PO takes as long as needed and the session resumes on the
+  next client message. Client–server communication details are resolved later.
 - **Execution state** (review results, synthesis reports): permanent artifacts in GCS via
   the artifact MCP server — reachable by agents as context for later reviews.
 - **Delegation intent**: facilitator returns a structured decision (which agents, extra
