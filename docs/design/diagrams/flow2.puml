@@ -1,0 +1,38 @@
+@startuml
+participant PO
+participant "FastAPI" as F
+database "CloudSQL" as C
+participant "Facilitator" as T
+participant "BusReview" as B
+participant "EngReview" as E
+participant "Synthesis" as Y
+participant "ArtifactMCP" as A
+loop until ready (gate) or cap 10
+PO -> F: message (session ID)
+F -> C: resume session by ID (+turn lock)
+C --> F: session
+F -> T: invoke (session context)
+T -> A: read artifacts as extra context (optional)
+A --> T: artifacts
+T --> F: reply + DelegationDecision
+alt decision.invoke = both
+F -> B: invoke (story + prev + extra_context)
+F -> E: invoke (story + prev + extra_context)
+B --> F: review
+E --> F: review
+else decision.invoke = single reviewer
+F -> B: invoke affected reviewer only
+B --> F: review (paired with latest other-perspective artifact)
+else reuse_previous = true
+F -> Y: re-synthesis only (existing artifacts)
+else invoke empty (no review)
+end
+F -> A: save artifacts (idempotent)
+F -> Y: invoke synthesis (latest per perspective)
+Y --> F: synthesis report
+F -> A: save synthesis artifact
+F -> C: persist turn, decision, runs
+F --> PO: reply + updated synthesis (single response)
+end
+F -> C: readiness gate: open_issues empty or PO acceptance
+@enduml
