@@ -1,20 +1,22 @@
 # MCP Servers
 
 Three purpose-scoped MCP servers, each a separate Cloud Run service speaking MCP over
-Streamable HTTP. All tool inputs and outputs are strict JSON (Pydantic-validated
-schemas). Consumers: the facilitator agent (story + artifact servers, via ADK
-`McpToolset`) and FastAPI orchestration (all three, via direct `mcp` SDK client —
-deterministic, no LLM).
+Streamable HTTP. All tool inputs, successful outputs, and failures are exactly the
+strict Pydantic models in [schemas.md](schemas.md); successful calls return their named
+output model, failures return `ToolError` (`ErrorBody`). No tool accepts unknown
+fields. Consumers: the facilitator agent (story + artifact servers, read tools only,
+via ADK `McpToolset`) and FastAPI orchestration (all three, via direct `mcp` SDK
+client — deterministic, no LLM).
 
 ## Story server
 
 Serves the mock backlog (data store). Read-only; no agent state involved. Designated as
 the simple MCP server fulfilling the technical requirement.
 
-| Tool | Input | Output |
-|---|---|---|
-| `list_stories` | optional filter | story summaries (id, title, status, quality class) |
-| `get_story` | story ID | story details: title, description, acceptance criteria, epic/roadmap context |
+| Tool | Input | Output | Authorized callers |
+|---|---|---|---|
+| `list_stories` | `ListStoriesInput` | `ListStoriesOutput` | orchestration, facilitator |
+| `get_story` | `GetStoryInput` | `StoryDetail` | orchestration, facilitator |
 
 - Backed by the mock dataset (see `../quality/mock-data.md`); expected outcomes are
   **not** exposed through this server.
@@ -22,39 +24,53 @@ the simple MCP server fulfilling the technical requirement.
 
 ## Artifact server
 
-Persistent store for story snapshots, review artifacts, and synthesis reports (GCS via
-`GcsArtifactService`). This is where "permanent artifacts" live — written
-deterministically by orchestration, read by the facilitator as LLM-driven extra context.
+Persistent store for story snapshots, review artifacts, synthesis reports, and the
+finalized-review artifact (GCS via `GcsArtifactService`). This is where "permanent
+artifacts" live — written deterministically by orchestration, read by the facilitator
+as LLM-driven extra context.
 
-| Tool | Input | Output |
-|---|---|---|
-| `save_artifact` | type (story/review-business/review-engineering/synthesis), story-run ID, perspective, content, idempotency key | artifact reference (immutable ID + version) |
-| `get_artifact` | artifact reference | artifact content |
-| `list_artifacts` | story-run ID, optional type/perspective filter, lineage-scoped | artifact references (latest per perspective flagged) |
+| Tool | Input | Output | Authorized callers |
+|---|---|---|---|
+| `save_artifact` | `SaveArtifactInput` | `SaveArtifactOutput` | orchestration only |
+| `get_artifact` | `GetArtifactInput` | `GetArtifactOutput` | orchestration, facilitator (read-only) |
+| `list_artifacts` | `ListArtifactsInput` | `ListArtifactsOutput` | orchestration, facilitator (read-only) |
 
 Key rules:
 
 - **Lineage scoping**: every artifact belongs to exactly one story run (session
-  lineage); lookups never cross runs.
-- **Idempotency**: `save_artifact` keyed by idempotency key — a retried save returns the
-  existing reference, never a duplicate.
-- **Immutability**: artifacts are never modified; a re-review creates a new version, and
-  "latest per perspective" is derived by the caller from references.
-- Facilitator access is **read-only** (`get_artifact` with orchestration-supplied,
-  lineage-scoped references only).
+  lineage); lookups never cross runs. The server validates the
+  reference-to-run relationship; it does not trust an agent-supplied ID outside the
+  caller's own run.
+- **Idempotency**: `save_artifact` is keyed uniquely per
+  `(story_run_id, type, idempotency_key)`. A retried save returns the existing
+  reference with `created = false`; reusing the same key with **different canonical
+  content** returns `IDEMPOTENCY_KEY_REUSED` instead of silently duplicating.
+- **Immutability**: artifacts are never modified; a re-review creates a new version.
+  `list_artifacts` orders deterministically by `(type, perspective, version)` with
+  `limit`/`offset` pagination and flags `is_latest` per type/perspective; the caller
+  derives "latest" as the maximum `version` (see schemas.md §1).
+- **Finalized review**: immediately before report rendering, orchestration saves one
+  deterministic `finalized-review` artifact — the latest synthesis reference, dialogue
+  resolutions, remaining issues, and the explicit PO acceptance state.
+- Facilitator access is **read-only** (`get_artifact` / `list_artifacts` with
+  orchestration-supplied, lineage-scoped references only).
+- Artifact records carry the internal GCS URI; tools expose only `ArtifactReference`,
+  never the raw storage location for download.
 
 ## Report server
 
 Renders final reports. Called only by FastAPI (deterministic finalization, flow 3) —
 not attached to any agent.
 
-| Tool | Input | Output |
-|---|---|---|
-| `render_report` | story-run ID, synthesis artifact references, format (md/pdf) | persisted artifact reference (rendered file saved to GCS) |
+| Tool | Input | Output | Authorized callers |
+|---|---|---|---|
+| `render_report` | `RenderReportInput` | `RenderReportOutput` | orchestration only |
 
-- Idempotent per story-run + format: a retry returns the existing reference.
-- Report content (MD/PDF) is derived from synthesis artifacts only — no LLM in this
-  server.
+- Requires exactly one same-run `finalized-review` artifact reference; content (MD/PDF)
+  is rendered deterministically from that artifact — no LLM in this server.
+- Idempotent per `(story_run_id, format)`: a retry returns the existing reference with
+  `created = false`; reusing that identity with a different finalized-review reference
+  is an idempotency conflict.
 
 ## Cross-cutting
 
@@ -63,8 +79,9 @@ not attached to any agent.
 | Transport | MCP Streamable HTTP |
 | Deployment | one Cloud Run service per server, own Dockerfile, own pipeline |
 | Auth | service-account-only ingress; no public unauthenticated access |
+| Authorization | per-tool caller allowlist (tables above); save/report tools are orchestration-only |
 | Schemas | shared Pydantic models (single source, reused by agents, orchestration, tests) |
-| Errors | structured error taxonomy (error code, retryable flag) per `observability.md` |
+| Errors | `ToolError(ErrorBody)` — structured error taxonomy (error code, retryable flag) per `observability.md`; stable codes include `UNAUTHENTICATED`, `FORBIDDEN`, `VALIDATION_ERROR`, `ARTIFACT_NOT_FOUND`, `IDEMPOTENCY_KEY_REUSED`, `RENDER_FAILED`; retry hints only where a retry is safe |
 | Timeouts/retries | client-side, per the shared instrumented wrapper — servers stay stateless |
 | Observability | every tool call logged + traced with correlation ID |
 

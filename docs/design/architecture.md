@@ -36,15 +36,17 @@ deterministic calls (parallel fan-out, artifact persistence) without LLM involve
 | Engineering Reviewer | Agent Engine (own deployment) | technical-perspective story analysis |
 | Synthesis & Conflict Resolver | Agent Engine (own deployment) | merges reviewer outputs, detects conflicts |
 | Story MCP server | Cloud Run | backlog access (mock data store): list available/loaded stories, story details, epic/roadmap context |
-| Artifact MCP server | Cloud Run | save/list/read permanent review artifacts |
-| Report MCP server | Cloud Run | render Markdown/PDF reports as artifacts |
+| Artifact MCP server | Cloud Run | save/list/read permanent review artifacts (incl. the finalized-review artifact) |
+| Report MCP server | Cloud Run | deterministically render Markdown/PDF reports from the finalized-review artifact |
 | Cloud SQL (PostgreSQL) | Cloud SQL | ADK session store (`DatabaseSessionService`), session lifecycle, and agent-run audit records |
 | GCS bucket | Cloud Storage | artifact storage (`GcsArtifactService`) + report files |
 
 ## Deployment Model (per-agent deployments)
 
 Each agent is deployed as a **separate Agent Engine resource** (`adk deploy agent_engine`,
-one deployment per agent directory). Consequences:
+one deployment per agent directory). Its deploy script stages the agent source, prompt,
+and shared schemas into a self-contained build context before deployment (see
+`../operations/repository-layout.md`). Consequences:
 
 - **Versioning proof**: each agent redeployed independently with version labels; git tags
   map 1:1 to deployed versions.
@@ -73,11 +75,15 @@ one deployment per agent directory). Consequences:
    dialogue. Any turn that produces synthesis must continue so the facilitator evaluates
    the new output on the next turn. A normal turn finalizes only when no issues remain and
    no work was requested; explicit PO acceptance bypasses facilitator/delegated work.
-8. On readiness, orchestration renders the final report via the report MCP server before
-   sending the turn's single response. Turn 10 parks the session instead of evaluating
-   readiness.
+8. On readiness, orchestration first persists a deterministic **`FinalizedReview`
+   artifact** — the latest synthesis combined with the dialogue resolutions and the PO
+   acceptance state — via the artifact MCP server. The report MCP server then renders
+   the final MD/PDF report **from that artifact** before the turn's single response.
+   Turn 10 parks the session instead of evaluating readiness.
 
 Pattern mapping:
+- **Pattern 1**: orchestration explicitly invokes the separately deployed agents
+  (Agent Engine client SDK) in sequence inside the loop.
 - **Pattern 2**: steps 2–5 form the sequential base with parallel fan-out; steps 5–7 form
   the loop.
 - **Pattern 3**: facilitator performs LLM-driven delegation (step 6) inside a
