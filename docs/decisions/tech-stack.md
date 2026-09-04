@@ -11,6 +11,7 @@
 | API layer | FastAPI + **Pydantic** — strict schemas everywhere (agent I/O, delegation decisions, MCP contracts) |
 | Interface | TUI (preferred) — terminal chat with the Interaction Facilitator |
 | Tooling | All tools exposed via MCP servers |
+| Prompts | **Prompts are static data, not code** — kept in a separate `prompts/` directory, one file per agent; loaded at runtime, versioned in git; easy to edit and iterate without touching logic |
 
 ## Google Cloud / Vertex AI
 
