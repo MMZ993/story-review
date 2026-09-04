@@ -2,7 +2,8 @@
 
 ## Decision
 
-We implement a single workflow that fulfills **Pattern 2 (primary)** and **Pattern 3 (bonus)**.
+We implement a single workflow that fulfills **all three required patterns**: Pattern 1
+and Pattern 2 by the core pipeline, Pattern 3 by the facilitator's delegation behavior.
 
 ## Architecture Overview
 
@@ -13,13 +14,21 @@ Two-layer design:
 
 The facilitator invokes the execution layer dynamically, based on the PO conversation.
 
+## Pattern 1 Fulfillment (via per-agent deployments)
+
+| Requirement | How we fulfill it |
+|---|---|
+| Sequential | Reviewers → Synthesis → Facilitator chain across separately deployed agents |
+| Loop agent | Facilitator ↔ PO dialogue iterates until the story reaches an explicit "ready" exit condition |
+| Explicit Invocation of separately deployed agents | Each agent is its own Agent Engine deployment; orchestration/facilitator invokes them via the Agent Engine client SDK — no shared memory, all context passed explicitly |
+
 ## Pattern 2 Fulfillment (primary)
 
 | Requirement | How we fulfill it |
 |---|---|
 | Sequential | Reviewers → Synthesis → Facilitator base pipeline |
 | Parallel agent use | Business and Engineering Reviewers run independently on the same story |
-| Loop agent | Facilitator ↔ PO dialogue iterates until the story reaches an explicit "ready" exit condition (all flagged issues resolved or PO accepts) |
+| Loop agent | Facilitator ↔ PO dialogue iterates until the story reaches an explicit "ready" exit condition |
 
 ## Pattern 3 Fulfillment (bonus)
 
