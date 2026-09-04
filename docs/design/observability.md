@@ -1,97 +1,94 @@
 # Observability
 
-## Telemetry sources
+This document defines telemetry, callback, timeout, retry, and recovery behavior for
+FastAPI, Agent Engine, and MCP calls.
 
-- **Cloud Logging**: FastAPI, Agent Engine deployments, Cloud Run MCP servers.
-- **Correlation IDs**: every request carries session ID, story ID, agent name, attempt
-  number; propagated through Agent Engine and MCP calls.
-- **Tracing (Cloud Trace / OpenTelemetry)**: one trace per story run; spans per agent
-  invocation and MCP call, linked by the correlation ID — full distributed tracing from
-  TUI turn to tool call.
-- **Metrics (counters)**: dialogue turns, delegation decisions (per `invoke`
-  combination), loop iterations per story, review/synthesis durations, MCP tool calls,
-  retry attempts, failures, retry exhaustion, validation failures of delegation output,
-  per-agent token usage (cost tracking).
-- **Agent version labeling**: every log entry and metric carries the deployed agent
-  version — doubles as runtime evidence for the versioning requirement (multiple
-  versions observable side by side).
-- **Conversation-length monitoring**: token/message count per facilitator session;
-  warn at 50% of model context, act (compaction or summary handover) at 75%.
+## Telemetry and tracing
 
-## Callbacks (ADK)
+- **Logging:** Cloud Logging receives structured events from FastAPI, each Agent Engine
+  deployment, and each Cloud Run MCP service.
+- **Correlation:** every event carries correlation ID and, once available, story run,
+  session, agent name/version, transport-attempt number, corrective-reprompt number,
+  and `prompt_sha256`.
+- **Tracing:** one trace covers one HTTP request/turn. Long-lived story runs are connected
+  with `story_run_id`, session attributes, and trace links rather than one trace held open
+  while waiting for the PO. Child spans cover each agent invocation, model call, and MCP
+  call.
+- **Metrics:** dialogue turns, delegation selections, loop iterations, agent/MCP latency,
+  overlapping reviewer spans, token use, transport retries, corrective re-prompts,
+  idempotency conflicts, lease contention, render failures, and retry exhaustion.
+- **Version evidence:** each agent event includes deployed git tag/SHA and prompt hash so
+  multiple deployed versions and the exact prompt can be distinguished.
 
-| Callback | Purpose |
+## Callbacks and application events
+
+| Hook | Kind | Purpose |
+|---|---|---|
+| Before/after tool | ADK callback | Trace MCP tool input metadata, result status, and duration without logging capabilities or content. |
+| Before/after model | ADK callback | Track latency/token use and run the post-response context-length check. |
+| After agent | ADK callback | Validate and record typed output; emit delegation-validation events. |
+| Turn/loop iteration | FastAPI application event, not an ADK callback | Increment the persisted facilitator count and emit gate/park decisions. |
+
+Conversation token/message count is measured after each facilitator model response using
+the deployed model's tokenizer and context limit. Warn at 50%. At 75%, create a typed
+summary that must retain unresolved issues, prior decisions, story/run IDs, and referenced
+artifact IDs; validate it before replacing older conversational events. If validation
+fails, preserve the original history and return a structured retryable error rather than
+silently dropping context.
+
+## Timeouts and transport retries
+
+The shared instrumented client wrapper is used for FastAPI→Agent Engine and
+deterministic FastAPI→MCP calls.
+
+| Parameter | Policy |
 |---|---|
-| Before/after tool (MCP) | log tool invocations and durations; detect MCP misbehavior |
-| After agent (facilitator) | record delegation decision + validate schema; observability event on validation failure |
-| After model | conversation-length check for the facilitator session |
-| Loop-iteration callback | record each facilitator loop iteration toward readiness |
+| Short-call timeout | 60 seconds for reviewers, synthesis, and MCP calls |
+| Facilitator timeout | 120 seconds per model attempt |
+| Short-call attempts | At most 3 total attempts |
+| Facilitator attempts | At most 2 total attempts, subject to reconciliation below |
+| Short-call backoff | Jittered exponential delay based on 1 and 2 seconds between the 3 attempts |
+| Facilitator backoff | 5 seconds before the second attempt |
+| Retry on | Connection failure, timeout, or retryable upstream 5xx |
+| Never transport-retry | 4xx, schema validation, authorization, idempotency mismatch, or terminal state conflict |
 
-## Retry, timeout and error handling policy
+`transport_attempts` and `corrective_reprompts` are separate counters. A malformed
+`DelegationDecision` allows at most two corrective model re-prompts; these are not
+transport retries. Exhaustion returns `DELEGATION_VALIDATION`.
 
-Implemented once as a shared client wrapper, used for both FastAPI→Agent Engine and
-FastAPI→MCP paths. All attempts are logged (correlation ID, attempt no.) and counted as
-metrics.
+The initial story-selection request and every PO turn have a hard five-minute
+end-to-end deadline, including finalization. Before an attempt, orchestration clamps its
+timeout to the remaining budget minus a response-cleanup reserve and does not start an
+attempt that cannot fit. The deadline never runs while waiting for PO input.
 
-| Parameter | Value |
-|---|---|
-| Call timeout | 60 s (dialogue turns: 120 s) |
-| Maximum attempts | 3 for short calls (reviewers, synthesis, MCP); 2 for dialogue turns, subject to the remaining end-to-end deadline |
-| Backoff | exponential with jitter (1 s / 2 s / 4 s short calls; 5 s for dialogue) |
-| Retry on | transient errors only (5xx, timeout, connection) |
-| No retry on | 4xx, schema/validation errors — surfaced immediately |
+## Turn leases and finalization
 
-"Dialogue turn timeout" = the time allowed for one facilitator ↔ PO conversational LLM
-call (one turn of the User-in-the-Loop dialogue); it is longer than single-shot
-review/synthesis calls because the facilitator prompt + session history is larger.
-With 120 s dialogue timeouts, dialogue calls allow at most 2 attempts; short calls allow
-at most 3. These are per-call ceilings, not additive guarantees: the end-to-end deadline
-may prevent a later attempt from starting.
+A timeout is ambiguous — the lease serializes local database mutation but does not
+prove a remote agent failed to finish. Retries therefore rely on stable idempotency
+keys for all writes: a repeated reviewer/synthesis invocation may repeat model cost,
+but artifact saves are idempotent, so a retried turn never produces duplicate
+artifacts, dialogue events, or reports.
 
-Additional policies:
+A session turn lease has a six-minute TTL, one minute longer than the HTTP deadline. It
+is acquired with the idempotent operation claim, renewed only by its token holder,
+and released before a normal response. A crashed holder expires without permanently
+locking the session.
 
-- **End-to-end request deadline**: a hard 5 min per PO turn, including final report
-  generation on a finalizing turn. Before every attempt, orchestration computes the
-  remaining time and sets the attempt timeout to the lower of the configured call timeout
-  and the remaining budget minus a response-cleanup reserve. It does not start retries
-  that cannot fit. The deadline is never applied while waiting for PO input.
-- **Deadline exhaustion**: return a structured retryable error. Stable idempotency keys
-  allow the client to retry without duplicate turns, artifacts, or reports; a report
-  failure leaves the session in `finalizing` for retry.
-- **Session turn locks**: lease-based with 6 min TTL, one minute longer than the request
-  deadline for cancellation and response cleanup. The lock is released before a normal
-  response; a crashed holder expires with the lease — no permanently locked sessions.
-- **Corrective LLM re-prompt** (e.g. DelegationDecision schema violation) is *not* a
-  transport retry: bounded to 2 re-prompts, then surfaced as a structured validation
-  error. Transport retries never apply to validation errors.
+Contention returns `SESSION_LOCKED` with `retry_after_seconds`. Because the rejected
+operation never owned the lease, the client waits and submits a new key; recovery of an
+operation that did own the lease uses the same key. A finalizing session remains
+`finalizing` until all requested report
+formats and references are persisted; render failure is retryable. Retry exhaustion
+returns a structured error to the PO in the dialogue — no silent failures.
 
-Retry exhaustion returns a structured error to the PO in the dialogue — no silent
-failures.
+## Loop safety and dashboards
 
-## Loop safety cap
+The opening facilitator call is turn 1. Each later request that invokes the facilitator
+increments the count once; explicit PO acceptance does not. Facilitator turn 10 parks the
+session before readiness evaluation and emits a cap event.
 
-- Max facilitator loop iterations per story: **10**.
-- Hitting the cap emits an explicit event and forces a "park the story" decision in the
-  dialogue — no unbounded loops burning quota.
-
-## Error taxonomy
-
-- All errors use one structured model (error code, agent, correlation ID, retryable
-  flag) — PO-facing errors, logs and metrics derive from the same schema.
-
-## Link to evaluation tests
-
-- Agent evaluation test runs are logged with the same correlation structure, so a failed
-  evaluation case can be traced to the exact agent turns that produced it.
-- Evaluation tests run as a **separate pipeline**, triggered only when agent prompts,
-  models, or agent code change (not on every deployment) — to control token cost.
-- Test run logs (judged cases, per-turn traces) are published as **pipeline artifacts**
-  for post-run inspection.
-
-## Dashboards / checks
-
-- Reuse **built-in Cloud Monitoring dashboards and alerting** — no custom dashboard
-  applications.
-- Per-agent error and latency views from existing metrics/logs.
-- Alerts on retry-exhaustion rate and validation-failure rate (Cloud Monitoring alert
-  policies).
+Built-in Cloud Monitoring dashboards show per-agent latency/error/token use, retry and
+validation exhaustion, idempotency mismatch/in-progress rates, lock waits, ambiguous
+recoveries, and report failures. Alert policies cover retry exhaustion and delegation
+validation failure. Evaluation runs use the same correlation structure and publish
+judged cases and per-turn traces as Azure pipeline artifacts.
