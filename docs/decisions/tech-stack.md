@@ -41,14 +41,14 @@ GOOGLE_CLOUD_LOCATION=europe-west4
 ## MCP Strategy
 
 - All tools are exposed via MCP servers — no plain function tools.
-- Purpose-scoped servers, each deployed separately on **Cloud Run** (Streamable HTTP) and attached to agents via ADK `McpToolset`:
-  - **story server** — story details, roadmap/epic context,
-  - **artifact server** — saves/retrieves permanent review artifacts (business/engineering review results, synthesis reports),
-  - **report server** — renders final reports (Markdown/PDF) as artifacts.
+- Purpose-scoped servers, each deployed separately on **Cloud Run** over Streamable HTTP:
+  - **story server** — story details and roadmap/epic context; attached to the facilitator through ADK `McpToolset`,
+  - **artifact server** — saves/retrieves permanent review and synthesis artifacts; attached read-only to the facilitator through ADK `McpToolset`,
+  - **report server** — renders final reports (Markdown/PDF) as artifacts; called directly by FastAPI, not attached to an agent.
 - Dual consumption pattern (key design point):
-  - **Agents** call MCP tools through `McpToolset` (LLM-driven),
-  - **Orchestration Python code / FastAPI** calls the same MCP servers directly via the `mcp` SDK client (`ClientSession.call_tool`) — no LLM involved. Used e.g. to persist review results as permanent artifacts right after a review finishes, and to deliver generated PDFs to the UI.
-- Artifact delivery: tools save files via `tool_context.save_artifact(...)` / `GcsArtifactService`; the LLM receives only a short confirmation, the UI fetches the artifact (PDF/MD) from the artifact service or the event stream's `artifactDelta`.
+  - the **facilitator** can call story and artifact MCP tools through `McpToolset` when the LLM requests supporting evidence,
+  - **FastAPI orchestration** calls MCP servers directly via the `mcp` SDK client (`ClientSession.call_tool`) for deterministic reads, artifact persistence, and report generation.
+- Artifact delivery: MCP tools save files through `GcsArtifactService`. For a final report, Report MCP returns the persisted GCS artifact reference to FastAPI; FastAPI generates an expiring signed URL, and the UI downloads the PDF/MD directly from GCS.
 
 ## Interface
 

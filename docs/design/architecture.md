@@ -38,7 +38,7 @@ deterministic calls (parallel fan-out, artifact persistence) without LLM involve
 | Story MCP server | Cloud Run | backlog access (mock data store): list available/loaded stories, story details, epic/roadmap context |
 | Artifact MCP server | Cloud Run | save/list/read permanent review artifacts |
 | Report MCP server | Cloud Run | render Markdown/PDF reports as artifacts |
-| Cloud SQL (PostgreSQL) | Cloud SQL | ADK session store (`DatabaseSessionService`) |
+| Cloud SQL (PostgreSQL) | Cloud SQL | ADK session store (`DatabaseSessionService`), session lifecycle, and agent-run audit records |
 | GCS bucket | Cloud Storage | artifact storage (`GcsArtifactService`) + report files |
 
 ## Deployment Model (per-agent deployments)
@@ -48,9 +48,10 @@ one deployment per agent directory). Consequences:
 
 - **Versioning proof**: each agent redeployed independently with version labels; git tags
   map 1:1 to deployed versions.
-- **Explicit invocation**: facilitator/orchestration calls reviewer and synthesis
-  deployments through the Vertex AI Agent Engine client SDK — agents do not share memory
-  by construction; all context passes explicitly.
+- **Explicit invocation**: FastAPI orchestration exclusively calls reviewer, synthesis,
+  and facilitator deployments through the Vertex AI Agent Engine client SDK. The
+  facilitator emits structured delegation decisions but never calls another agent;
+  agents do not share memory and all context passes explicitly.
 - **Independent pipelines**: an agent update touches exactly one Agent Engine resource.
 
 ## Orchestration and Control Flow
@@ -65,11 +66,16 @@ one deployment per agent directory). Consequences:
 5. The **Facilitator agent** receives the synthesis summary as context and opens the
    User-in-the-Loop dialogue with the PO.
 6. Facilitator decides (LLM-driven delegation) whether a re-review is needed — business
-   only, engineering only, both, or none — and with what extra PO context.
-7. Orchestration executes the requested re-review (back to step 2) or continues the
-   dialogue. Loop repeats until the explicit readiness exit condition: **all flagged
-   issues resolved or PO accepts**.
-8. On readiness: final report rendered via report MCP server, delivered to UI as MD/PDF.
+   only, engineering only, both, or none — and with what extra PO context. It can use its
+   MCP tools to retrieve supporting evidence through orchestration-supplied,
+   lineage-scoped references.
+7. Orchestration executes the requested re-review and re-synthesis or continues the
+   dialogue. Any turn that produces synthesis must continue so the facilitator evaluates
+   the new output on the next turn. A normal turn finalizes only when no issues remain and
+   no work was requested; explicit PO acceptance bypasses facilitator/delegated work.
+8. On readiness, orchestration renders the final report via the report MCP server before
+   sending the turn's single response. Turn 10 parks the session instead of evaluating
+   readiness.
 
 Pattern mapping:
 - **Pattern 2**: steps 2–5 form the sequential base with parallel fan-out; steps 5–7 form
@@ -84,14 +90,17 @@ Pattern mapping:
   PostgreSQL. The **server is stateless** — the client (TUI/Web) holds the session ID
   and every interaction resumes the session server-side with a new prompt. The session
   ID is generated at the start and persisted on the client side.
-- **Session lifecycle**: the client can list previous sessions, restore one, re-read its
-  history and continue. A session can be marked **completed** — then it is returned
-  read-only, with an option to start a **new session on the same story** (e.g. the story
-  was updated in the meantime). Retention of old sessions (all, or last X) is handled by
-  a separate housekeeping process — to be decided.
-- **Timeouts apply to LLM/agent calls, never to the PO** — there is no timeout on waiting
-  for the user's answer; the PO takes as long as needed and the session resumes on the
-  next client message. Client–server communication details are resolved later.
+- **Session lifecycle**: session states are `active`, `parked`, `finalizing`, and
+  `completed`. The client can list sessions and restore their history. Active sessions
+  can continue; parked and completed sessions are read-only, with an option to start a
+  **new session on the same story**. Reading a completed session can regenerate an
+  expiring URL for its persisted report without changing session state. A failed report
+  leaves a session in `finalizing` so the idempotent finalization request can be
+  retried; the retry atomically reacquires the session turn lease before rendering. Retention of old sessions (all, or
+  last X) is handled by a separate housekeeping process — to be decided.
+- **Timeouts apply to active request processing, never to the PO** — there is no timeout
+  while waiting for the user's next message. A PO turn has a hard five-minute deadline;
+  per-call retry limits are maxima and are clamped to the remaining request budget.
 - **Execution state** (review results, synthesis reports): permanent artifacts in GCS via
   the artifact MCP server — reachable by agents as context for later reviews.
 - **Delegation intent**: facilitator returns a structured decision (which agents, extra
@@ -101,9 +110,10 @@ Pattern mapping:
 
 - TUI/Web ↔ FastAPI: HTTP (JSON events for dialogue turns; file download for artifacts).
 - FastAPI ↔ Agent Engine: Vertex AI Agent Engine client SDK (session-scoped calls).
-- Agents ↔ MCP servers: ADK `McpToolset` over Streamable HTTP.
+- Facilitator ↔ story/artifact MCP servers: ADK `McpToolset` over Streamable HTTP.
 - FastAPI ↔ MCP servers: `mcp` SDK client over Streamable HTTP (direct, no LLM).
-- FastAPI ↔ artifacts: `GcsArtifactService` / signed URLs for UI downloads.
+- FastAPI generates expiring signed URLs from final-report GCS references; the UI uses
+  those URLs to download directly from GCS.
 
 ## Security
 

@@ -36,7 +36,7 @@ metrics.
 | Parameter | Value |
 |---|---|
 | Call timeout | 60 s (dialogue turns: 120 s) |
-| Attempts | 3 for short calls (reviewers, synthesis, MCP); 2 for dialogue turns |
+| Maximum attempts | 3 for short calls (reviewers, synthesis, MCP); 2 for dialogue turns, subject to the remaining end-to-end deadline |
 | Backoff | exponential with jitter (1 s / 2 s / 4 s short calls; 5 s for dialogue) |
 | Retry on | transient errors only (5xx, timeout, connection) |
 | No retry on | 4xx, schema/validation errors — surfaced immediately |
@@ -44,17 +44,23 @@ metrics.
 "Dialogue turn timeout" = the time allowed for one facilitator ↔ PO conversational LLM
 call (one turn of the User-in-the-Loop dialogue); it is longer than single-shot
 review/synthesis calls because the facilitator prompt + session history is larger.
-With 120 s dialogue timeouts, dialogue retries are capped at 2 attempts to bound worst-case
-wait (~4 min) — short calls keep 3 attempts (~3 min worst case).
+With 120 s dialogue timeouts, dialogue calls allow at most 2 attempts; short calls allow
+at most 3. These are per-call ceilings, not additive guarantees: the end-to-end deadline
+may prevent a later attempt from starting.
 
 Additional policies:
 
-- **End-to-end request deadline**: 5 min per PO turn — covers the facilitator call,
-  delegated reviews, synthesis and their retries (individual retry budgets are bounded
-  so the total fits the deadline; the deadline is never applied to waiting for PO
-  input).
-- **Session turn locks**: lease-based with 5 min TTL; released after the response; a
-  crashed holder expires with the lease — no permanently locked sessions.
+- **End-to-end request deadline**: a hard 5 min per PO turn, including final report
+  generation on a finalizing turn. Before every attempt, orchestration computes the
+  remaining time and sets the attempt timeout to the lower of the configured call timeout
+  and the remaining budget minus a response-cleanup reserve. It does not start retries
+  that cannot fit. The deadline is never applied while waiting for PO input.
+- **Deadline exhaustion**: return a structured retryable error. Stable idempotency keys
+  allow the client to retry without duplicate turns, artifacts, or reports; a report
+  failure leaves the session in `finalizing` for retry.
+- **Session turn locks**: lease-based with 6 min TTL, one minute longer than the request
+  deadline for cancellation and response cleanup. The lock is released before a normal
+  response; a crashed holder expires with the lease — no permanently locked sessions.
 - **Corrective LLM re-prompt** (e.g. DelegationDecision schema violation) is *not* a
   transport retry: bounded to 2 re-prompts, then surfaced as a structured validation
   error. Transport retries never apply to validation errors.

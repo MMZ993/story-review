@@ -8,16 +8,18 @@ Per-agent specifications. Each agent is a separate Agent Engine deployment.
   feedback, guides clarification, tracks story readiness.
 - **Model config**: set via environment at deployment time (see tech-stack).
 - **Tools**: story MCP server (read), artifact MCP server (read previous review artifacts
-  as extra context). No report tools — final report generation is deterministic and owned
-  by orchestration (see data-flow.md).
+  as extra context). For artifact reads, orchestration supplies lineage-scoped references;
+  the facilitator decides whether supporting evidence is needed and performs the read as
+  an LLM-driven MCP tool call. No report tools — final report generation is deterministic
+  and owned by orchestration (see data-flow.md).
 - **Structured output**: every facilitator turn ends with a **delegation decision** — a
   strict Pydantic model (see below). Orchestration interprets and executes it; the LLM
   proposes, code disposes. Validation failure triggers a corrective LLM re-prompt
   (bounded, distinct from transport retries — see observability.md) and is recorded as
   an observability event. The opening turn always emits `invoke` = none.
 - **PO acceptance** is an explicit client action (UI button / API field `po_accepted`),
-  recorded by orchestration — never produced by the LLM; it feeds the deterministic
-  readiness gate.
+  recorded by orchestration — never produced by the LLM. It bypasses the facilitator and
+  delegated work and enters final report generation immediately.
 
 ### Delegation decision schema (fields)
 
@@ -25,14 +27,16 @@ Per-agent specifications. Each agent is a separate Agent Engine deployment.
 |---|---|
 | `invoke` | which reviewers to run: business, engineering, both, or none |
 | `extra_context` | PO clarifications to inject into the invoked reviewers |
-| `reuse_previous` | `true` = re-synthesis only, using existing latest artifacts per perspective (`invoke` must then be empty); `false` (default) = run invoked reviewers, pair each new artifact with the latest artifact of the other perspective |
+| `reuse_previous` | `true` = re-synthesis only, using existing latest artifacts per perspective (`invoke` must then be empty); `false` (default) = run invoked reviewers, pair each new artifact with the latest artifact of the other perspective. A re-synthesis turn always continues so the facilitator can evaluate the new output on the next turn. |
 | `open_issues` | currently unresolved issues |
 | `readiness` | `needs_work` / `review_requested` / `ready` |
 
-Loop exit condition: all flagged issues resolved, or PO explicitly accepts. The
-facilitator's `readiness = ready` is a **proposal only** — orchestration enforces a
-deterministic gate before finalizing (open issues empty or explicit PO acceptance,
-no review in progress).
+Loop exit condition: all flagged issues resolved, or the PO explicitly accepts. The
+facilitator's `readiness = ready` is a **proposal only**. Orchestration finalizes a normal
+dialogue turn only when `open_issues` is empty, `invoke` = none, and no synthesis was
+produced during that turn. A new synthesis must be evaluated by the facilitator on the
+next turn. Explicit PO acceptance finalizes before invoking the facilitator. Turn 10
+parks the session instead of evaluating readiness.
 
 ## Business Perspective Reviewer (execution layer)
 

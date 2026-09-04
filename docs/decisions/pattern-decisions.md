@@ -12,7 +12,8 @@ Two-layer design:
 1. **Orchestration layer** — Interaction Facilitator agent in a dialogue loop with the Product Owner, holding session context across the whole story lifecycle.
 2. **Execution layer** — the review pipeline: Business Reviewer + Engineering Reviewer in parallel, followed by the Synthesis & Conflict Resolver.
 
-The facilitator invokes the execution layer dynamically, based on the PO conversation.
+The facilitator selects the execution path dynamically from the PO conversation;
+FastAPI orchestration invokes the selected reviewer and synthesis deployments.
 
 ## Pattern 1 Fulfillment (via per-agent deployments)
 
