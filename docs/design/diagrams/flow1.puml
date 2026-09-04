@@ -1,0 +1,37 @@
+@startuml
+participant PO
+participant "FastAPI" as F
+participant "StoryMCP" as S
+participant "BusReview" as B
+participant "EngReview" as E
+participant "ArtifactMCP" as A
+participant "Synthesis" as Y
+participant "Facilitator" as T
+database "CloudSQL" as C
+PO -> F: list stories
+F -> S: list_stories
+S --> F: stories (JSON)
+F --> PO: story list
+PO -> F: select story
+F -> S: get_story + epic/roadmap
+S --> F: story details (JSON)
+F -> A: save story artifact (idempotent, run ID)
+par parallel fan-out (asyncio.gather)
+F -> B: invoke (story artifact)
+B --> F: review (Pydantic)
+else
+F -> E: invoke (story artifact)
+E --> F: review (Pydantic)
+end
+F -> A: save both review artifacts (idempotent)
+F -> C: persist reviewer runs (audit)
+F -> Y: invoke (latest per perspective)
+Y --> F: synthesis + conflicts
+F -> A: save synthesis artifact
+F -> C: create facilitator session
+F -> C: append synthesis context
+F -> T: invoke (open dialogue, present synthesis)
+T --> F: opening reply + DelegationDecision
+F -> C: persist turn + decision
+F --> PO: reply + issues + session ID
+@enduml

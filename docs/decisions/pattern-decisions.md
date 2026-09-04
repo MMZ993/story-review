@@ -20,7 +20,14 @@ The facilitator invokes the execution layer dynamically, based on the PO convers
 |---|---|
 | Sequential | Reviewers → Synthesis → Facilitator chain across separately deployed agents |
 | Loop agent | Facilitator ↔ PO dialogue iterates until the story reaches an explicit "ready" exit condition |
-| Explicit Invocation of separately deployed agents | Each agent is its own Agent Engine deployment; orchestration/facilitator invokes them via the Agent Engine client SDK — no shared memory, all context passed explicitly |
+| Explicit Invocation of separately deployed agents | Each agent is its own Agent Engine deployment; the **orchestration layer** invokes them via the Agent Engine client SDK — no shared memory, all context passed explicitly |
+
+> **Design decision (interview position)**: invocation is owned by the deterministic
+> orchestration layer (application layer), not by one agent calling another. This keeps
+> agents decoupled, independently deployable and testable; the facilitator agent still
+> performs LLM-driven delegation (Pattern 3) by emitting the structured decision that
+> orchestration executes. We consider explicit invocation from a well-defined app layer
+> a stronger realization of the pattern than agent-to-agent coupling.
 
 ## Pattern 2 Fulfillment (primary)
 

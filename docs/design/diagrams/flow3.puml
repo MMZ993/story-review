@@ -1,0 +1,16 @@
+@startuml
+participant PO
+participant "FastAPI" as F
+database "CloudSQL" as C
+participant "Facilitator" as T
+participant "ReportMCP" as R
+participant "GCS" as G
+T --> F: readiness = ready (proposal)
+F -> C: readiness gate (deterministic invariants)
+F -> C: session -> finalizing
+F -> R: render report (MD/PDF) from synthesis artifacts
+R -> G: save report artifact
+R --> F: artifact reference
+F -> C: session -> completed
+F --> PO: report download (signed URL)
+@enduml

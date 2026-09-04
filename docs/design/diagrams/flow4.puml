@@ -1,0 +1,20 @@
+@startuml
+participant PO
+participant "FastAPI" as F
+database "CloudSQL" as C
+participant "ArtifactMCP" as A
+PO -> F: list sessions
+F -> C: query sessions
+C --> F: sessions
+F --> PO: session list (story, date, status)
+PO -> F: restore session ID
+F -> C: load session history (incl. artifact references)
+C --> F: history
+F -> A: fetch artifacts by reference
+A --> F: artifacts
+F --> PO: history replay + artifacts
+note over PO,F
+completed sessions are read-only;
+option: new session on same story
+end note
+@enduml
