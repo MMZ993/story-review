@@ -5,7 +5,14 @@ PROJECT_ID ?= $(shell sed -nE 's/^export PROJECT_ID="?([^"]+)"?.*/\1/p' infra/en
 REGION     ?= europe-west4
 SMOKE_MODEL ?= gemini-2.5-flash
 
-.PHONY: help smoke-vertex spike-connectivity-test compose-up compose-down terraform-plan terraform-apply
+.PHONY: help smoke-vertex spike-connectivity-test compose-up compose-down terraform-plan terraform-apply db-pause db-resume db-status
+
+# Fails the target early if PROJECT_ID could not be resolved from home.env.
+define guard-project
+	@if [ -z "$(PROJECT_ID)" ]; then \
+		echo "ERROR: PROJECT_ID is not set — check infra/envs/home.env" >&2; exit 2; \
+	fi
+endef
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -36,3 +43,18 @@ terraform-plan: ## Review plan for the home environment
 
 terraform-apply: ## Apply the saved home plan (write action)
 	terraform -chdir=infra apply home.tfplan
+
+db-pause: ## Stop Cloud SQL instance (activation-policy NEVER) — stops compute billing
+	$(guard-project)
+	gcloud sql instances patch $(PROJECT_ID)-sessions \
+		--activation-policy NEVER && echo "instance stopped"
+
+db-resume: ## Start Cloud SQL instance (activation-policy ALWAYS) — takes ~1-2 min
+	$(guard-project)
+	gcloud sql instances patch $(PROJECT_ID)-sessions \
+		--activation-policy ALWAYS && echo "instance running"
+
+db-status: ## Show Cloud SQL instance state (read-only)
+	$(guard-project)
+	gcloud sql instances describe $(PROJECT_ID)-sessions \
+		--format='value(state,settings.activationPolicy)'

@@ -7,6 +7,10 @@ file fully before acting.
 
 ## Session catch-up order (fresh session)
 
+0. **Cloud SQL cost check**: run `make db-status` (read-only). If the instance
+   is RUNNING and no work in the session needs the database, remind the owner
+   to `make db-pause`. At session wrap-up, if the DB is RUNNING, remind the
+   owner to pause it (`make db-pause`) unless the next session needs it live.
 1. This file.
 2. `.agents/HANDOFF.md` — current phase, what is done, what is next.
 3. `docs-local/development-plan.md` — phased plan detail.
