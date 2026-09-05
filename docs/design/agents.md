@@ -25,6 +25,10 @@ Per-agent specifications. Each agent is a separate Agent Engine deployment.
 
 ### Delegation decision schema (fields)
 
+Authoritative model: `DelegationDecision` in [schemas.md](schemas.md) — the prose
+below is a summary; the Pydantic validators reject invalid combinations such as
+`reuse_previous=true` with a reviewer invocation.
+
 | Field | Meaning |
 |---|---|
 | `invoke` | which reviewers to run: business, engineering, both, or none |
