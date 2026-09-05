@@ -17,6 +17,10 @@ smoke-vertex: ## Phase 0 exit check: local ADK agent -> Gemini via Vertex AI (AD
 	SMOKE_MODEL=$(SMOKE_MODEL) \
 	uv run --with google-adk python scripts/smoke_vertex.py
 
+spike-db-bootstrap: ## Phase 1 spike: one-time DB admin bootstrap (needs SPIKE_DB_PASSWORD)
+	uv run --with-requirements spikes/connectivity/sql/requirements.lock \
+		python spikes/connectivity/sql/admin_apply.py
+
 spike-connectivity-test: ## Phase 1 spike: deterministic store/contract/agent-probe tests
 	uv run --with-requirements spikes/connectivity/tests/requirements.lock \
 		python -m pytest spikes/connectivity/tests -q --asyncio-mode=auto

@@ -23,7 +23,10 @@ Checks performed at bootstrap (Phase 0):
 | APIs, service accounts + IAM, Cloud SQL instance, GCS buckets, Artifact Registry, Secret Manager skeletons | Terraform, split `envs/home.tfvars` / `envs/company.tfvars` |
 | Cloud Run services (story/artifact/report/orchestration) | Terraform resources referencing built images (module per service) |
 | Agent Engine deployments | `deploy/agents/<agent>/deploy.sh` (`adk deploy agent_engine`) — app-versioned resources (git SHA, env-pointer switching), deliberately not Terraform-managed |
-| Cloud SQL migrations | `deploy/cloud-sql/run-migrations.sh` (forward-only SQL) |
+| Cloud SQL migrations | `deploy/cloud-sql/run-migrations.sh` (forward-only SQL) — plain ordered
+SQL files; Alembic considered and rejected (2026-09-05): no SQLAlchemy models
+to autogenerate from, tiny slow-moving schema — revisit only if Phase 2+
+schema churn makes autogeneration worthwhile |
 
 Switching home ↔ company later = different tfvars + env templates. No Ansible —
 Terraform + Makefile + runbook covers everything.
@@ -69,6 +72,29 @@ In the home phase it needs no dedicated service account:
 A dedicated `sa-evaluator` + `roles/aiplatform.user` (reviewer-like profile:
 stateless, no MCP/SQL/GCS access) is the documented fallback only if a future
 spike proves the judge must be a deployed Agent Engine resource.
+
+## D7 — Cloud SQL admin password kept in the gitignored env file
+
+Runtime connectivity to Cloud SQL stays passwordless — IAM database
+authentication only; no service ever sees a password. But PostgreSQL grants
+IAM database users only CONNECT by default (and PG16 revokes CREATE on
+`public`), so a `postgres` admin session is unavoidable to create schemas and
+grant IAM roles their privileges. The frozen design's own migration path
+(`run-migrations.sh`) hits the same bootstrap need.
+
+Home-phase stance (Runbook 06 §2):
+
+- the `postgres` password lives only in gitignored `infra/envs/home.env`
+  (`SPIKE_DB_PASSWORD`), alongside the other project identifiers — never in
+  git, Secret Manager, or any service; the file is verified ignored and
+  untracked;
+- it is used only for admin bootstrap sessions (schema/grant changes) — rare
+  by design, since migrations inside an already-granted schema run via IAM
+  database authentication (passwordless);
+- rotation is recommended after the capstone/home phase ends (or whenever the
+  machine is shared), not per use — the threat model is a local, single-user
+  trial sandbox;
+- services use IAM database authentication exclusively.
 
 ## Differences from `docs/` (summary)
 

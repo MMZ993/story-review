@@ -1,0 +1,2 @@
+# One-time admin session tooling for the connectivity spike (Runbook 06 §2.3).
+cloud-sql-python-connector[psycopg]
