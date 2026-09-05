@@ -4,4 +4,5 @@ mcp[cli]==2.1.1
 pydantic>=2.13
 asyncpg>=0.30
 google-auth>=2.40
+requests>=2.32  # google.auth.transport.requests import used by the token verifier
 uvicorn>=0.31

@@ -89,7 +89,7 @@ class IdTokenAuthMiddleware:
         try:
             claims = self._verifier(token, self._audience)
         except Exception:
-            logger.warning("token verification failed for path=%s", path)
+            logger.warning("token verification failed for path=%s", path, exc_info=True)
             await _respond(401, "invalid token")
             return
 

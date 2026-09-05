@@ -5,3 +5,4 @@
 google-adk==2.8.0
 google-cloud-aiplatform[adk]==2.1.0
 google-auth>=2.40
+mcp==2.1.1

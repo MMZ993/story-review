@@ -96,6 +96,23 @@ Home-phase stance (Runbook 06 §2):
   trial sandbox;
 - services use IAM database authentication exclusively.
 
+## D8 — Spike MCP service falls back to default ingress with mandatory ID-token auth
+
+Increment-4 gate result (2026-09-05): Agent Engine's egress to Cloud Run was
+rejected at the edge with `ingress = INTERNAL_LOAD_BALANCER` (404, no request
+logs — the request never reached the container). The phase-1 plan anticipated
+this and permits the fallback: change **only** the ingress setting to default
+(`INGRESS_TRAFFIC_ALL`); the service stays non-public in practice because
+
+- no public/all-users invoker grant exists — only `sa-facilitator` holds
+  `roles/run.invoker`, so unauthenticated callers are rejected by IAM, and
+- the pure-ASGI middleware requires a Google ID token whose audience equals
+  the service URL (fail-closed 503 otherwise).
+
+This matches the allowance in `docs/operations/connectivity-identity.md`.
+Deferred (post-spike): private connectivity (PSC/VPC) is revisited only if
+Agent Engine networking support and cost justify it.
+
 ## Differences from `docs/` (summary)
 
 | Topic | `docs/` (company) | Home phase |

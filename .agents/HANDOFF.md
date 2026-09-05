@@ -1,15 +1,14 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-05 (session 5, Phase 1 in progress;
-increment 2 committed as `9d92148`).
+point. Last updated: 2026-09-05 (session 6, Phase 1 in progress;
+increments 1–4 done; increment 5 remains).
 
 ## Where we are
 
 - Phase: **1 — Connectivity spike: IN PROGRESS** (Runbook 06,
-  `docs-local/runbooks/06-connectivity-spike.md`). Increment 1 done;
-  increments 3–5 (Cloud Run MCP, Agent Engine proof,
-  decision gate/teardown) remain.
+  `docs-local/runbooks/06-connectivity-spike.md`). Increments 1–4 done;
+  increment 5 (decision-gate record + owner-run teardown) remains.
 - Docs design: complete and frozen on branch `docs/initial-frozen`; home-phase
   docs in `docs-local/`.
 - Git remote `origin` = private GitLab (`mmz-personal/capstone-project`);
@@ -17,7 +16,25 @@ increment 2 committed as `9d92148`).
 
 ## Previous Session Summary
 
-Session 5 (2026-09-05, in progress) — Runbook 06 increment 1: confirmed
+Session 6 (2026-09-05, evening) — Runbook 06 increment 4 EXECUTED, PASS:
+Agent Engine caller (`spike_agent/{agent,tools,transport}` +
+`deploy-agent.sh`/`run-agent-trace.sh`) deployed and proven with the two-request
+persist/restore trace (engine `3787430529595342848`, correlation
+`1fe5d7f691e84ff689a2c9ba73b49dbf`; PASS asserted by jq guards). **Ingress
+gate: internal ingress FAILED from Agent Engine (edge 404, no request logs);
+approved fallback applied** — ingress `INGRESS_TRAFFIC_ALL` + mandatory
+ID-token audience auth + invoker-only IAM, recorded as **D8** in
+local-decisions.md. Extra applies during debugging: sa-facilitator →
+roles/aiplatform.user (sessions permission), two MCP image rollouts (final
+`spike-connectivity-mcp:20260905-2204-d0e9a43`, adds `requests`). Eight
+gotchas recorded in Runbook 06 §Increment 4 (adk agent_engine_id update-only
+400 + exit-0-on-failure; aiplatform.sessions.create needed; `:streamQuery`
+not `:query` + snake_case events + JSON-not-SSE body; mcp 2.1.1 headers
+kwarg removal; missing `requests` package; structuredContent fallback;
+log-line wrapping vs correlation-ID search). Superseded agent engines deleted
+by owner; spike code/tests/docs updated but NOT yet committed.
+
+Session 5 (2026-09-05) — Runbook 06 increment 1: confirmed
 interfaces (google-adk 2.8.0, mcp 2.1.1, google-cloud-aiplatform 2.1.0;
 Agent Engine runtime SA via `.agent_engine_config.json` → `service_account=`);
 14 deterministic tests for store/MCP-contract/agent-probe, implemented
@@ -30,6 +47,16 @@ the Cloud SQL Python Connector on port 3307 (5432 blocked here; postgres
 cannot SET ROLE to IAM roles). D7: admin password lives in gitignored
 `home.env`, rotation procedure in Runbook 06 §2.5; Alembic rejected (D2 note).
 Increment 2 committed as `9d92148`.
+Increment 3 (same session, later block): Cloud Run MCP service —
+`spike_mcp/{store_sql,auth_middleware,app,main}.py` (asyncpg over the
+`/cloudsql` unix socket with IAM-db-auth token; pure-ASGI ID-token
+middleware, fail-closed 503 on unset audience; stateless streamable-HTTP
+app + `/healthz`), Dockerfile + `deploy-mcp.sh`, 12 new tests (26 total),
+Terraform module `infra/modules/connectivity-spike` (count-gated on
+`spike_mcp_image`) + root wiring. Independent review finding (check order)
+fixed. Deployed via owner-run two-step apply (image
+`spike-connectivity-mcp:20260905-1616-1bba7f7`, revision ...-00002) and
+verified read-only via the Cloud Run v2 API. Commit pending at wrap-up.
 
 Session 4 (2026-09-05) — verified the live Phase 0 inventory against Terraform:
 project ACTIVE, billing enabled, all required APIs enabled, expected resource
@@ -84,10 +111,15 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Remaining Tasks
 
-- Runbook 06 increments 3–5: Cloud Run
-  MCP service (image, ID-token verification, Terraform module); Agent Engine
-  deployment + end-to-end two-request trace; ingress decision gate +
-  owner-run teardown.
+- Runbook 06 increment 5: record the ingress decision outcome (D8 already
+  drafted), owner-run teardown of spike resources (Cloud Run module,
+  `spike_mcp_image=""` apply, agent engine `3787430529595342848`, AR images,
+  DB marker rows), and final cost check.
+- Commit session-6 changes (spike agent code/scripts, terraform spike module,
+  runbook 06, D8, HANDOFF) when the owner asks.
+- First recurring costs now live: Cloud SQL `db-f1-micro` (~$7–10/mo) plus
+  per-request Cloud Run + Agent Engine usage (min instances 0) and the AR
+  image (negligible).
 - Optional later increment: tighten the default compute SA's `roles/editor`
   (pre-existing from project creation).
 - Phase 0 exit criterion "terraform apply reproducible from clean (destroy +
@@ -96,18 +128,24 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Next Steps
 
-1. Runbook 06 increment 3: Cloud Run MCP service — image + ID-token
-   verification (production principal provider), Terraform module
-   `infra/modules/connectivity-spike`, reviewed plan → apply.
-2. Then increments 4–5 per `docs-local/plans/phase-1-connectivity-spike.md`
-   (Agent Engine caller, ingress decision, teardown).
+1. (done at session-6 wrap-up: changes committed as one atomic increment-4
+   commit; owner pushes.)
+2. Fresh session: Runbook 06 increment 5 per
+   `docs-local/plans/phase-1-connectivity-spike.md` — confirm the D8 record,
+   owner-run teardown (agent engine `3787430529595342848`, spike module via
+   `spike_mcp_image=""` apply, AR images, DB marker rows), final cost check.
 
 ## Important Notes
 
 - Deployment pipeline stance: none yet — local scripts + runbook only; pipelines
   written at promotion (local-decisions.md D3).
-- Git: 3 local commits on `main` not yet pushed (`c728b37`, `44b03ef`,
-  `9d92148`) — owner pushes.
+- Git: push state is the owner's; at last wrap-up several local commits
+  (`c728b37`, `44b03ef`, `9d92148`, plus the pending increment-3 commit)
+  awaited push — check `git status -sb` before assuming the remote is current.
+- Spike resources live (removed in increment 5): Cloud Run service
+  `spike-connectivity-mcp` (image `…:20260905-2204-d0e9a43`, ingress ALL per
+  D8), agent engine `3787430529595342848`, AR images (3 tags),
+  `roles/cloudsql.client` + `roles/aiplatform.user` grants for spike SAs.
 - Trial credits: near-zero used of zł1,114, expire 2026-12-05. First recurring
   cost now live: Cloud SQL `db-f1-micro` (~$7–10/mo equivalent); can be paused
   with `gcloud sql instances patch --activation-policy NEVER` when idle.
