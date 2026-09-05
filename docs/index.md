@@ -31,6 +31,12 @@ findings, and resolving conflicts with the Product Owner in the loop.
      IAM principals, MCP audience tokens, GCS signing, secrets
    - [Repository layout](operations/repository-layout.md) — repo structure, prompts directory, shared packages, dataset, manifests
 
+## Local (home) development phase
+
+Development on a private trial account is documented separately in
+[../docs-local/](../docs-local/index.md): local decisions, phased development plan, and
+runbook. Where the two sets differ, `docs/` describes the target/company setup.
+
 ## Conventions
 
 - Diagrams: Mermaid inline; ASCII sequence diagrams generated from PlantUML sources in
