@@ -40,4 +40,10 @@ deployment, Cloud SQL, IAM, or any environment action. Linked from AGENTS.md.
 - gcloud API enablement → subsequent calls may fail ~1 min (propagation); retry.
 - `gcloud billing budgets create` has no `--budget-file`; use individual flags.
 - `gcloud projects create` has no billing flag; link separately.
+- Cloud SQL: `db-f1-micro` is rejected on the provider's ENTERPRISE_PLUS default
+  edition (Error 400 Invalid Tier); set `settings.edition = "ENTERPRISE"`.
+- Cloud SQL: an instance with no connectivity is rejected (Error 400: "At least
+  one of Public IP or Private IP or PSC connectivity must be enabled"); private
+  IP implies VPC peering/servicenetworking — the Phase 1 spike decides the final
+  path.
 - ADC consent must include all requested scopes; re-run login if unticked.
