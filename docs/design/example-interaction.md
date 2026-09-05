@@ -71,7 +71,7 @@ Outcome `continue` (synthesis produced this turn; facilitator evaluates next tur
 
 ## 4. Second clarification resolves without delegation (flow 2)
 
-PO (turn 4): *"Add the 30-second criterion to the story's acceptance criteria. Also
+PO (turn 3): *"Add the 30-second criterion to the story's acceptance criteria. Also
 we keep cards 24 months max, noted in the consent text — that covers B-1's retention
 gap."*
 
