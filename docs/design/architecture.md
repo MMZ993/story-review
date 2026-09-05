@@ -107,8 +107,18 @@ Pattern mapping:
   report failure leaves a session in `finalizing` so the idempotent finalization
   request can be retried; the retry atomically reacquires the session turn lease
   before rendering. A non-retryable finalization failure rolls the session back to
-  `active` so it is never permanently stuck (see data-flow.md §3). Retention of old sessions (all, or
-  last X) is handled by a separate housekeeping process — to be decided.
+  `active` so it is never permanently stuck (see data-flow.md §3).
+- **Retention (decided)**: all sessions, dialogue history, and artifacts are retained
+  for the project lifetime; no cleanup runs in the sandbox or dev. Cloud SQL rows and
+  GCS artifacts are deleted together only when the daily sandbox project is recreated
+  (whole-project deletion), so stores never drift. Defining a timed retention policy
+  with legal/audit requirements and an owner is a production-promotion task, alongside
+  workload identity federation.
+- **Parked is terminal by design**: turn-10 park is the loop safety cap, and a parked
+  session is deliberately read-only — resuming it would reopen the loop the cap closed.
+  The escape is a new session on the same story: it starts a fresh run whose re-review
+  benefits from the story updates agreed during the parked dialogue instead of
+  inheriting a stale ten-turn context.
 - **Timeouts apply to active request processing, never to the PO** — there is no timeout
   while waiting for the user's next message. A PO turn has a hard five-minute deadline;
   per-call retry limits are maxima and are clamped to the remaining request budget.

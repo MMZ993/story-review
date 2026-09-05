@@ -92,4 +92,6 @@ Artifact Registry repository. The one-day sandbox procedure recreates the projec
 updates identifiers, runs bootstrap, migrations, and the independent deploy scripts.
 
 Health uses the FastAPI health endpoint and managed service checks. Monitoring uses
-Cloud Monitoring and logging; session-retention policy remains to be decided.
+Cloud Monitoring and logging. Retention is decided in
+[architecture.md](../design/architecture.md): everything is kept for the project
+lifetime; no housekeeping runs in sandbox or dev (production defines timed retention).
