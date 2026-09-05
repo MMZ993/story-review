@@ -25,7 +25,7 @@ Exit criteria:
 
 Cost: negligible (Vertex AI tokens only).
 
-## Phase 1 — Connectivity spike (blocking prerequisite) — planned
+## Phase 1 — Connectivity spike (blocking prerequisite) — done (2026-09-06; Runbook 06)
 
 Scope: the documented spike — Agent Engine agent → authenticated Cloud Run MCP →
 Cloud SQL session persist → restore. Minimal throwaway services (one trivial agent,
@@ -34,7 +34,8 @@ passing trace.
 
 Exit criteria: the full chain works end-to-end with evidence; or a documented,
 simplified fallback decided per connectivity-identity.md (e.g. default ingress with
-mandatory ID-token auth).
+mandatory ID-token auth) — done: end-to-end trace passed with the D8 default-ingress,
+ID-token-authenticated fallback; all disposable resources were torn down.
 
 Cost: small — one Agent Engine resource, one Cloud Run service, Cloud SQL already up.
 Teardown after recording evidence.
