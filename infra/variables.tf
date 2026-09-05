@@ -25,6 +25,18 @@ variable "report_retention_days" {
   default     = 90
 }
 
+variable "spike_mcp_image" {
+  description = "Image reference for the disposable connectivity-spike Cloud Run service (empty = module disabled)."
+  type        = string
+  default     = ""
+}
+
+variable "spike_service_url" {
+  description = "Spike Cloud Run service URL used as ID-token audience; set in the second apply after the first reveals it."
+  type        = string
+  default     = ""
+}
+
 variable "required_services" {
   description = "Google APIs enabled before provisioning bootstrap resources."
   type        = set(string)

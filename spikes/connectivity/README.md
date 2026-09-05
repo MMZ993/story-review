@@ -10,9 +10,11 @@ Layout (deviation from the plan's `mcp/`/`agent/` names, recorded in Runbook
 ```text
 spikes/connectivity/
 ├── spike_agent/        # agent-side probe core + locked requirements
-├── spike_mcp/          # MCP service core + locked requirements
-├── sql/                # (later increment) session-marker migration
+├── spike_mcp/          # MCP service core (store, SQL store, auth, ASGI app) + locked requirements
+├── sql/                # one-time admin bootstrap + ordered migration + grants
 ├── tests/              # deterministic unit and contract tests
+├── Dockerfile          # spike MCP service image (increment 3)
+├── deploy-mcp.sh       # build + push the spike image (tier-2)
 └── conftest.py         # makes spike_* packages importable from repo root
 ```
 
@@ -20,7 +22,9 @@ spikes/connectivity/
 
     make spike-connectivity-test
 
-Tests are fully offline: the store is in-memory, the MCP contract runs over
-the in-memory MCP transport with a fake verified principal, and the agent
-probe uses a fake transport. Cloud SQL and real ID-token verification are
-later increments (Runbook 06).
+Tests are fully offline: the store contract runs against the in-memory store
+and a fake asyncpg pool, the MCP contract runs over the in-memory MCP
+transport with a fake verified principal, HTTP tests use the ASGI test client
+with a fake token verifier, and the agent probe uses a fake transport. Real
+Cloud SQL access and real ID-token verification happen in the deployed
+service (Runbook 06 increments 3–4).

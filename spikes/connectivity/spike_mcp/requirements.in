@@ -2,3 +2,6 @@
 # in Runbook 06 increment 1; compiled to requirements.lock with uv pip compile.
 mcp[cli]==2.1.1
 pydantic>=2.13
+asyncpg>=0.30
+google-auth>=2.40
+uvicorn>=0.31

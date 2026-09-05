@@ -87,6 +87,21 @@ locals {
   }
 }
 
+module "connectivity_spike" {
+  # Disposable Phase 1 spike service; created only when spike_mcp_image is
+  # supplied (Runbook 06 increment 3), so routine plans stay unaffected.
+  count  = var.spike_mcp_image == "" ? 0 : 1
+  source = "./modules/connectivity-spike"
+
+  project_id               = var.project_id
+  region                   = var.region
+  image                    = var.spike_mcp_image
+  runtime_sa_email         = module.service_accounts.runtime_emails["sa-artifact-mcp"]
+  invoker_sa_email         = module.service_accounts.runtime_emails["sa-facilitator"]
+  instance_connection_name = module.cloud_sql.instance_connection_name
+  service_url              = var.spike_service_url
+}
+
 module "secrets" {
   source = "./modules/secrets"
 

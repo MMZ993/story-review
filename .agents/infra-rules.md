@@ -61,3 +61,16 @@ deployment, Cloud SQL, IAM, or any environment action. Linked from AGENTS.md.
   (InsufficientPrivilege). Grant the IAM role `USAGE, CREATE` on the schema
   and table privileges instead.
 - ADC consent must include all requested scopes; re-run login if unticked.
+- `docker push` to Artifact Registry does not use ADC; run
+  `gcloud auth configure-docker <region>-docker.pkg.dev` once per workstation
+  or the push fails with "denied: Unauthenticated request".
+- Cloud Run v2 (google provider 6.x): attach Cloud SQL via the template's
+  `volumes { cloud_sql_instance }` + container `volume_mounts`, NOT the
+  v1-style `run.googleapis.com/cloudsql-instances` annotation — the platform
+  normalizes the annotation into a volume, and the next plan then tries to
+  remove it (flip-flop).
+- `gcloud run services describe` (v1 surface) does not expose v2 fields
+  (ingress, uri, volumes); verify via `curl run.googleapis.com/v2/...` with
+  an access token.
+- `terraform output -raw` fails on object outputs; use
+  `terraform output -json <name> | jq -r .field`.
