@@ -1,0 +1,4 @@
+# Connectivity spike MCP service (Phase 1). Pinned at the versions confirmed
+# in Runbook 06 increment 1; compiled to requirements.lock with uv pip compile.
+mcp[cli]==2.1.1
+pydantic>=2.13

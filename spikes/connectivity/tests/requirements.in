@@ -1,0 +1,7 @@
+# Test dependencies for the connectivity spike (compiled to requirements.lock).
+# Runtime dependencies come from the units under test via sys.path
+# (conftest.py); this lock pins the test stack itself.
+pytest>=8
+pytest-asyncio>=0.26
+mcp[cli]==2.1.1
+pydantic>=2.13
