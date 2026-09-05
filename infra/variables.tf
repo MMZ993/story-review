@@ -19,6 +19,12 @@ variable "region" {
   }
 }
 
+variable "report_retention_days" {
+  description = "Lifecycle deletion age for report objects in the artifact bucket (days)."
+  type        = number
+  default     = 90
+}
+
 variable "required_services" {
   description = "Google APIs enabled before provisioning bootstrap resources."
   type        = set(string)

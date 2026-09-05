@@ -31,14 +31,24 @@ point. Last updated: 2026-09-05 (session 3, in progress).
 - D6 recorded (local-decisions.md): evaluation judge is not a deployed agent —
   ADC locally, deployer SA's `aiplatform.user` in CI; `sa-evaluator` is a
   documented fallback only.
-- Observation pending future increment: project default compute SA holds
-  `roles/editor` from project creation.
+- Runbook 04 executed and evidenced (`docs-local/runbooks/04-resource-skeletons.md`):
+  four new modules — Artifact Registry `service-images`, GCS bucket
+  `<project>-artifacts` (report-prefix IAM condition, 90d lifecycle), Cloud SQL
+  POSTGRES_16 `db-f1-micro` (ENTERPRISE edition, public IP + IAM auth — the
+  documented fallback, decision deferred to Phase 1 spike), 8 empty
+  per-service secrets with least-privilege secretAccessor. Net totals across
+  three applies (two partial failures: ENTERPRISE_PLUS tier rejection,
+  no-connectivity rejection — gotchas in infra-rules): 34 added. All verified
+  via outputs and gcloud cross-checks.
 - `.gitignore` now protects environment tfvars, Terraform state, build staging,
   and scratch files, while retaining `.terraform.lock.hcl` for reproducibility.
 - Working agreement: AGENTS.md + task-specific rules in
   `.agents/development-rules.md` and `.agents/infra-rules.md`.
 
-## Verification and Review
+- Observation pending future increment: project default compute SA holds
+  `roles/editor` from project creation.
+
+## Verification and Review (latest)
 
 - Runbook 01 checklist fully evidenced (auth, ADC, project, billing, budget).
 - Runbook 02 static checks passed: `terraform -chdir=infra validate` and
@@ -49,6 +59,10 @@ point. Last updated: 2026-09-05 (session 3, in progress).
   changes or destroys, exactly the expected API services. Apply completed successfully
   in 4–24 seconds, with no propagation retry required. Post-apply `gcloud services
   list --enabled` and `terraform state list` each confirmed all ten managed services.
+
+- Runbook 04: static checks passed; plan reviewed (34 add / 0 change / 0
+  destroy); post-apply gcloud cross-checks for SQL instance, AR repo, bucket,
+  and secrets all matched terraform outputs.
 
 ## Remaining Tasks
 
@@ -61,8 +75,8 @@ point. Last updated: 2026-09-05 (session 3, in progress).
 
 ## Next Steps
 
-1. Design the next reviewed Terraform increment (Cloud SQL / GCS / Artifact
-   Registry / Secret Manager skeletons) as Runbook 04.
+1. Runbook 05: D1 trial-availability checks + local ADK → Gemini via Vertex AI
+   smoke test (Phase 0 exit check), plus the Makefile skeleton.
 2. Add the Makefile skeleton, then perform the local ADK/Vertex smoke test
    (Phase 0 exit check) and record D1 trial-availability checks.
 
