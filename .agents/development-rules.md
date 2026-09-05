@@ -42,6 +42,13 @@ AGENTS.md. Derived from the pi-config development skills, adapted to this projec
   Guideline: prefer < ~300 lines per module; split earlier if it does two jobs.
 - One purpose per function/class; extract separately testable behavior instead of
   accumulating branches.
+- Code reads like a book: extract logically grouped operations into small,
+  intention-revealing helpers so the calling code reads as a description of
+  *what* happens (e.g. `retryable = is_retryable(error)` or
+  `ensure_perspective_matches_type(reference)`), with the helpers explaining
+  *how*. Not one helper per line — but whenever a block of 2+ lines forms one
+  logical step, name it. Reader-first: a maintainer should follow the intent
+  without mentally simulating the implementation.
 - Side effects (I/O, framework calls) at module boundaries; core decision logic
   deterministic where practical.
 - Least complex adequate design; duplication acceptable over obscuring
