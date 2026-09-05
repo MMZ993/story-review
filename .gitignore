@@ -1,0 +1,15 @@
+# local identifiers — never commit
+infra/envs/*.env
+.env
+
+# terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+
+# build staging contexts (per docs/operations/repository-layout.md)
+build/
+
+# scratch
+trash/
