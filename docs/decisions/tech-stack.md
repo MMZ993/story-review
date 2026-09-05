@@ -106,7 +106,7 @@ shared schema library) — otherwise not used.
 | Observability and versioning | Cloud logging/tracing, git labels, prompt SHA-256 audit |
 | Callbacks | delegation & loop-event callbacks |
 | Conversation-length monitoring | callback in the facilitator agent |
-| Agent versioning | multiple Agent Engine deployments per agent version + git tags |
+| Agent versioning | new versioned Agent Engine resource per release (git-tagged, N-1 retained) + env-pointer switching |
 | Local evaluation | Compose adapters with local PostgreSQL/GCS substitutes |
 
 Implementation details for callbacks, observability, conversation-length monitoring,

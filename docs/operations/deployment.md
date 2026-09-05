@@ -40,10 +40,22 @@
 
 ## Versioning and rollback
 
-Every deployment has a git tag/commit-SHA version label. Prompt content is separately
-SHA-256 audited per agent run; the evaluation judge is not a deployed agent. Rollback is
-redeployment of the prior tagged version with its matching staged prompt and locked
-shared-package dependency.
+Every deployment carries a git tag/commit-SHA version label, and each agent release
+creates a **new versioned Agent Engine resource** (`<agent>-<git-sha>`) rather than
+mutating a running one. Orchestration resolves agents through env-template pointers
+(`AGENT_<NAME>_RESOURCE`); a release re-points its variable only after the new
+resource passes the unit smoke test. The prior version's resource is retained (at
+least N-1; older ones are removed by housekeeping once superseded). Consequences:
+
+- rollback is a pointer switch back to the retained prior resource — no rebuild, no
+  in-place mutation; the prior resource already has its matching staged prompt and
+  locked shared-package dependency;
+- multiple deployed versions coexist, satisfying the "prove agent versioning on
+  multiple deployments" requirement with deployment history as evidence; and
+- git tags map 1:1 to live or retained Agent Engine resources.
+
+Prompt content is separately SHA-256 audited per agent run; the evaluation judge is
+not a deployed agent.
 
 ## Local development
 

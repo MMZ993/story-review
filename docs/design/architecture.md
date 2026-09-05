@@ -54,7 +54,10 @@ and shared schemas into a self-contained build context before deployment (see
   and facilitator deployments through the Vertex AI Agent Engine client SDK. The
   facilitator emits structured delegation decisions but never calls another agent;
   agents do not share memory and all context passes explicitly.
-- **Independent pipelines**: an agent update touches exactly one Agent Engine resource.
+- **Independent pipelines**: an agent release creates exactly one new versioned Agent
+  Engine resource; the orchestration env pointer switches to it after its smoke test,
+  and prior-version resources are retained for rollback (see
+  `../operations/deployment.md`).
 
 ## Orchestration and Control Flow
 
