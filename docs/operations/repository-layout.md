@@ -103,6 +103,25 @@ the four adapters in `deploy/compose/adapters/` to run ADK agents locally agains
 same interfaces; it does **not** run Agent Engine in Compose. Vertex AI is the sole
 external dependency in local evaluation runs.
 
+Concrete substitutes:
+
+- **Cloud SQL** → `postgres:16` container; migrations applied by the same
+  `run-migrations.sh` before the suite starts, so the schema under test is the deployed
+  schema.
+- **GCS** → `fsouza/fake-gcs-server` with the artifact and report buckets pre-created;
+  services point at it via the same storage-library endpoint configuration, so no
+  production code path differs.
+- **Agent Engine** → each adapter wraps the agent's actual ADK agent (same source,
+  prompt, and `config.yaml`) behind the same invocation interface the orchestration
+  uses for Agent Engine calls (single-turn run / session-scoped run, typed outputs,
+  structured errors), so switching between local and deployed targets is a
+  configuration change only.
+- **Secret Manager / IAM** → plain environment variables from
+  `deploy/env/.env.example`; MCP service-account ingress checks are disabled only in
+  the local profile.
+- **Report PDF rendering** → the report image's renderer runs unchanged; it has no
+  GCP dependency beyond object storage (the fake above).
+
 ## Deployment manifests and pipelines
 
 `deploy/cloud-run/<service>/deploy.sh` and its `.env.example` are the Cloud Run deploy
