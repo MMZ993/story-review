@@ -77,7 +77,13 @@ parks the session instead of evaluating readiness.
 ## Session and invocation semantics
 
 - **Facilitator**: persistent conversation session (Cloud SQL) — the PO dialogue spans
-  many turns.
+  many turns. Session events are owned by orchestration: after a successful facilitator
+  response, FastAPI appends the turn (reply + `DelegationDecision`) to the session
+  context keyed by the durable turn ID (unique constraint), so an ambiguous-timeout
+  retry can never duplicate dialogue events. Before reinvoking the facilitator after a
+  timeout, orchestration checks the session for an event carrying that turn's invocation
+  ID and retrieves the existing result instead of invoking again — only genuinely
+  missing work is retried (this may still repeat model cost, never state).
 - **Reviewers and Synthesis**: always a **fresh single-turn run** — no session state
   carried between invocations. The input is fully assembled by orchestration:
   1. story artifact (persisted once by FastAPI at story selection),
