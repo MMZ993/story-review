@@ -47,7 +47,7 @@ deterministic FastAPI→MCP calls.
 | Facilitator timeout | 120 seconds per model attempt |
 | Short-call attempts | At most 3 total attempts |
 | Facilitator attempts | At most 2 total attempts, subject to reconciliation below |
-| Short-call backoff | Jittered exponential delay based on 1 and 2 seconds between the 3 attempts |
+| Short-call backoff | Jittered exponential delay for the two intervals between the three attempts: based on 1 s, then 2 s |
 | Facilitator backoff | 5 seconds before the second attempt |
 | Retry on | Connection failure, timeout, or retryable upstream 5xx |
 | Never transport-retry | 4xx, schema validation, authorization, idempotency mismatch, or terminal state conflict |
