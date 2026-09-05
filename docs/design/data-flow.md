@@ -63,6 +63,14 @@ Constraint: the opening facilitator turn is **turn 1** and counts toward the cap
 10; it always emits `invoke` = none — the first
 re-review can only be requested from turn 2 onward, inside the dialogue loop.
 
+Lineage note: the `story_run_id` — the lineage of every artifact in this flow — is
+created by FastAPI at story selection, before the first artifact save; the later
+"create facilitator session" step only adds the ADK conversation store and its
+`SessionRecord` (one session per story run, see schemas.md). A partially completed
+initial run is recovered by replaying the same `Idempotency-Key`: idempotent story/
+review/synthesis saves and session creation never duplicate, and a completed request
+returns its stored canonical response.
+
 This is **Pattern 2**: sequential base (reviews → synthesis → facilitator) with parallel
 reviewer fan-out.
 
