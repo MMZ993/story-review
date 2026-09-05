@@ -1,12 +1,13 @@
 # local identifiers — never commit
 infra/envs/*.env
+infra/envs/*.tfvars
 .env
 
 # terraform
 .terraform/
-.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
+*.tfplan
 
 # build staging contexts (per docs/operations/repository-layout.md)
 build/

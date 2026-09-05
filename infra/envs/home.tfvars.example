@@ -1,0 +1,4 @@
+# Copy to home.tfvars, then set the real project ID from infra/envs/home.env.
+# Do not commit home.tfvars; it identifies the private home environment.
+project_id = "replace-with-your-project-id"
+region     = "europe-west4"
