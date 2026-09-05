@@ -1,7 +1,7 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-05 (session 3 close).
+point. Last updated: 2026-09-05 (session 4 planning).
 
 ## Where we are
 
@@ -13,6 +13,15 @@ point. Last updated: 2026-09-05 (session 3 close).
   owner pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 4 (2026-09-05) — verified the live Phase 0 inventory against Terraform:
+project ACTIVE, billing enabled, all required APIs enabled, expected resource
+counts present, and `terraform plan -detailed-exitcode` reported no drift. The
+sanitized evidence is in Runbook 05. Wrote the Phase 1 implementation plan:
+`docs-local/plans/phase-1-connectivity-spike.md`. It scopes the disposable
+Agent Engine → authenticated Cloud Run MCP → Cloud SQL persist/restore proof,
+initial internal-ingress test, permitted ID-token-authenticated fallback, exact
+evidence, cost guardrails, and owner-run teardown.
 
 Session 3 (2026-09-05) — finished the whole Phase 0 bootstrap in three
 reviewed, evidenced Terraform/check increments, each committed atomically:
@@ -58,8 +67,8 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Remaining Tasks
 
-- Phase 1 connectivity spike implementation plan (write before any execution,
-  per the development plan's cross-cutting rule).
+- Execute the approved Phase 1 connectivity spike plan as Runbook 06; no
+  resource changes have started.
 - Optional later increment: tighten the default compute SA's `roles/editor`
   (pre-existing from project creation).
 - Phase 0 exit criterion "terraform apply reproducible from clean (destroy +
@@ -68,9 +77,8 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Next Steps
 
-1. Write the Phase 1 spike implementation plan (docs-local/plans/ or next to
-   the development plan): trivial agent + trivial MCP server, exact evidence to
-   capture (ingress settings, token audiences, identities, trace).
+1. Review `docs-local/plans/phase-1-connectivity-spike.md`, especially its
+   ingress fallback, deployment/runtime-SA discovery step, and teardown boundary.
 2. Execute the spike as Runbook 06 in small reviewed steps; teardown after
    evidence.
 3. Then Phase 2 (shared schemas package).
