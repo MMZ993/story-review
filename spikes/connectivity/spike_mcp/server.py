@@ -100,9 +100,9 @@ class SessionMarkerServer:
             return result.model_dump()
 
 
-def create_server() -> SessionMarkerServer:
-    """Build the spike server with the in-memory reference store."""
-    return SessionMarkerServer()
+def create_server(store: SessionMarkerStore | None = None) -> SessionMarkerServer:
+    """Build the spike server with the in-memory reference store by default."""
+    return SessionMarkerServer(store)
 
 
 def tool_payload(result: CallToolResult) -> dict:

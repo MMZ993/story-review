@@ -10,6 +10,8 @@ anyio==4.15.1
     #   mcp
     #   sse-starlette
     #   starlette
+asyncpg==0.31.0
+    # via -r spike_mcp/requirements.in
 attrs==26.1.0
     # via
     #   jsonschema
@@ -19,7 +21,11 @@ cffi==2.1.1
 click==8.5.0
     # via uvicorn
 cryptography==50.0.1
-    # via pyjwt
+    # via
+    #   google-auth
+    #   pyjwt
+google-auth==2.57.1
+    # via -r spike_mcp/requirements.in
 h11==0.16.0
     # via
     #   httpcore2
@@ -46,6 +52,10 @@ mdurl==0.1.2
     # via markdown-it-py
 opentelemetry-api==1.44.0
     # via mcp
+pyasn1==0.6.4
+    # via pyasn1-modules
+pyasn1-modules==0.4.2
+    # via google-auth
 pycparser==3.0
     # via cffi
 pydantic==2.13.5
@@ -101,4 +111,6 @@ typing-inspection==0.4.4
     #   mcp
     #   pydantic
 uvicorn==0.52.4
-    # via mcp
+    # via
+    #   -r spike_mcp/requirements.in
+    #   mcp

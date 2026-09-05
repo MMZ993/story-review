@@ -26,6 +26,14 @@ output "service_secret_ids" {
   value       = module.secrets.secret_ids
 }
 
+output "connectivity_spike" {
+  description = "Disposable Phase 1 spike Cloud Run service identifiers."
+  value = {
+    service_name = length(module.connectivity_spike) > 0 ? module.connectivity_spike[0].service_name : null
+    service_url  = length(module.connectivity_spike) > 0 ? module.connectivity_spike[0].service_url : null
+  }
+}
+
 output "service_accounts" {
   description = "Service account emails managed by this configuration."
   value = {
