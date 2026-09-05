@@ -8,7 +8,7 @@ file fully before acting.
 ## Session catch-up order (fresh session)
 
 1. This file.
-2. `STATE.md` — current phase, what is done, what is next.
+2. `.agents/HANDOFF.md` — current phase, what is done, what is next.
 3. `docs-local/development-plan.md` — phased plan detail.
 4. `docs-local/runbook.md` + `docs-local/runbooks/` — what has been executed and
    evidenced so far.
@@ -35,6 +35,37 @@ authoritative record of what was executed against Google Cloud.
   billable resources) always require explicit confirmation first.
 - **Pace**: the owner wants to learn and be able to track the commands too — prefer slower loops with
   explanation over agent-only speed.
+
+## Task-specific rule files (load conditionally)
+
+- [`.agents/development-rules.md`](.agents/development-rules.md) — **read before
+  writing/changing application code** (Python, schemas, tests, agents,
+  orchestration, TUI): doc-first, test-first, file-size and design limits,
+  verification tiers, debugging, review triggers.
+- [`.agents/infra-rules.md`](.agents/infra-rules.md) — **read before touching
+  terraform, gcloud, or any deployment/environment action**: command tiers
+  (read-only / write / destructive), plan-before-apply, IaC-only, runbook
+  codification, cost awareness, gotchas learned.
+
+## Session wrap-up
+
+Follow the `session-wrapup` skill: every planned task accounted for, then update
+`.agents/HANDOFF.md` (previous summary, verification, remaining tasks, next steps,
+notes) so a fresh session catches up via this file.
+
+### HANDOFF and git
+
+- `.agents/HANDOFF.md` **belongs to git** — it is the catch-up document for fresh
+  sessions and clones; its history doubles as a session log.
+- **Before any commit, verify it is not stale**: it must reflect the current
+  session's outcome (done/next/notes updated, date bumped). Never commit with a
+  stale HANDOFF, and never leave it dirty between sessions.
+- Fold the HANDOFF update into the session's work commit, or make a small
+  standalone `chore:` commit at wrap-up.
+- Note: the owner's global gitignore excludes `.agents/` by default; in this
+  repo it is **force-tracked**. Once a file is tracked, ignore rules stop applying
+  to it — but any *new* file under `.agents/` must be added with
+  `git add -f .agents/<file>`.
 
 ## Secrets and identifiers
 
@@ -81,5 +112,5 @@ authoritative record of what was executed against Google Cloud.
 
 ## Current state
 
-Kept in [STATE.md](STATE.md) — a living document updated at every phase
-transition and material progress point. Update it before ending a session.
+Kept in [.agents/HANDOFF.md](.agents/HANDOFF.md) — a living document updated at every
+phase transition and material progress point. Update it before ending a session.
