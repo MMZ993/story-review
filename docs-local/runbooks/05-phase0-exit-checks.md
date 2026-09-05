@@ -77,4 +77,9 @@ item in `docs-local/runbook.md`.
 - D1 disposition: checks 1–2 evidenced (billing; Vertex AI availability on
   trial in `europe-west4`); Agent Engine availability + `adk deploy
   agent_engine` deferred to the Phase 1 spike by design.
+- 2026-09-05 — read-only live-inventory and drift check: project ACTIVE;
+  billing enabled; all nine required APIs enabled; inventory matched Phase 0
+  (9 managed service accounts, 1 Artifact Registry repository, 1 GCS bucket,
+  1 Cloud SQL instance, and 8 secrets); `terraform plan -detailed-exitcode
+  -var-file=envs/home.tfvars` returned 0 (no drift). Identifiers omitted.
 
