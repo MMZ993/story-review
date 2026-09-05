@@ -15,7 +15,7 @@ Two-layer design:
 The facilitator selects the execution path dynamically from the PO conversation;
 FastAPI orchestration invokes the selected reviewer and synthesis deployments.
 
-## Pattern 1 Fulfillment (via per-agent deployments)
+## Pattern 1 Fulfillment
 
 | Requirement | How we fulfill it |
 |---|---|
@@ -30,7 +30,7 @@ FastAPI orchestration invokes the selected reviewer and synthesis deployments.
 > orchestration executes. We consider explicit invocation from a well-defined app layer
 > a stronger realization of the pattern than agent-to-agent coupling.
 
-## Pattern 2 Fulfillment (primary)
+## Pattern 2 Fulfillment
 
 | Requirement | How we fulfill it |
 |---|---|
@@ -38,7 +38,7 @@ FastAPI orchestration invokes the selected reviewer and synthesis deployments.
 | Parallel agent use | Business and Engineering Reviewers run independently on the same story |
 | Loop agent | Facilitator ↔ PO dialogue iterates until the story reaches an explicit "ready" exit condition |
 
-## Pattern 3 Fulfillment (bonus)
+## Pattern 3 Fulfillment
 
 | Requirement | How we fulfill it |
 |---|---|
