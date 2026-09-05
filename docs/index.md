@@ -32,5 +32,6 @@ findings, and resolving conflicts with the Product Owner in the loop.
 
 - Diagrams: Mermaid inline; ASCII sequence diagrams generated from PlantUML sources in
   `design/diagrams/` (regenerate with `plantuml -ttxt <flow>.puml`).
-- All schemas are strict Pydantic models; prompts live as static data in the repository,
+- All schemas are strict Pydantic models defined authoritatively in
+  [design/schemas.md](design/schemas.md); prompts live as static data in the repository,
   separate from code.
