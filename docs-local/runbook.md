@@ -8,11 +8,11 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 
 ## One-time setup (Phase 0)
 
-- [ ] Install gcloud via mise (runbooks/00-tooling.md)
-- [ ] gcloud auth + ADC (runbooks/01-gcloud-setup.md)
-- [ ] Set project + region config
-- [ ] Budget alert at 80% of trial credits
-- [ ] `terraform init && terraform apply` (infra bootstrap)
+- [x] Install gcloud via mise (runbooks/00-tooling.md; 2026-09-05)
+- [x] gcloud auth + ADC (runbooks/01-gcloud-setup.md; 2026-09-05)
+- [x] Set project + region config (2026-09-05)
+- [x] Budget alert at 80% of trial credits (2026-09-05)
+- [x] `terraform init && terraform apply` (API-enablement bootstrap; 2026-09-05)
 - [ ] Record trial-account availability check results
 
 ## Local development loop
@@ -39,3 +39,8 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 ## Evidence log
 
 Append entries: date, phase, what was proven, artifact path / correlation ID.
+
+- 2026-09-05 — Phase 0 — Terraform API-enablement bootstrap applied and verified:
+  ten expected services enabled; Terraform state lists ten managed
+  `google_project_service` resources. Evidence:
+  `runbooks/02-terraform-bootstrap.md`.
