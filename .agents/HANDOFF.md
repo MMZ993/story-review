@@ -1,95 +1,87 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-05 (session 3, Phase 0 complete).
+point. Last updated: 2026-09-05 (session 3 close).
 
 ## Where we are
 
-- Phase: **0 — Environment & bootstrap, in progress**
-  (docs-local/development-plan.md)
+- Phase: **0 — Environment & bootstrap: COMPLETE (2026-09-05).**
+  Next: **Phase 1 — Connectivity spike** (docs-local/development-plan.md).
 - Docs design: complete and frozen on branch `docs/initial-frozen`; home-phase
   docs in `docs-local/`.
+- Git remote `origin` = private GitLab (`mmz-personal/capstone-project`);
+  owner pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
 
-- gcloud CLI 583.0.0 via mise; authenticated (user + ADC); quota project set.
-- Dedicated GCP project with billing linked; budget alert `trial-80pct` (80% of
-  trial credits). Identifiers in gitignored `infra/envs/home.env`.
-- Runbooks 00-tooling and 01-gcloud-setup are fully executed and evidenced.
-- Runbook 02 is executed and evidenced at
-  `docs-local/runbooks/02-terraform-bootstrap.md`. It adds a pinned `infra/`
-  Terraform root, an idempotent API-enablement module, ignored
-  `infra/envs/home.tfvars`, and tracked provider lockfile. The reviewed apply
-  enabled its ten APIs (10 added, 0 changed, 0 destroyed).
-- Runbook 03 executed and evidenced (`docs-local/runbooks/03-service-accounts.md`):
-  module `infra/modules/service-accounts` creates the nine identity-model SAs
-  (deployer + 8 runtime) and the project-level grants valid pre-data-plane
-  (deployer: run.admin / aiplatform.user / artifactregistry.writer /
-  cloudsql.editor + actAs on each runtime SA; orchestration: aiplatform.user +
-  tokenCreator on itself). Applied 2026-09-05: 23 added, 0 changed, 0 destroyed;
-  verified via gcloud SA list, IAM policy, and terraform output.
-- D6 recorded (local-decisions.md): evaluation judge is not a deployed agent —
-  ADC locally, deployer SA's `aiplatform.user` in CI; `sa-evaluator` is a
-  documented fallback only.
-- Runbook 04 executed and evidenced (`docs-local/runbooks/04-resource-skeletons.md`):
-  four new modules — Artifact Registry `service-images`, GCS bucket
-  `<project>-artifacts` (report-prefix IAM condition, 90d lifecycle), Cloud SQL
-  POSTGRES_16 `db-f1-micro` (ENTERPRISE edition, public IP + IAM auth — the
-  documented fallback, decision deferred to Phase 1 spike), 8 empty
-  per-service secrets with least-privilege secretAccessor. Net totals across
-  three applies (two partial failures: ENTERPRISE_PLUS tier rejection,
-  no-connectivity rejection — gotchas in infra-rules): 34 added. All verified
-  via outputs and gcloud cross-checks.
-- `.gitignore` now protects environment tfvars, Terraform state, build staging,
-  and scratch files, while retaining `.terraform.lock.hcl` for reproducibility.
-- Working agreement: AGENTS.md + task-specific rules in
-  `.agents/development-rules.md` and `.agents/infra-rules.md`.
+Session 3 (2026-09-05) — finished the whole Phase 0 bootstrap in three
+reviewed, evidenced Terraform/check increments, each committed atomically:
 
-- **Phase 0 complete (2026-09-05).** Runbook 05 executed and evidenced
-  (`docs-local/runbooks/05-phase0-exit-checks.md`): `make smoke-vertex` passed —
-  local ADK agent → `gemini-2.5-flash` in europe-west4 via ADC. Adds
-  `scripts/smoke_vertex.py` and the Makefile skeleton (`smoke-vertex`, terraform
-  targets, compose stubs). D1: billing + Vertex evidenced; the two Agent Engine
-  bullets deferred to the Phase 1 spike by design.
-- Next: Phase 1 connectivity spike.
-- Observation pending future increment: project default compute SA holds
-  `roles/editor` from project creation.
+- **Runbook 03** (`docs-local/runbooks/03-service-accounts.md`):
+  `infra/modules/service-accounts` — nine identity-model SAs (deployer + 8
+  runtime) with pre-data-plane grants (deployer: run.admin / aiplatform.user /
+  artifactregistry.writer / cloudsql.editor + actAs on each runtime SA;
+  orchestration: aiplatform.user + tokenCreator on itself). Apply: 23 added.
+  Commit `3c580d8`.
+- **Runbook 04** (`docs-local/runbooks/04-resource-skeletons.md`): four new
+  modules — Artifact Registry `service-images`; GCS bucket `<project>-artifacts`
+  (report-prefix IAM condition, 90d report lifecycle); Cloud SQL POSTGRES_16
+  `db-f1-micro`, ENTERPRISE edition, public IP + IAM-db-auth (fallback; final
+  connectivity deferred to the Phase 1 spike — owner agreed); 8 empty
+  per-service `<project>-<service>-config` secrets with least-privilege
+  secretAccessor (own secret per runtime SA; deployer on all). Net: 34 added
+  across three applies (two partial failures, gotchas recorded). Commit
+  `f09bbf8`.
+- **Runbook 05** (`docs-local/runbooks/05-phase0-exit-checks.md`):
+  `scripts/smoke_vertex.py` (ADK LlmAgent + InMemoryRunner → Vertex via ADC) +
+  Makefile skeleton (`smoke-vertex`, `terraform-plan/apply`, compose stubs).
+  `make smoke-vertex` PASS (`gemini-2.5-flash`, europe-west4). Commit `1be8442`.
+- **D6** (local-decisions.md): evaluation judge is not a deployed agent — ADC
+  locally, deployer SA's aiplatform.user in CI; `sa-evaluator` is fallback only.
+- Earlier sessions (context): runbooks 00–02 (tooling, gcloud setup/auth/ADC/
+  billing/budget, Terraform API-enablement root + ten APIs).
 
-## Verification and Review (latest)
+## Verification and Review
 
-- Runbook 01 checklist fully evidenced (auth, ADC, project, billing, budget).
-- Runbook 02 static checks passed: `terraform -chdir=infra validate` and
-  `git diff --check`; no pre-commit configuration exists. The initial
-  `fmt -check` identified only alignment in ignored `home.tfvars`; the Runbook 02
-  generator is corrected to produce formatted content.
-- The owner produced and reviewed `home-api-enable.tfplan`: 10 additions and no
-  changes or destroys, exactly the expected API services. Apply completed successfully
-  in 4–24 seconds, with no propagation retry required. Post-apply `gcloud services
-  list --enabled` and `terraform state list` each confirmed all ten managed services.
-
-- Runbook 04: static checks passed; plan reviewed (34 add / 0 change / 0
-  destroy); post-apply gcloud cross-checks for SQL instance, AR repo, bucket,
-  and secrets all matched terraform outputs.
+- All three runbooks: `init`/`fmt -check -recursive`/`validate` passed; plans
+  reviewed by the owner before each apply; applies matched expected counts.
+- Runbook 03: gcloud SA list, project IAM policy, and terraform outputs matched
+  the plan exactly; no drift.
+- Runbook 04: gcloud cross-checks (SQL instance, AR repo, bucket, 8 secrets)
+  matched terraform outputs. Gotchas recorded in `.agents/infra-rules.md`:
+  Cloud SQL ENTERPRISE edition required for `db-f1-micro`; Cloud SQL requires
+  at least one connectivity path.
+- Runbook 05: billing re-confirmed (`billingEnabled=True`); smoke test failed
+  once on an ADK API detail (`create_session` requires `user_id`), fixed,
+  then PASS. D1 checks 1–2 evidenced; Agent Engine bullets deferred to the
+  Phase 1 spike by design (recorded in the runbook and development-plan).
 
 ## Remaining Tasks
 
-- Next reviewed Terraform increment: Cloud SQL, GCS, Artifact Registry, and
-  Secret Manager skeletons in cost-aware increments (deferred grants:
-  secretAccessor, Cloud SQL IAM login, GCS bucket roles attach with them;
-  optionally tighten default-compute-SA `roles/editor`).
-- Makefile skeleton (setup/bootstrap targets).
-- Phase 0 exit check: minimal local ADK agent → Gemini via Vertex AI (ADC).
+- Phase 1 connectivity spike implementation plan (write before any execution,
+  per the development plan's cross-cutting rule).
+- Optional later increment: tighten the default compute SA's `roles/editor`
+  (pre-existing from project creation).
+- Phase 0 exit criterion "terraform apply reproducible from clean (destroy +
+  apply)" was not re-proven by a destroy cycle (destructive, deferred unless
+  needed); config is tfvars-driven.
 
 ## Next Steps
 
-1. Runbook 05: D1 trial-availability checks + local ADK → Gemini via Vertex AI
-   smoke test (Phase 0 exit check), plus the Makefile skeleton.
-2. Add the Makefile skeleton, then perform the local ADK/Vertex smoke test
-   (Phase 0 exit check) and record D1 trial-availability checks.
+1. Write the Phase 1 spike implementation plan (docs-local/plans/ or next to
+   the development plan): trivial agent + trivial MCP server, exact evidence to
+   capture (ingress settings, token audiences, identities, trace).
+2. Execute the spike as Runbook 06 in small reviewed steps; teardown after
+   evidence.
+3. Then Phase 2 (shared schemas package).
 
 ## Important Notes
 
 - Deployment pipeline stance: none yet — local scripts + runbook only; pipelines
   written at promotion (local-decisions.md D3).
-- Trial credits: 0 used of zł1,114, expire 2026-12-05.
+- Trial credits: near-zero used of zł1,114, expire 2026-12-05. First recurring
+  cost now live: Cloud SQL `db-f1-micro` (~$7–10/mo equivalent); can be paused
+  with `gcloud sql instances patch --activation-policy NEVER` when idle.
 - Old default trial project exists but is unused/ignored.
+- `git push` is the owner's; remote added this session, owner pushes both
+  branches.
