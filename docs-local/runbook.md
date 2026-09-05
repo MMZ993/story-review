@@ -13,6 +13,7 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 - [x] Set project + region config (2026-09-05)
 - [x] Budget alert at 80% of trial credits (2026-09-05)
 - [x] `terraform init && terraform apply` (API-enablement bootstrap; 2026-09-05)
+- [x] Service accounts + bootstrap IAM, 9 SAs / 23 resources (runbooks/03-service-accounts.md; 2026-09-05)
 - [ ] Record trial-account availability check results
 
 ## Local development loop

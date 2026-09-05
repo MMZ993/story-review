@@ -1,7 +1,7 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-05.
+point. Last updated: 2026-09-05 (session 3, in progress).
 
 ## Where we are
 
@@ -21,6 +21,18 @@ point. Last updated: 2026-09-05.
   Terraform root, an idempotent API-enablement module, ignored
   `infra/envs/home.tfvars`, and tracked provider lockfile. The reviewed apply
   enabled its ten APIs (10 added, 0 changed, 0 destroyed).
+- Runbook 03 executed and evidenced (`docs-local/runbooks/03-service-accounts.md`):
+  module `infra/modules/service-accounts` creates the nine identity-model SAs
+  (deployer + 8 runtime) and the project-level grants valid pre-data-plane
+  (deployer: run.admin / aiplatform.user / artifactregistry.writer /
+  cloudsql.editor + actAs on each runtime SA; orchestration: aiplatform.user +
+  tokenCreator on itself). Applied 2026-09-05: 23 added, 0 changed, 0 destroyed;
+  verified via gcloud SA list, IAM policy, and terraform output.
+- D6 recorded (local-decisions.md): evaluation judge is not a deployed agent —
+  ADC locally, deployer SA's `aiplatform.user` in CI; `sa-evaluator` is a
+  documented fallback only.
+- Observation pending future increment: project default compute SA holds
+  `roles/editor` from project creation.
 - `.gitignore` now protects environment tfvars, Terraform state, build staging,
   and scratch files, while retaining `.terraform.lock.hcl` for reproducibility.
 - Working agreement: AGENTS.md + task-specific rules in
@@ -40,17 +52,19 @@ point. Last updated: 2026-09-05.
 
 ## Remaining Tasks
 
-- Expand Terraform bootstrap with the planned service accounts/IAM, Cloud SQL, GCS,
-  Artifact Registry, and Secret Manager skeletons in reviewed increments.
+- Next reviewed Terraform increment: Cloud SQL, GCS, Artifact Registry, and
+  Secret Manager skeletons in cost-aware increments (deferred grants:
+  secretAccessor, Cloud SQL IAM login, GCS bucket roles attach with them;
+  optionally tighten default-compute-SA `roles/editor`).
 - Makefile skeleton (setup/bootstrap targets).
 - Phase 0 exit check: minimal local ADK agent → Gemini via Vertex AI (ADC).
 
 ## Next Steps
 
-1. Design the next reviewed Terraform increment: service accounts and least-privilege IAM.
-2. Continue the Terraform bootstrap with Cloud SQL, GCS, Artifact Registry, and Secret
-   Manager skeletons in cost-aware increments.
-3. Add the Makefile skeleton, then perform the local ADK/Vertex smoke test.
+1. Design the next reviewed Terraform increment (Cloud SQL / GCS / Artifact
+   Registry / Secret Manager skeletons) as Runbook 04.
+2. Add the Makefile skeleton, then perform the local ADK/Vertex smoke test
+   (Phase 0 exit check) and record D1 trial-availability checks.
 
 ## Important Notes
 

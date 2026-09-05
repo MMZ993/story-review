@@ -56,6 +56,20 @@ budget.
 - No scheduled workloads; everything runs on demand from the runbook.
 - Budget alert set on the trial project at bootstrap.
 
+## D6 — Evaluator (judge) is not a deployed agent
+
+The Phase 9 evaluation judge runs **non-deployed**, per `docs/operations/deployment.md`.
+In the home phase it needs no dedicated service account:
+
+- local run: Vertex AI via ADC (user identity) — no IAM changes;
+- CI/pipeline run (after promotion): the deployment SA already holds
+  `roles/aiplatform.user` from Runbook 03, which covers inference-only calls; a
+  Cloud Build default SA would instead need that one binding granted.
+
+A dedicated `sa-evaluator` + `roles/aiplatform.user` (reviewer-like profile:
+stateless, no MCP/SQL/GCS access) is the documented fallback only if a future
+spike proves the judge must be a deployed Agent Engine resource.
+
 ## Differences from `docs/` (summary)
 
 | Topic | `docs/` (company) | Home phase |
