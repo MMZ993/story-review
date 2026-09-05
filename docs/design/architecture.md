@@ -100,9 +100,11 @@ Pattern mapping:
   `completed`. The client can list sessions and restore their history. Active sessions
   can continue; parked and completed sessions are read-only, with an option to start a
   **new session on the same story**. Reading a completed session can regenerate an
-  expiring URL for its persisted report without changing session state. A failed report
-  leaves a session in `finalizing` so the idempotent finalization request can be
-  retried; the retry atomically reacquires the session turn lease before rendering. Retention of old sessions (all, or
+  expiring URL for its persisted report without changing session state. A retryable
+  report failure leaves a session in `finalizing` so the idempotent finalization
+  request can be retried; the retry atomically reacquires the session turn lease
+  before rendering. A non-retryable finalization failure rolls the session back to
+  `active` so it is never permanently stuck (see data-flow.md §3). Retention of old sessions (all, or
   last X) is handled by a separate housekeeping process — to be decided.
 - **Timeouts apply to active request processing, never to the PO** — there is no timeout
   while waiting for the user's next message. A PO turn has a hard five-minute deadline;

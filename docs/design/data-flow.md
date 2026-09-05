@@ -526,8 +526,14 @@ returns the persisted report reference with a fresh signed URL. Session states a
 `active`, `parked`, `finalizing`, and `completed`; the successful path is `active` →
 `finalizing` → `completed`. The session is marked `completed` only **after** the
 `finalized-review` artifact and every requested report artifact are saved and their
-references persisted. A report failure leaves the session in
-`finalizing`, releases the turn lock, and returns a structured retryable error. FastAPI
+references persisted. A **retryable** report failure (deadline, transport, upstream 5xx
+per the error taxonomy) leaves the session in `finalizing`, releases the turn lock, and
+returns a structured retryable error. A **non-retryable** finalization failure
+(validation, authorization, idempotency conflict, deterministic `RENDER_FAILED`)
+instead rolls the session back to `active` with its last completed turn state and
+returns a non-retryable error — the gate can finalize again from a later PO action once
+the underlying defect is corrected, so no session is permanently stuck in `finalizing`.
+FastAPI
 generates a signed URL from the persisted GCS artifact reference. The URL is not stored
 as session state because it expires and can be regenerated.
 
