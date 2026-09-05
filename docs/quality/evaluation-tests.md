@@ -38,6 +38,10 @@ fail the case immediately:
 - initial reviewer spans overlap within the request/turn trace (parallel fan-out from
   orchestration);
 - every delegated reviewer/synthesis call has FastAPI orchestration as caller;
+- each agent invocation trace names a distinct Agent Engine deployment/resource ID
+  matching that agent (separate deployment targets per `AgentRunRecord`);
+- synthesis starts only after both reviewer runs of the same turn completed in the
+  trace (reviewer → synthesis call order);
 - selected reviewer routing exactly matches the scripted PO clarification;
 - synthesis inputs are the caller-selected maximum versions from one story run;
 - artifact reads reject another run and restore succeeds in the original run;
