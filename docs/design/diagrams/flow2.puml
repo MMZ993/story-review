@@ -51,6 +51,7 @@ note over F: dialogue only; no reviewer run or artifact write
 end
 opt new artifacts exist or reuse_previous
 F -> A: fetch latest per perspective (pairing done here)
+A --> F: latest artifacts per perspective
 F -> Y: invoke synthesis (latest per perspective)
 Y --> F: synthesis report
 F -> A: save synthesis artifact (idempotent)
