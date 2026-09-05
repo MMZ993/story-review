@@ -24,6 +24,15 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 - [x] Vertex AI env: `GOOGLE_GENAI_USE_VERTEXAI=true`,
       `GOOGLE_CLOUD_PROJECT=<home-project-id>`, `GOOGLE_CLOUD_LOCATION=europe-west4`
       (wrapped by `make smoke-vertex`; 2026-09-05)
+- [x] Spike tests: `make spike-connectivity-test` — offline deterministic
+      store/contract/agent-probe tests (runbooks/06-connectivity-spike.md §1; 2026-09-05)
+
+## Maintenance procedures
+
+- [x] Cloud SQL admin bootstrap (`make spike-db-bootstrap`, one-time schema +
+      grants via Cloud SQL Python Connector; runbooks/06-connectivity-spike.md §2.2; 2026-09-05)
+- [ ] Cloud SQL admin password rotation (owner-run, interactive;
+      runbooks/06-connectivity-spike.md §2.5; rotate at phase end or on machine sharing — D7)
 
 ## Deploy procedures (fill in per phase)
 
@@ -47,3 +56,9 @@ Append entries: date, phase, what was proven, artifact path / correlation ID.
   ten expected services enabled; Terraform state lists ten managed
   `google_project_service` resources. Evidence:
   `runbooks/02-terraform-bootstrap.md`.
+- 2026-09-05 — Phase 1 — connectivity spike increment 1: interfaces confirmed
+  (adk 2.8.0, mcp 2.1.1, Agent Engine runtime-SA support), 14 deterministic
+  tests passing. Evidence: `runbooks/06-connectivity-spike.md` §1.
+- 2026-09-05 — Phase 1 — connectivity spike increment 2: IAM db auth enabled
+  (+flag, 4 IAM users; Terraform), spike schema/table/grants applied via
+  admin session. Evidence: `runbooks/06-connectivity-spike.md` §2.

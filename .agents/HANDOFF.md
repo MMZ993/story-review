@@ -16,18 +16,19 @@ point. Last updated: 2026-09-05 (session 5, Phase 1 in progress).
 
 ## Previous Session Summary
 
-Session 5 (2026-09-05, in progress) — Runbook 06 increment 1 (local only, no
-GCP writes): confirmed interfaces (google-adk 2.8.0, mcp 2.1.1,
-google-cloud-aiplatform 2.1.0; Agent Engine runtime SA via
-`.agent_engine_config.json` → `service_account=` — supported); wrote failing
-then passing deterministic tests (14) for the session-marker store, MCP
-service contract (in-memory transport, fake verified principal through the
-real provider hook), and agent-side correlation-ID probe; implemented
-`spikes/connectivity/spike_mcp/` + `spike_agent/` with three compiled lock
-files and `make spike-connectivity-test`. Deviation recorded: packages named
-`spike_mcp`/`spike_agent` (a local `mcp/` package would shadow the SDK).
-Independent review findings (missing aiplatform pin, unpinned Make target,
-probabilistic test) fixed same session.
+Session 5 (2026-09-05, in progress) — Runbook 06 increment 1: confirmed
+interfaces (google-adk 2.8.0, mcp 2.1.1, google-cloud-aiplatform 2.1.0;
+Agent Engine runtime SA via `.agent_engine_config.json` → `service_account=`);
+14 deterministic tests for store/MCP-contract/agent-probe, implemented
+`spikes/connectivity/{spike_mcp,spike_agent}` with locks and
+`make spike-connectivity-test`; independent review findings fixed.
+Increment 2: enabled `cloudsql.iam_authentication` + 4 IAM db users (Terraform;
+two gotchas: flag name dot, SA username without `.gserviceaccount.com`);
+applied spike schema/table/grants via one-time postgres admin session through
+the Cloud SQL Python Connector on port 3307 (5432 blocked here; postgres
+cannot SET ROLE to IAM roles). D7: admin password lives in gitignored
+`home.env`, rotation procedure in Runbook 06 §2.5; Alembic rejected (D2 note).
+Commits: `44b03ef` (increment 1), increment 2 commit pending.
 
 Session 4 (2026-09-05) — verified the live Phase 0 inventory against Terraform:
 project ACTIVE, billing enabled, all required APIs enabled, expected resource
@@ -95,11 +96,11 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Next Steps
 
-1. Runbook 06 increment 2: propose the non-destructive migration command and
-   IAM db grant for owner review; verify through the Cloud Run connector path
-   only (no local direct-IP shortcut).
-2. Then increments 3–5 per `docs-local/plans/phase-1-connectivity-spike.md`.
-3. Then Phase 2 (shared schemas package).
+1. Runbook 06 increment 3: Cloud Run MCP service — image + ID-token
+   verification (production principal provider), Terraform module
+   `infra/modules/connectivity-spike`, reviewed plan → apply.
+2. Then increments 4–5 per `docs-local/plans/phase-1-connectivity-spike.md`
+   (Agent Engine caller, ingress decision, teardown).
 
 ## Important Notes
 

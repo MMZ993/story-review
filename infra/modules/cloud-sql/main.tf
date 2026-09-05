@@ -29,7 +29,31 @@ resource "google_sql_database_instance" "sessions" {
       # authorized networks left empty (nothing whitelisted beyond IAM-auth logins).
       ipv4_enabled = true
     }
+
+    database_flags {
+      # PostgreSQL flag name is "cloudsql.iam_authentication" (with dot); the
+      # MySQL-style "cloudsql_iam_authentication" is rejected: Error 404
+      # invalidFlagName (gotcha learned 2026-09-05).
+      name  = "cloudsql.iam_authentication"
+      value = "on"
+    }
   }
+}
+
+# IAM database users for the runtime SAs (passwordless; login = IAM database
+# authentication). Requires the cloudsql.iam_authentication flag above plus
+# project-level roles/cloudsql.instanceUser (granted further down). Database
+# privileges (schema ownership/grants) are applied by migrations, not here.
+# Gotcha: for service accounts the database username drops the
+# ".gserviceaccount.com" suffix (Error 400 otherwise); the Cloud Run connector
+# with auto-iam-authn maps the SA email to this form automatically.
+resource "google_sql_user" "iam_runtime_users" {
+  for_each = toset(var.iam_login_sa_emails)
+
+  project  = var.project_id
+  name     = trimsuffix(each.value, ".gserviceaccount.com")
+  instance = google_sql_database_instance.sessions.name
+  type     = "CLOUD_IAM_SERVICE_ACCOUNT"
 }
 
 # Project-level prerequisite for IAM database login; database-level grants are

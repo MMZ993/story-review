@@ -46,4 +46,18 @@ deployment, Cloud SQL, IAM, or any environment action. Linked from AGENTS.md.
   one of Public IP or Private IP or PSC connectivity must be enabled"); private
   IP implies VPC peering/servicenetworking — the Phase 1 spike decides the final
   path.
+- Cloud SQL PostgreSQL: the IAM-auth instance flag is `cloudsql.iam_authentication`
+  (with a dot); `cloudsql_iam_authentication` (MySQL style) fails with
+  Error 404 invalidFlagName. Setting any database flag restarts the instance.
+- Cloud SQL: IAM service-account database users are created WITHOUT the
+  `.gserviceaccount.com` suffix (`name = "sa-x@project-id.iam"`);
+  the full SA email is rejected (Error 400). The connector's auto-iam-authn
+  maps the SA email to this username automatically.
+- Cloud SQL (this network): outbound TCP 5432 is blocked; connect via the
+  dedicated **port 3307** (Python Connector `port="3307"`). Connection
+  timeouts can be intermittent — retry once before debugging further.
+- Cloud SQL PostgreSQL: the built-in `postgres` admin **cannot SET ROLE to
+  IAM roles**, so `CREATE SCHEMA ... AUTHORIZATION <iam-role>` fails
+  (InsufficientPrivilege). Grant the IAM role `USAGE, CREATE` on the schema
+  and table privileges instead.
 - ADC consent must include all requested scopes; re-run login if unticked.
