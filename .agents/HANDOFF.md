@@ -1,7 +1,7 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-05 (session 3, in progress).
+point. Last updated: 2026-09-05 (session 3, Phase 0 complete).
 
 ## Where we are
 
@@ -45,6 +45,13 @@ point. Last updated: 2026-09-05 (session 3, in progress).
 - Working agreement: AGENTS.md + task-specific rules in
   `.agents/development-rules.md` and `.agents/infra-rules.md`.
 
+- **Phase 0 complete (2026-09-05).** Runbook 05 executed and evidenced
+  (`docs-local/runbooks/05-phase0-exit-checks.md`): `make smoke-vertex` passed —
+  local ADK agent → `gemini-2.5-flash` in europe-west4 via ADC. Adds
+  `scripts/smoke_vertex.py` and the Makefile skeleton (`smoke-vertex`, terraform
+  targets, compose stubs). D1: billing + Vertex evidenced; the two Agent Engine
+  bullets deferred to the Phase 1 spike by design.
+- Next: Phase 1 connectivity spike.
 - Observation pending future increment: project default compute SA holds
   `roles/editor` from project creation.
 
