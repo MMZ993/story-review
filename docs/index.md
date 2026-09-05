@@ -20,6 +20,7 @@ findings, and resolving conflicts with the Product Owner in the loop.
    - [Schemas](design/schemas.md) — shared Pydantic models, identifiers/lineage, audit records, error taxonomy, MCP field-level contracts
    - [MCP servers](design/mcp-servers.md) — server contracts
    - [Observability](design/observability.md) — telemetry, callbacks, retry and timeout policy
+   - [Example interaction](design/example-interaction.md) — end-to-end conflict-resolution walkthrough of one story
 4. **Quality**
    - [Evaluation tests](quality/evaluation-tests.md) — LLM-as-judge regression suite
    - [Mock data](quality/mock-data.md) — dataset, scenarios, expected outcomes

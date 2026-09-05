@@ -52,4 +52,4 @@ log query, deployment history entry). Until then, no row claims executed verific
 |---|---|
 | Defined roles; parallel reviews expose more issues earlier | agents.md; data-flow.md flow 1 |
 | Separate viewpoints combined into a coherent final evaluation | Synthesis contract and two-latest-artifacts rule (agents.md), followed by the deterministic `finalized-review` artifact incorporating dialogue resolutions and acceptance |
-| Example interactions where a user resolves business/technical conflicts | conflicting + partial-resolution mock scenarios; dialogue loop (data-flow.md flow 2); live demo |
+| Example interactions where a user resolves business/technical conflicts | [example-interaction.md](../design/example-interaction.md) end-to-end walkthrough; conflicting + partial-resolution mock scenarios; dialogue loop (data-flow.md flow 2); live demo |
