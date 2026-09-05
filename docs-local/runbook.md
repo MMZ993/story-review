@@ -15,14 +15,15 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 - [x] `terraform init && terraform apply` (API-enablement bootstrap; 2026-09-05)
 - [x] Service accounts + bootstrap IAM, 9 SAs / 23 resources (runbooks/03-service-accounts.md; 2026-09-05)
 - [x] Resource skeletons: AR repo, GCS bucket, Cloud SQL, 8 secrets / 34 resources (runbooks/04-resource-skeletons.md; 2026-09-05)
-- [ ] Record trial-account availability check results
+- [x] Record trial-account availability check results (runbooks/05-phase0-exit-checks.md; 2026-09-05 — Vertex/billing evidenced; Agent Engine deferred to Phase 1 spike)
 
 ## Local development loop
 
 - [ ] `make compose-up` — orchestration + MCP services + adapters + substitutes
 - [ ] `make compose-down`
-- [ ] Vertex AI env: `GOOGLE_GENAI_USE_VERTEXAI=true`,
+- [x] Vertex AI env: `GOOGLE_GENAI_USE_VERTEXAI=true`,
       `GOOGLE_CLOUD_PROJECT=<home-project-id>`, `GOOGLE_CLOUD_LOCATION=europe-west4`
+      (wrapped by `make smoke-vertex`; 2026-09-05)
 
 ## Deploy procedures (fill in per phase)
 

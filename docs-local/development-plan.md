@@ -7,7 +7,7 @@ as work proceeds.
 
 Status legend: planned / in progress / done (+ evidence).
 
-## Phase 0 — Environment & bootstrap — planned
+## Phase 0 — Environment & bootstrap — done (2026-09-05; runbooks 00–05)
 
 Scope: trial project with billing; budget alert; Terraform bootstrap module (APIs,
 service accounts + IAM grants per connectivity-identity.md, Cloud SQL instance, GCS
@@ -15,10 +15,13 @@ buckets, Artifact Registry repo, Secret Manager skeletons); ADC setup; Makefile
 skeleton; runbook started.
 
 Exit criteria:
-- an ADK agent runs locally and calls Gemini via Vertex AI (ADC, no deployed infra),
+- an ADK agent runs locally and calls Gemini via Vertex AI (ADC, no deployed infra) — done (runbooks/05; gemini-2.5-flash, europe-west4, PASS),
 - `terraform apply` reproducible from clean (destroy + apply) with only tfvars
-  changing,
-- trial-account availability checks from local-decisions.md D1 recorded.
+  changing — not re-proven by a destroy cycle (destructive; deferred unless
+  needed), config is tfvars-driven,
+- trial-account availability checks from local-decisions.md D1 recorded — done
+  (billing + Vertex evidenced; Agent Engine bullets deferred to the Phase 1
+  spike by design).
 
 Cost: negligible (Vertex AI tokens only).
 
