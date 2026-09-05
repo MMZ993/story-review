@@ -28,6 +28,33 @@ real backlog's shape.
 | Partial-resolution story | PO clarification resolves one side only — re-review of one perspective, new conflict on the other side emerges |
 | Unresolvable story | hits loop safety cap — facilitator parks the story |
 
+## Expected-file contract (`dataset/expected/<case>.json`)
+
+Each case file is the versioned dialogue script and expected-transition specification
+that drives integration tests and the deterministic assertions in
+[evaluation-tests.md](evaluation-tests.md). It contains:
+
+- `story_id` and dataset schema version;
+- `po_script`: an ordered list of PO turns — each turn is exactly one of
+  `message` (Text) or `po_accepted: true`, mirroring the `TurnRequest` contract
+  (`schemas.md`: exactly one of message or acceptance, never both);
+- `expected_turns`: one entry per PO turn with the expected
+  `DelegationDecision` (invoke / reuse_previous / open_issues), expected
+  `outcome` (`continue` / `park` / `finalize`), expected session `state`, the
+  perspective(s) of any artifacts produced that turn, and expected
+  `turn_number`;
+- `expected_findings`: required business/engineering finding IDs and conflict
+  references (per the deterministic-assertions checks);
+- `expected_final`: final session state, `finalized-review` contents
+  (acceptance flag, remaining issues), and requested report formats.
+
+The PO script is executed verbatim by the test runner; nothing in it is generated
+or adaptive. A mismatch between any expected turn and the observed turn fails the
+case before the judge is invoked. Expected files live only in
+`dataset/expected/`, are excluded from every runtime image (see
+[repository-layout.md](../operations/repository-layout.md)), and are versioned in git
+with the dataset.
+
 ## Rules
 
 - Expected outputs live with the dataset, never in agent prompts or code.
