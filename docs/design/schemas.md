@@ -370,6 +370,33 @@ class ResolutionItem(StrictModel):
     turn_number: Annotated[int, Field(ge=1)]
 
 
+class ResolutionDraft(StrictModel):
+    """Facilitator-emitted resolution update; orchestration stamps `turn_number`
+    when converting it into a `ResolutionItem`."""
+
+    issue: Text
+    disposition: Literal["resolved", "accepted", "unresolved"]
+    explanation: Text
+
+
+class FacilitatorTurnOutput(StrictModel):
+    """Authoritative typed output of one facilitator turn. Orchestration never
+    parses the reply prose; every programmatically consumed field lives here."""
+
+    reply: Text
+    delegation: DelegationDecision
+    resolutions: list[ResolutionDraft] = Field(default_factory=list, max_length=100)
+
+    @model_validator(mode="after")
+    def resolutions_are_final(self):
+        # dispositions are only meaningful once the PO has answered the opening
+        # turn; turn 1 must emit none
+        if self.delegation.invoke == "none" and self.delegation.reuse_previous:
+            if self.resolutions:
+                raise ValueError("re-synthesis-only turns carry no resolution updates")
+        return self
+
+
 class FinalizedReview(StrictModel):
     story_id: StoryId
     story_run_id: RunId

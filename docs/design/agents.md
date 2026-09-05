@@ -14,11 +14,16 @@ Per-agent specifications. Each agent is a separate Agent Engine deployment.
   the facilitator decides whether supporting evidence is needed and performs the read as
   an LLM-driven MCP tool call. No report tools — final report generation is deterministic
   and owned by orchestration (see data-flow.md).
-- **Structured output**: every facilitator turn ends with a **delegation decision** — a
-  strict Pydantic model (see below). Orchestration interprets and executes it; the LLM
-  proposes, code disposes. Validation failure triggers a corrective LLM re-prompt
-  (bounded, distinct from transport retries — see observability.md) and is recorded as
-  an observability event. The opening turn always emits `invoke` = none.
+- **Structured output**: every facilitator turn ends with a typed
+  **`FacilitatorTurnOutput`** (see schemas.md) — the `reply`, the
+  **delegation decision** (`DelegationDecision`), and any **resolution updates**
+  (`ResolutionDraft`s: issue, disposition `resolved`/`accepted`/`unresolved`,
+  explanation). Orchestration interprets and executes it; the LLM proposes, code
+  disposes — orchestration stamps `turn_number` and persists the drafts as
+  `ResolutionItem`s, so `FinalizedReview.resolutions` is derived from typed agent
+  output, never from parsing reply prose. Validation failure triggers a corrective LLM
+  re-prompt (bounded, distinct from transport retries — see observability.md) and is
+  recorded as an observability event. The opening turn always emits `invoke` = none.
 - **PO acceptance** is an explicit client action (UI button / API field `po_accepted`),
   recorded by orchestration — never produced by the LLM. It bypasses the facilitator and
   delegated work and enters final report generation immediately.
@@ -77,13 +82,18 @@ parks the session instead of evaluating readiness.
 ## Session and invocation semantics
 
 - **Facilitator**: persistent conversation session (Cloud SQL) — the PO dialogue spans
-  many turns. Session events are owned by orchestration: after a successful facilitator
-  response, FastAPI appends the turn (reply + `DelegationDecision`) to the session
-  context keyed by the durable turn ID (unique constraint), so an ambiguous-timeout
-  retry can never duplicate dialogue events. Before reinvoking the facilitator after a
-  timeout, orchestration checks the session for an event carrying that turn's invocation
-  ID and retrieves the existing result instead of invoking again — only genuinely
-  missing work is retried (this may still repeat model cost, never state).
+  many turns. There are exactly two writers with distinct roles. (1) The **Agent
+  Engine ADK runtime** appends the model's raw session events server-side during a
+  run; these are the low-level conversation record, tagged by orchestration with the
+  turn's invocation ID before the call. (2) **FastAPI** writes the authoritative
+  application-level turn record (`TurnRecord` + `FacilitatorTurnOutput`), keyed by the
+  durable turn ID, only after a successful response. Reconciliation on an ambiguous
+  timeout: before reinvoking, orchestration checks the ADK session for events tagged
+  with this invocation ID — if present, the run completed remotely, so orchestration
+  extracts the structured output from those events instead of invoking again; if
+  absent, it re-invokes (this may repeat model cost, never state). Either way exactly
+  one `TurnRecord` per turn number exists, so a retry can never duplicate dialogue
+  events.
 - **Reviewers and Synthesis**: always a **fresh single-turn run** — no session state
   carried between invocations. The input is fully assembled by orchestration:
   1. story artifact (persisted once by FastAPI at story selection),

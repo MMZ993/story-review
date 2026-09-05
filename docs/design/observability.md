@@ -67,11 +67,12 @@ A timeout is ambiguous — the lease serializes local database mutation but does
 prove a remote agent failed to finish. Retries therefore rely on stable idempotency
 keys for all writes: a repeated reviewer/synthesis invocation may repeat model cost,
 but artifact saves are idempotent, so a retried turn never produces duplicate
-artifacts, dialogue events, or reports. For the stateful facilitator specifically,
-session-context appends are performed by orchestration and keyed by the durable turn
-ID; before a retry, orchestration first looks up the turn's invocation ID in the ADK
-session and retrieves an already-completed result rather than reinvoking it (see
-agents.md § Session and invocation semantics).
+artifacts, dialogue events, or reports. For the stateful facilitator, exactly one
+authoritative `TurnRecord` per turn number exists: the ADK runtime appends raw
+session events tagged with the invocation ID, FastAPI writes the application turn
+record only after success, and a retry first checks the ADK session for that
+invocation ID to retrieve an already-completed result instead of reinvoking it
+(see agents.md § Session and invocation semantics).
 
 A session turn lease has a six-minute TTL, one minute longer than the HTTP deadline. It
 is acquired with the idempotent operation claim, renewed only by its token holder,
