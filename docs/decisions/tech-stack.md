@@ -109,5 +109,7 @@ shared schema library) — otherwise not used.
 | Agent versioning | new versioned Agent Engine resource per release (git-tagged, N-1 retained) + env-pointer switching |
 | Local evaluation | Compose adapters with local PostgreSQL/GCS substitutes |
 
-Implementation details for callbacks, observability, conversation-length monitoring,
-and evaluation tests are specified in the architecture documentation.
+Implementation details for callbacks, observability, and conversation-length
+monitoring are specified in [observability.md](../design/observability.md);
+evaluation-test details are in
+[evaluation-tests.md](../quality/evaluation-tests.md).
