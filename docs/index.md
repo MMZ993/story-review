@@ -26,6 +26,8 @@ findings, and resolving conflicts with the Product Owner in the loop.
    - [Requirements coverage](quality/requirements-coverage.md) — traceability matrix
 5. **Operations**
    - [Deployment](operations/deployment.md) — GCP layout, versioning, CI/CD pipelines
+   - [Connectivity & identity](operations/connectivity-identity.md) — Cloud SQL access,
+     IAM principals, MCP audience tokens, GCS signing, secrets
    - [Repository layout](operations/repository-layout.md) — repo structure, prompts directory, shared packages, dataset, manifests
 
 ## Conventions

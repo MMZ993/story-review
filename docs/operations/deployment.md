@@ -20,6 +20,9 @@
   through `deploy/**/.env.example` templates. Secret values are never committed or
   passed as plain pipeline variables. Runtime service accounts receive only the specific
   `secretAccessor` grants they require; Cloud SQL prefers IAM database authentication.
+  Connectivity paths, per-principal grants, MCP ID-token audiences, GCS signing
+  permissions, and pooling are specified in
+  [connectivity-identity.md](connectivity-identity.md).
 - Agent scripts stage from the repository root before `adk deploy agent_engine`: each
   build includes its agent source, immutable model config, UTF-8 prompt, and
   `shared/review_schemas`. `PROMPTS_DIR=/app/prompts` is set at runtime. The FastAPI
