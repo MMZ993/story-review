@@ -129,7 +129,9 @@ Pattern mapping:
 
 ## Interfaces
 
-- TUI/Web ↔ FastAPI: HTTP (JSON events for dialogue turns; file download for artifacts).
+- TUI/Web ↔ FastAPI: HTTP (JSON events for dialogue turns; report references with
+  expiring signed URLs — report bytes are downloaded directly from GCS, not proxied
+  through FastAPI).
 - FastAPI ↔ Agent Engine: Vertex AI Agent Engine client SDK (session-scoped calls).
 - Facilitator ↔ story/artifact MCP servers: ADK `McpToolset` over Streamable HTTP.
 - FastAPI ↔ MCP servers: `mcp` SDK client over Streamable HTTP (direct, no LLM).
