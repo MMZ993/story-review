@@ -13,6 +13,9 @@ and this folder describes the home-phase variant and its promotion path.
   criteria, cost notes); the basis for per-phase implementation plans.
 - [Runbook](runbook.md) — living local dev and deploy procedures; grows as phases
   complete.
+- [Runbooks](runbooks/) — numbered, ordered procedures with the actual commands:
+  [00 tooling](runbooks/00-tooling.md), [01 gcloud setup](runbooks/01-gcloud-setup.md).
+  One file per environment action; the master checklist links here.
 
 ## Status convention
 

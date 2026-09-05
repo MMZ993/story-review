@@ -4,12 +4,14 @@ Living document. Every procedure that touches the environment, deployment, or mo
 gets written here as soon as it exists — the phase plans reference these entries.
 Pipeline translation at promotion reads this file.
 
+Detailed commands live in [runbooks/](runbooks/) — this file stays the checklist.
+
 ## One-time setup (Phase 0)
 
-- [ ] Create trial GCP account; apply credits; create project `<home-project-id>`
-- [ ] Set budget alert (~80% of trial credits)
-- [ ] `gcloud auth login` + `gcloud auth application-default login`
-- [ ] Confirm Vertex AI + Agent Engine available in `europe-west4`
+- [ ] Install gcloud via mise (runbooks/00-tooling.md)
+- [ ] gcloud auth + ADC (runbooks/01-gcloud-setup.md)
+- [ ] Set project + region config
+- [ ] Budget alert at 80% of trial credits
 - [ ] `terraform init && terraform apply` (infra bootstrap)
 - [ ] Record trial-account availability check results
 
