@@ -4,12 +4,22 @@ Traceability from every requirement in `../source/evaluation.md` to its design a
 verification. Kept up to date as implementation proceeds; the audit table for the
 automatic verification step and interviews.
 
+## Status and evidence convention
+
+Every row is currently in **designed** status: the design documents are complete and
+the "How verified" column describes the *planned* verification, not an executed one.
+As implementation proceeds each row moves through **implemented** (code/manifests
+exist at the cited paths) to **verified** (the cited check has run and passed). A row
+reaches verified only with evidence recorded inline: the pipeline run URL or
+`correlation_id`/trace of the passing check, and the artifact location (test output,
+log query, deployment history entry). Until then, no row claims executed verification.
+
 ## Design patterns
 
 | Requirement | Covered by | Where designed | How verified |
 |---|---|---|---|
-| Pattern 1: sequential + loop agent + explicit invocation of separately deployed agents | Per-agent Agent Engine deployments invoked from the orchestration layer (Agent Engine client SDK); facilitator dialogue loop | pattern-decisions.md, architecture.md (Deployment Model), data-flow.md flows 1–2 | evaluation tests (caller assertion: orchestration invokes agents; loop termination, loop cap); live demo |
-| Pattern 2: sequential + parallel agent + loop agent | Parallel reviewer fan-out; reviews → synthesis → facilitator sequence; readiness loop | pattern-decisions.md, data-flow.md flow 1–2 | evaluation tests (reviewer correctness, delegation routing) |
+| Pattern 1: sequential + loop agent + explicit invocation of separately deployed agents | Per-agent Agent Engine deployments invoked from the orchestration layer (Agent Engine client SDK); facilitator dialogue loop | pattern-decisions.md, architecture.md (Deployment Model), data-flow.md flows 1–2 | evaluation tests (caller assertion: orchestration invokes agents; distinct deployment-resource assertion per invocation; loop termination, loop cap); live demo |
+| Pattern 2: sequential + parallel agent + loop agent | Parallel reviewer fan-out; reviews → synthesis → facilitator sequence; readiness loop | pattern-decisions.md, data-flow.md flow 1–2 | evaluation tests (overlapping reviewer spans; reviewer → synthesis call order; reviewer correctness, delegation routing) |
 | Pattern 3: LLM-driven delegation + user-in-the-loop + simple sequential agents in hierarchy | Facilitator DelegationDecision; PO dialogue; reviewer → synthesis chain invoked from the hierarchy | pattern-decisions.md, agents.md, data-flow.md flow 2 | evaluation tests (delegation routing, re-review synthesis) |
 
 ## Technical requirements
