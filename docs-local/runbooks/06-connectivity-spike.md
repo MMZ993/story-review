@@ -608,3 +608,136 @@ switch `ENDPOINT` to `.../${AGENT_ENGINE_ID}:streamQuery?alt=sse` (same body).
 No Agent Engine deployment or live trace has yet been executed in this entry.
 
 ## Increment 5 — Decision gate and cleanup (TODO)
+
+### Decision gate — recorded
+
+- **D8 confirmed** (`docs-local/local-decisions.md`): internal ingress
+  (`INTERNAL_LOAD_BALANCER`) rejected Agent Engine egress at the edge (404,
+  no request logs); fallback applied per the phase-1 plan — ingress changed to
+  default (`INGRESS_TRAFFIC_ALL`) only, with mandatory ID-token audience auth
+  + invoker-only IAM retained. End-to-end trace PASS on the fallback (increment 4
+  evidence). Phase 1 exit criterion met (passing chain + owner-approved,
+  documented fallback).
+- Cost check (read-only, 2026-09-06): budget `trial-80pct` unchanged — limit
+  1114 PLN/month, credits included, no 80% threshold notification received.
+  Recurring post-teardown cost: only Cloud SQL `db-f1-micro` (~PLN 30–40/mo
+  equivalent; pausable with `gcloud sql instances patch --activation-policy
+  NEVER` when idle).
+
+### Teardown inventory (verified live this session)
+
+- Cloud Run service `spike-connectivity-mcp`
+  (`https://spike-connectivity-mcp-kxcnogex4q-ez.a.run.app`, ingress ALL per D8).
+- Terraform plan with `spike_mcp_image=""`: **0 to add, 0 to change, 4 to
+  destroy** (Cloud Run service + `roles/run.invoker` on sa-facilitator,
+  `roles/aiplatform.user` + `roles/cloudsql.client` on sa-artifact-mcp).
+  Nothing else in the plan — verified.
+- Agent Engine `3787430529595342848` (deployed via ADK SDK, not Terraform).
+- AR images: 3 digests under `service-images` (untagged after Cloud Run
+  deletion still counts negligible storage).
+- DB marker rows: `spike.session_marker` table + `spike` schema.
+
+### Owner-run teardown steps (tier 3 — destructive, owner executes)
+
+All from repo root, after `source infra/envs/home.env`.
+
+1. Review + apply the spike-module removal (destroys Cloud Run service and
+   the two spike SA IAM grants):
+
+   ```bash
+   cd infra
+   terraform plan -var-file=envs/home.tfvars -var='spike_mcp_image=' -out=home-spike-teardown.tfplan
+   # review: expect 0 to add, 0 to change, 4 to destroy
+   terraform apply home-spike-teardown.tfplan
+   cd ..
+   ```
+
+2. Delete the live agent engine (SDK-managed, needs `force=True` — child
+   sessions exist):
+
+   ```bash
+   uv run --with google-cloud-aiplatform==2.1.0 python - <<'EOF'
+   import os
+   import vertexai
+   from vertexai import agent_engines
+   vertexai.init(project=os.environ["PROJECT_ID"], location="europe-west4")
+   agent_engines.delete(
+       f"projects/{os.environ['PROJECT_ID']}/locations/europe-west4/reasoningEngines/3787430529595342848",
+       force=True,
+   )
+   print("agent engine deleted")
+   EOF
+   ```
+
+3. Delete the spike AR images (all tags/digests under the repo; they are only
+   spike builds):
+
+   ```bash
+   gcloud artifacts docker images delete \
+     "$REGION-docker.pkg.dev/$PROJECT_ID/service-images/spike-connectivity-mcp" \
+     --delete-tags --region "$REGION" --quiet
+   ```
+
+4. Drop the spike DB schema (one-time admin session via port 3307, same
+   pattern as `sql/admin_apply.py` — sync Connector + psycopg; instance
+   `$PROJECT_ID-sessions`, password `SPIKE_DB_PASSWORD` from `home.env` per D7):
+
+   ```bash
+   uv run --with cloud-sql-python-connector --with "psycopg[binary]" python - <<'EOF'
+   import os
+   from google.cloud.sql.connector import Connector
+   with Connector() as c:
+       conn = c.connect(
+           f"{os.environ['PROJECT_ID']}:europe-west4:{os.environ['PROJECT_ID']}-sessions",
+           "psycopg", user="postgres", password=os.environ["SPIKE_DB_PASSWORD"],
+           db="postgres", port="3307")
+       conn.execute("DROP SCHEMA IF EXISTS spike CASCADE")
+       conn.commit()
+       conn.close()
+   print("spike schema dropped")
+   EOF
+   ```
+
+5. Final verification (read-only, agent can run on request):
+   `gcloud run services list` (no spike service), agent engine gone, AR image
+   list empty for spike, `terraform plan -detailed-exitcode` clean.
+
+### Teardown evidence (executed 2026-09-06)
+
+- Terraform `home-spike-teardown.tfplan` reviewed (0 to add, 0 to change,
+  4 to destroy) and applied by the owner: **success — 4 destroyed** (Cloud Run
+  service `spike-connectivity-mcp` + the two spike SA IAM grant sets).
+- Agent engine delete: first attempt **failed** — the aiplatform SDK defaults
+  to the `us-central1` endpoint and rejects a `europe-west4` resource name
+  (400: "The provided location ID doesn't match the endpoint"). Fixed by
+  calling `vertexai.init(project=…, location="europe-west4")` before
+  `agent_engines.delete(..., force=True)`. **Gotcha 9 (increment 5): the
+  engine's resource name alone does not select the endpoint — always
+  `vertexai.init` with the region first.** Second attempt succeeded:
+  engine `3787430529595342848` deleted (backing LRO
+  `…europe-west4/operations/5624665462622126080` completed).
+- AR image delete: `gcloud artifacts docker images delete` takes **no
+  `--region` flag** (location comes from the image path); first attempt
+  rejected the flag. **Gotcha 10: drop `--region` on AR image delete.**
+  Second attempt succeeded (operation `0733dd23-…-7010b625663d`).
+- Schema drop: the async Connector snippet failed twice (sync `connect()`
+  returns a connection that can't be awaited; then `connect_async` hit
+  `ConnectorLoopError` — loop mismatch). The proven pattern is the same as
+  `sql/admin_apply.py`: **synchronous `Connector()` + `connector.connect(...,
+  "psycopg", port="3307")` with `psycopg[binary]`**. **Gotcha 11: use the
+  sync Connector + psycopg pattern for one-off admin sessions; the async API
+  is loop-bound and brittle in ad-hoc scripts.** Succeeded: `spike schema
+  dropped` (run twice, idempotent).
+- Final verification (agent-run, read-only, 2026-09-06):
+  - `gcloud run services list` (europe-west4): **no services**.
+  - AR `service-images` image list: **0 items**.
+  - `agent_engines.list()` after `vertexai.init(..., europe-west4)`: **[]**.
+  - `terraform plan -detailed-exitcode`: exit 0 — **no drift**.
+  - Budget `trial-80pct`: limit 1114 PLN/month, credits included, no 80%
+    notification. Remaining recurring cost: only Cloud SQL `db-f1-micro`.
+
+### Increment 5 result: COMPLETE
+
+Phase 1 spike closed: end-to-end objective met under D8 fallback; all spike
+resources removed; no drift; costs back to baseline (Cloud SQL only). Source,
+plans, sanitized traces, and D8 preserved per the phase-1 plan.

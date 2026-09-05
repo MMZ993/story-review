@@ -142,13 +142,13 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 - Git: push state is the owner's; at last wrap-up several local commits
   (`c728b37`, `44b03ef`, `9d92148`, plus the pending increment-3 commit)
   awaited push — check `git status -sb` before assuming the remote is current.
-- Spike resources live (removed in increment 5): Cloud Run service
-  `spike-connectivity-mcp` (image `…:20260905-2204-d0e9a43`, ingress ALL per
-  D8), agent engine `3787430529595342848`, AR images (3 tags),
-  `roles/cloudsql.client` + `roles/aiplatform.user` grants for spike SAs.
-- Trial credits: near-zero used of zł1,114, expire 2026-12-05. First recurring
-  cost now live: Cloud SQL `db-f1-micro` (~$7–10/mo equivalent); can be paused
-  with `gcloud sql instances patch --activation-policy NEVER` when idle.
+- Spike resources REMOVED (increment 5, 2026-09-06): Cloud Run service, agent
+  engine, AR images, and `spike` schema gone; terraform plan clean (no drift).
+  Spike source, tests, and runbook evidence preserved in git.
+- Cloud SQL instance is **PAUSED** (`make db-pause`, 2026-09-06, state
+  STOPPED/NEVER) — run `make db-resume` before any phase that needs the DB.
+  New Make targets `db-pause`/`db-resume`/`db-status` (PROJECT_ID-guarded).
+- Trial credits: near-zero used of zł1,114, expire 2026-12-05.
 - Old default trial project exists but is unused/ignored.
 - `git push` is the owner's; remote added this session, owner pushes both
   branches.
