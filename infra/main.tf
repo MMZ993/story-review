@@ -20,3 +20,10 @@ module "project_services" {
   project_id = var.project_id
   services   = var.required_services
 }
+
+module "service_accounts" {
+  source = "./modules/service-accounts"
+
+  project_id = var.project_id
+}
+
