@@ -24,10 +24,10 @@ Conventions:
 
 | Method and path | Input | Success | Purpose |
 |---|---|---|---|
-| `GET /api/v1/stories` | query `filter` | `StorySummary[]` | Browse the mock backlog. |
+| `GET /api/v1/stories` | query `filter` | `ListStoriesResponse` | Browse the mock backlog. |
 | `GET /api/v1/stories/{story_id}` | path `story_id` | `StoryDetail` | Story + epic/roadmap context. |
 | `POST /api/v1/sessions` | `CreateSessionRequest` | `CreateSessionResponse` (`201`) | Select a story, run the initial flow. |
-| `GET /api/v1/sessions` | query `limit`/`cursor` | `SessionSummary[]` | List restorable sessions. |
+| `GET /api/v1/sessions` | query `limit`/`cursor` | `ListSessionsResponse` | List restorable sessions. |
 | `GET /api/v1/sessions/{session_id}` | path `session_id` | `SessionDetail` | History replay + artifact references. |
 | `POST /api/v1/sessions/{session_id}/turns` | `TurnRequest` | `TurnResponse` | One PO action; may finalize. |
 | `POST /api/v1/sessions/{session_id}/finalize` | empty body | `ReportResponse` | Finalization retry (flow 3). |
@@ -41,7 +41,7 @@ Conventions:
 | `GET /stories` | list available stories (proxy to story MCP `list_stories`; optional case-insensitive title `filter`; dataset-bounded, no pagination) |
 | `GET /stories/{story_id}` | story details + epic/roadmap context (proxy to `get_story`) |
 
-Responses: `200` with `StorySummary[]` / `StoryDetail`; `404` unknown story;
+Responses: `200` with `ListStoriesResponse` / `StoryDetail`; `404` unknown story;
 `503` retryable upstream (story MCP) error.
 
 Selecting a story is done by creating a session — that triggers the initial flow.
@@ -74,13 +74,15 @@ opening reply is ready. The opening facilitator call is **turn 1** and counts to
 the 10-turn cap; it always emits `invoke` = none. Same 5-minute end-to-end deadline as
 a dialogue turn.
 
-Response `201`:
+Response `201` (`CreateSessionResponse`; artifact references below are abbreviated —
+authoritative shapes in [schemas.md](schemas.md)):
 
 ```json
 {
   "session_id": "sess-…",
   "story_run_id": "run-…",
   "state": "active",
+  "opening_turn_number": 1,
   "facilitator_reply": "…",
   "issues": ["…"],
   "delegation": { "invoke": "none", "open_issues": ["…"], "readiness": "needs_work" },
@@ -96,7 +98,7 @@ retryable deadline/upstream failure — the session creation is idempotent by
 
 #### `GET /sessions` / `GET /sessions/{session_id}`
 
-`200` with `SessionSummary[]` / `SessionDetail` (history turns, artifact references —
+`200` with `ListSessionsResponse` / `SessionDetail` (history turns, artifact references —
 content fetched server-side via artifact MCP, payloads never carried in history alone).
 Session listing supports `limit` (default 50, max 100) and an opaque `cursor`, ordered
 by `updated_at` descending.
@@ -124,7 +126,8 @@ Request:
   is rejected before any work starts.
 
 Response `200` — always a **single response per request**, including finalization when
-it happens:
+it happens (`TurnResponse`; abbreviated references, authoritative shapes in
+[schemas.md](schemas.md)):
 
 ```json
 {
@@ -135,7 +138,7 @@ it happens:
   "facilitator_reply": "…",
   "issues": ["…"],
   "synthesis": { "artifact_id": "art-…", "version": 2 },
-  "report": null
+  "report": []
 }
 ```
 
@@ -146,7 +149,7 @@ it happens:
   [mcp-servers.md](mcp-servers.md).
 - `outcome = park`: session read-only; `state` = `parked`.
 
-Errors: `400` empty message; `404` unknown session; `409` locked
+Errors: `422` empty message (`VALIDATION_ERROR`); `404` unknown session; `409` locked
 (`SESSION_LOCKED`, non-retryable until lease expiry — retry a new request, not the same
 turn), read-only session, or `IDEMPOTENCY_KEY_REUSED`; `422` DelegationDecision schema
 validation failure after bounded corrective re-prompts (non-retryable with same input;
@@ -164,7 +167,9 @@ Request: empty body + `Idempotency-Key`. Behavior by session state:
 | `active` | `409` code `NOT_FINALIZING` (use a turn instead) |
 | `parked` | `409` code `SESSION_READ_ONLY` |
 
-`200` response: `{ "report": [{ "artifact_id": "…", "format": "md", "signed_url": "…" }, …] }`
+`200` response (`ReportResponse`; entries abbreviated — the authoritative
+`ReportDownload` shape is in [schemas.md](schemas.md)):
+`{ "session_id": "sess-…", "report": [{ "artifact_id": "…", "format": "md", "signed_url": "…" }, …] }`
 — one entry per requested format. Render failure: `503` retryable, session stays
 `finalizing`.
 
@@ -185,10 +190,7 @@ code `REPORT_NOT_READY` (not completed). Never changes session state.
 | Code | When |
 |---|---|
 | `200` / `201` | success (creation on `POST /sessions`) |
-| `400` | malformed request (e.g. empty message) |
-| `404` | unknown story/session |
-| `409` | locked session, read-only (parked/completed) session, duplicate active story session, finalize on non-finalizing state, report not ready, idempotency-key reuse with different body |
-| `422` | structured-output validation failure after bounded re-prompts |
+| `422` | `VALIDATION_ERROR` — malformed request (e.g. empty message); structured-output validation failure after bounded re-prompts (`DELEGATION_VALIDATION`) |
 | `503` | retryable: deadline exhaustion, retry-exhausted upstream (agent/MCP), report failure |
 
 ## TUI interaction states
