@@ -1,20 +1,29 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-05 (session 6, Phase 1 in progress;
-increments 1–4 done; increment 5 remains).
+point. Last updated: 2026-09-06 (session 7, Phase 1 closed; Phase 2 plan ready).
 
 ## Where we are
 
-- Phase: **1 — Connectivity spike: IN PROGRESS** (Runbook 06,
-  `docs-local/runbooks/06-connectivity-spike.md`). Increments 1–4 done;
-  increment 5 (decision-gate record + owner-run teardown) remains.
+- Phase: **2 — Shared schemas: PLANNED** (`docs-local/plans/phase-2-shared-schemas.md`).
+  Phase 1 is complete: its end-to-end trace passed with D8 fallback and all spike
+  resources were torn down (Runbook 06 increment 5).
 - Docs design: complete and frozen on branch `docs/initial-frozen`; home-phase
   docs in `docs-local/`.
 - Git remote `origin` = private GitLab (`mmz-personal/capstone-project`);
   owner pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 7 (2026-09-06) — reviewed the completed Phase 1 evidence and wrote the
+Phase 2 master implementation plan at `docs-local/plans/phase-2-shared-schemas.md`.
+The plan defines the versioned `shared/review_schemas` package layout, dependency
+locks, test-first implementation increments, independent-review gate, and zero-cloud
+scope. `development-plan.md` now marks Phase 1 done; Cloud SQL status confirmed
+`STOPPED/NEVER`. Plan reviewed with the owner: the domain group is split across
+`review/synthesis/facilitator/judge` modules (module-size rule), and the development
+rules gained a code-reads-like-a-book helper-extraction rule. No application code
+changed and no environment action occurred.
 
 Session 6 (2026-09-05, evening) — Runbook 06 increment 4 EXECUTED, PASS:
 Agent Engine caller (`spike_agent/{agent,tools,transport}` +
@@ -111,15 +120,10 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Remaining Tasks
 
-- Runbook 06 increment 5: record the ingress decision outcome (D8 already
-  drafted), owner-run teardown of spike resources (Cloud Run module,
-  `spike_mcp_image=""` apply, agent engine `3787430529595342848`, AR images,
-  DB marker rows), and final cost check.
-- Commit session-6 changes (spike agent code/scripts, terraform spike module,
-  runbook 06, D8, HANDOFF) when the owner asks.
-- First recurring costs now live: Cloud SQL `db-f1-micro` (~$7–10/mo) plus
-  per-request Cloud Run + Agent Engine usage (min instances 0) and the AR
-  image (negligible).
+- Implement Phase 2 from `docs-local/plans/phase-2-shared-schemas.md`: start
+  with the failing strict-primitives tests, then create the versioned package and
+  locks; request independent review before accepting the shared contract.
+- Create a Phase 2 runbook/evidence entry when implementation starts or completes.
 - Optional later increment: tighten the default compute SA's `roles/editor`
   (pre-existing from project creation).
 - Phase 0 exit criterion "terraform apply reproducible from clean (destroy +
@@ -128,12 +132,10 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Next Steps
 
-1. (done at session-6 wrap-up: changes committed as one atomic increment-4
-   commit; owner pushes.)
-2. Fresh session: Runbook 06 increment 5 per
-   `docs-local/plans/phase-1-connectivity-spike.md` — confirm the D8 record,
-   owner-run teardown (agent engine `3787430529595342848`, spike module via
-   `spike_mcp_image=""` apply, AR images, DB marker rows), final cost check.
+1. Review and approve `docs-local/plans/phase-2-shared-schemas.md` before code work.
+2. Implement its increment 1 test-first, using the frozen schema document as the
+   field-level checklist.
+3. Keep Cloud SQL paused; Phase 2 has no database or GCP dependency.
 
 ## Important Notes
 
