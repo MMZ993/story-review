@@ -27,6 +27,7 @@ real agents, real prompts, real MCP servers — no mocks of the agents themselve
 | Loop termination | story fully resolved — facilitator must reach `ready` within the loop cap |
 | Loop safety cap | unresolvable story — facilitator must park the story at max iterations instead of looping forever |
 | Artifact persistence | save reviews, restore the session, and issue later requests in the **same story run**; verify same-run lineage reads and immutable versions |
+| Agent-driven MCP use | a scripted case whose context requires the facilitator to fetch supporting evidence — the LLM must perform an actual read-only Story/Artifact MCP tool call (attaching `McpToolset` is not sufficient evidence) |
 
 ## Deterministic assertions
 
@@ -44,6 +45,9 @@ fail the case immediately:
   trace (reviewer → synthesis call order);
 - selected reviewer routing exactly matches the scripted PO clarification;
 - synthesis inputs are the caller-selected maximum versions from one story run;
+- the evidence case shows at least one facilitator-initiated MCP tool call in the turn
+  trace (before/after tool callback events referencing a Story or Artifact MCP tool),
+  proving agent-driven MCP use rather than orchestration-only calls;
 - artifact reads reject another run and restore succeeds in the original run;
 - gate outcome, turn cap, requested report formats, and final session state match; and
 - the `finalized-review` artifact contains the latest synthesis, dialogue resolutions,
@@ -68,6 +72,16 @@ not replaced with another sample. Best-of-N, majority voting, and selecting the 
 score are prohibited. Every required dataset case must pass; one failed deterministic
 assertion or judge result makes `evaluation.yml` exit non-zero. Aggregate scores are
 reported for trend analysis but never override a failed case.
+
+Stability policy: the pipeline gate runs the **required smoke set** — the deterministic
+structural assertions (schemas, call order, parallel overlap, lineage, persistence, loop
+cap, deployment IDs, artifact/report state, MCP tool-call evidence) plus one end-to-end
+happy-path judged case. The full required set runs on demand and before the demo.
+Content assertions are set-based (required finding IDs present, not ordered); routing
+assertions remain exact because routing is a discrete decision. A case that fails solely
+due to demonstrated model-service instability (quota/5xx evidence in the trace) permits
+one documented rerun with raw outputs of both attempts retained as artifacts — never a
+best-of selection.
 
 ## Execution modes
 

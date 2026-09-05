@@ -26,7 +26,7 @@ log query, deployment history entry). Until then, no row claims executed verific
 
 | Requirement | Covered by | Where designed | How verified |
 |---|---|---|---|
-| At least one MCP server in at least one agent | Story + artifact MCP servers attached to facilitator via `McpToolset` | tech-stack.md, mcp-servers.md, agents.md | contract/integration smoke tests |
+| At least one MCP server in at least one agent | Story + artifact MCP servers attached to facilitator via `McpToolset` | tech-stack.md, mcp-servers.md, agents.md | scripted evidence case asserting an actual facilitator-initiated MCP tool call in the trace; contract/integration smoke tests |
 | Deploy to Agent Engine | All four agents as separate Agent Engine deployments | architecture.md, deployment.md | deploy-dev pipeline stage |
 | Full session management and persistence | ADK `DatabaseSessionService` on Cloud SQL; session lifecycle (active/parked/finalizing/completed); resume by client-held ID | architecture.md, schemas.md, data-flow.md flows 1–4 | integration tests (state transitions, session restore); demo |
 | Agent versioning on multiple deployments | Version labels = git tags/SHAs; independent per-agent redeployments; version-labeled logs | deployment.md, observability.md | deployment history + versioned runtime logs |
