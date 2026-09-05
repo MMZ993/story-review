@@ -438,6 +438,173 @@ normalized it into a `volumes.cloudSqlInstance` block, and the second plan
 would have removed the volume (flip-flop). The module now declares the
 v2-native `volumes` + `volumeMounts` (recorded as a gotcha in infra-rules).
 
-## Increment 4 — Deploy and prove the Agent Engine caller (TODO)
+## Increment 4 — Deploy and prove the Agent Engine caller (EXECUTED 2026-09-05 — PASS)
+
+### What is implemented locally
+
+`spike_agent/agent.py` exports the disposable `root_agent` (`gemini-2.5-flash`)
+with exactly `persist_session` and `restore_session` ADK function tools.
+`transport.py` obtains a Google ID token from the active runtime credentials
+with `SPIKE_SERVICE_URL` as its audience, then opens a stateless MCP
+streamable-HTTP client to `$SPIKE_SERVICE_URL/mcp`. `tools.py` forwards
+caller-provided session IDs, markers, and correlation IDs without
+interpretation. `mcp==2.1.1` is now pinned in the agent lock.
+
+`deploy-agent.sh` stages the package and copies the lock as the Agent Engine
+`requirements.txt`; it writes a staging-only `.agent_engine_config.json` with
+`sa-facilitator` and the Terraform output service URL. The staging directory
+is retained under `/tmp/spike-agent.*` for diagnosis and contains no secrets.
+
+`run-agent-trace.sh` makes one persist and one restore Agent Engine `:streamQuery`
+request (each auto-creating its own Agent Engine session; no session_id is
+sent — see gotchas 3–4) with one generated database session ID, marker, and
+correlation ID. It exits nonzero unless response events (snake_case
+`function_response`) show `stored=true` then `found=true` with all three exact
+values. It retains raw responses under `/tmp/spike-trace.*`; sanitize before
+copying evidence.
+
+### Deployment and trace procedure
+
+Impact: `deploy-agent.sh` is tier 2 — it creates a disposable Agent Engine
+resource and incurs on-demand Agent Engine/Vertex usage. `run-agent-trace.sh`
+issues two requests and intentionally writes one disposable session-marker row.
+No Terraform, IAM, or ingress change occurs in this increment.
+
+```bash
+# Read-only preflight: confirm the target Cloud Run URL and facilitator identity.
+source infra/envs/home.env
+terraform -chdir=infra output -json connectivity_spike | jq .
+terraform -chdir=infra output -json service_accounts | jq '.runtime."sa-facilitator"'
+terraform -chdir=infra plan -detailed-exitcode -lock=false -var-file=envs/home.tfvars \
+  -var "spike_mcp_image=europe-west4-docker.pkg.dev/$PROJECT_ID/service-images/spike-connectivity-mcp:20260905-1616-1bba7f7" \
+  -var 'spike_service_url=https://spike-connectivity-mcp-kxcnogex4q-ez.a.run.app'
+# expect exit code 2 with exactly ONE benign in-place change: removal of an
+# extra top-level `scaling` block (manual_instance_count=0/min=0) that the
+# provider added to state but the module never declared (same normalization
+# family as the increment-3 volumes flip-flop). Do NOT apply to "fix" it —
+# it re-appears on refresh and only creates a needless revision. Module is
+# torn down in increment 5. If anything ELSE appears in the plan, stop and
+# investigate before deploying.
+# Gotcha: the spike module is count-gated on var.spike_mcp_image (default "")
+# and its env vars come from var.spike_service_url (default ""), so a plan
+# without both -var flags reports destroy/update drift on the spike resources
+# even when nothing changed. Always pass both deployed values (or move them
+# into envs/home.tfvars if this bites again).
+
+# Tier-2: deploy a new, versioned disposable Agent Engine resource.
+spikes/connectivity/deploy-agent.sh
+# Record the printed agent-engine ID, staging directory, timestamp, and CLI result.
+
+# Request usage: run the two-request persist/restore proof.
+spikes/connectivity/run-agent-trace.sh <printed-agent-engine-id>
+# Expect: PASS: persisted and restored the exact session ID, marker, and correlation ID.
+```
+
+Before accepting the result, capture the Agent Engine resource's runtime
+service account (deployment CLI result or Agent Engine describe output), the
+Cloud Run v2 configuration/IAM evidence already captured in increment 3, and
+sanitized `persist.json`/`restore.json` values. Query Cloud Logging by the
+printed correlation ID across the Agent Engine and Cloud Run resources, for
+example:
+
+```bash
+source infra/envs/home.env
+CORRELATION_ID=<printed-correlation-id>
+gcloud logging read "textPayload:$CORRELATION_ID OR jsonPayload.correlation_id=$CORRELATION_ID" \
+  --project="$PROJECT_ID" --limit=100 --format=json > /tmp/spike-correlation-logs.json
+```
+
+Record the command timestamps, service URL/audience form, runtime identities,
+correlation ID, sanitized tool responses, and whether internal ingress passed.
+If Agent Engine cannot reach the internal-ingress service, do not retry with
+configuration changes here: proceed to Increment 5's documented default-ingress
+decision gate.
+
+### Execution record (2026-09-05)
+
+Final PASS run: agent engine `3787430529595342848` (numeric ID, see gotcha 1),
+correlation ID `1fe5d7f691e84ff689a2c9ba73b49dbf`, session
+`spike-1fe5d7f691e8`, marker `marker-4ff689a2c9ba`, trace dir
+`/tmp/spike-trace.am2lf2` (raw, retained locally).
+
+- persist response: `{stored: true, session_id: spike-1fe5d7f691e8,
+  correlation_id: 1fe5d7f6…49dbf}`; restore response: `{found: true,
+  session_id: …, marker: marker-4ff689a2c9ba, correlation_id: …}` — both
+  asserted by the script's jq guards; script printed PASS.
+- Deployed resource spec (GET reasoningEngines/3787430529595342848):
+  `spec.serviceAccount = sa-facilitator@$PROJECT_ID.iam.gserviceaccount.com`,
+  `spec.effectiveIdentity` the same, `deploymentSpec.env` =
+  `SPIKE_SERVICE_URL=https://spike-connectivity-mcp-kxcnogex4q-ez.a.run.app`
+  (evidence in `/tmp/spike-agent-engine-describe.json`).
+- Cross-resource correlation evidence: Cloud Run stderr logs at 20:16:17
+  (persist_session) and 20:16:20 (restore_session), both carrying
+  `correlation_id=1fe5d7f6…` and `principal=sa-facilitator@…`.
+- **Ingress gate result: internal ingress FAILED** — Agent Engine's calls were
+  rejected at the edge (GFE 404, no Cloud Run request logs) under
+  `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER`. The approved fallback
+  (`INGRESS_TRAFFIC_ALL` + mandatory ID-token audience auth + invoker-only
+  IAM) was applied via reviewed plan `home-spike-ingress-fallback.tfplan` and
+  the trace then passed. Recorded as **D8** in `docs-local/local-decisions.md`.
+- Extra tier-2 applies during debugging: `home-spike-agent-iam.tfplan`
+  (sa-facilitator → roles/aiplatform.user, gotcha 3) and two MCP image
+  rollouts (final image `spike-connectivity-mcp:20260905-2204-d0e9a43`,
+  gotchas 5–6).
+- Superseded agent engines deleted by the owner (`…5685908878764539904`,
+  `…7840881300461322240`, with `?force=true` because child sessions exist);
+  `…3787430529595342848` remains live until increment 5 teardown.
+
+### Gotchas learned live (all reproducible from this session)
+
+1. `adk deploy agent_engine --agent_engine_id=<id>` in ADK 2.8.0 **skips
+   create()** and `update()`s a nonexistent reasoningEngine → bare
+   `400 INVALID_ARGUMENT`. Deploy without the flag; the platform mints a
+   numeric ID; parse `Created a new instance: projects/…` from the output.
+2. The same CLI **exits 0 after printing `Deploy failed`** — check the output,
+   not the exit code (deploy-agent.sh does).
+3. The runtime SA needs `aiplatform.sessions.create` (in
+   `roles/aiplatform.user`) or every `stream_query` fails with a **silently
+   empty stream**; the real 403 only shows in
+   `aiplatform.googleapis.com%2Freasoning_engine_stderr`. Also expect 1–3 min
+   IAM propagation before `aiplatform.endpoints.predict` works.
+4. The Agent Engine **query API needs `:streamQuery?alt=sse`** for streaming
+   class methods — `:query` with `classMethod: async_stream_query` returns
+   `400 … 'async_generator' object is not iterable`. The response body is
+   concatenated JSON documents (not SSE-framed), and ADK events serialize
+   `function_response` in **snake_case** on the wire.
+5. mcp 2.1.1 removed the `headers=` kwarg from `streamable_http_client` —
+   pass a custom `httpx.AsyncClient(headers=…)` instead.
+6. `google.auth.transport.requests` (used by `id_token.verify_oauth2_token`)
+   requires the `requests` package at call time — it was missing from the MCP
+   image; symptoms: middleware 401 "invalid token" with the ImportError only
+   in `run.googleapis.com%2Fstderr`. Now pinned in spike_mcp requirements.
+7. mcp 2.1.1 servers without an output schema return tool dicts as JSON
+   **text content** (`structuredContent` is null) — the client must fall back
+   to parsing `result.content[0].text` (spike_mcp `tool_payload` always did;
+   spike_agent transport now mirrors it).
+8. Structured Cloud Run log lines are hard-wrapped (~40 cols), so full
+   correlation IDs are never contiguous — search Logging by a short unique
+   prefix (`textPayload:"<first 12 chars>"`).
+
+
+### Verification (local, 2026-09-05)
+
+```bash
+make spike-connectivity-test  # PASS: 29 passed (one upstream deprecation warning)
+bash -n spikes/connectivity/deploy-agent.sh spikes/connectivity/run-agent-trace.sh
+SPIKE_SERVICE_URL=https://spike.example PYTHONPATH=spikes/connectivity \
+  uv run --with-requirements spikes/connectivity/spike_agent/requirements.lock \
+  python -c 'from spike_agent.agent import root_agent; print(root_agent.name)'
+# expect: connectivity_spike
+```
+
+Known first-run risks (record the outcome as gotchas): (a) the trace uses the
+`:query` endpoint with `classMethod: async_stream_query`; the aiplatform SDK
+itself uses `:streamQuery?alt=sse` for this method — if `:query` rejects it,
+switch `ENDPOINT` to `.../${AGENT_ENGINE_ID}:streamQuery?alt=sse` (same body).
+(b) the request `session_id` values are never pre-created via
+`create_session`; if Agent Engine rejects an unknown session, omit
+`session_id` (auto-create) and adjust the jq assertions accordingly.
+
+No Agent Engine deployment or live trace has yet been executed in this entry.
 
 ## Increment 5 — Decision gate and cleanup (TODO)

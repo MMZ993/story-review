@@ -23,13 +23,28 @@ resource "google_project_iam_member" "runtime_sql_client" {
   member  = "serviceAccount:${var.runtime_sa_email}"
 }
 
+resource "google_project_iam_member" "facilitator_agent_engine_user" {
+  # The Agent Engine runtime (running as the invoker SA sa-facilitator) calls
+  # back into Agent Engine to create/run query sessions; without
+  # aiplatform.sessions.create every stream_query fails with a silent empty
+  # stream (learned live in increment 4). roles/aiplatform.user is the
+  # documented role carrying aiplatform.sessions.* and also covers model calls.
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${var.invoker_sa_email}"
+}
+
 resource "google_cloud_run_v2_service" "spike_mcp" {
   project  = var.project_id
   location = var.region
   name     = "spike-connectivity-mcp"
 
   deletion_protection = false
-  ingress             = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  # Increment-4 gate result: Agent Engine egress does not qualify as internal
+  # for INTERNAL_LOAD_BALANCER ingress (edge 404, no request logs). Approved
+  # fallback per phase-1 plan: default ingress + mandatory ID-token audience
+  # auth + invoker-only IAM (sa-facilitator). Recorded as D8.
+  ingress = "INGRESS_TRAFFIC_ALL"
 
   template {
     service_account = var.runtime_sa_email

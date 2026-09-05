@@ -15,6 +15,8 @@ spikes/connectivity/
 ├── tests/              # deterministic unit and contract tests
 ├── Dockerfile          # spike MCP service image (increment 3)
 ├── deploy-mcp.sh       # build + push the spike image (tier-2)
+├── deploy-agent.sh     # stage + deploy Agent Engine caller (tier-2)
+├── run-agent-trace.sh  # two-request persist/restore proof (request usage)
 └── conftest.py         # makes spike_* packages importable from repo root
 ```
 
@@ -28,3 +30,19 @@ transport with a fake verified principal, HTTP tests use the ASGI test client
 with a fake token verifier, and the agent probe uses a fake transport. Real
 Cloud SQL access and real ID-token verification happen in the deployed
 service (Runbook 06 increments 3–4).
+
+## Agent Engine proof (Increment 4)
+
+After the Cloud Run service is deployed with its service URL audience, run the
+owner-approved tier-2 deployment procedure in Runbook 06 §Increment 4:
+
+```bash
+spikes/connectivity/deploy-agent.sh
+spikes/connectivity/run-agent-trace.sh <agent-engine-id>
+```
+
+The trace makes separate Agent Engine persist and restore requests, then exits
+nonzero unless the structured responses prove the exact generated session ID,
+marker, and correlation ID were persisted and restored. It retains raw local
+outputs in a printed `/tmp/spike-trace.*` directory for sanitization; record
+only sanitized values and the correlation ID in the runbook.
