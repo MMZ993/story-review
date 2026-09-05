@@ -1,13 +1,14 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-05 (session 5, Phase 1 in progress).
+point. Last updated: 2026-09-05 (session 5, Phase 1 in progress;
+increment 2 committed as `9d92148`).
 
 ## Where we are
 
 - Phase: **1 — Connectivity spike: IN PROGRESS** (Runbook 06,
   `docs-local/runbooks/06-connectivity-spike.md`). Increment 1 done;
-  increments 2–5 (migration/db-IAM, Cloud Run MCP, Agent Engine proof,
+  increments 3–5 (Cloud Run MCP, Agent Engine proof,
   decision gate/teardown) remain.
 - Docs design: complete and frozen on branch `docs/initial-frozen`; home-phase
   docs in `docs-local/`.
@@ -28,7 +29,7 @@ applied spike schema/table/grants via one-time postgres admin session through
 the Cloud SQL Python Connector on port 3307 (5432 blocked here; postgres
 cannot SET ROLE to IAM roles). D7: admin password lives in gitignored
 `home.env`, rotation procedure in Runbook 06 §2.5; Alembic rejected (D2 note).
-Commits: `44b03ef` (increment 1), increment 2 commit pending.
+Increment 2 committed as `9d92148`.
 
 Session 4 (2026-09-05) — verified the live Phase 0 inventory against Terraform:
 project ACTIVE, billing enabled, all required APIs enabled, expected resource
@@ -83,8 +84,7 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Remaining Tasks
 
-- Runbook 06 increments 2–5: SQL migration + IAM db grant for
-  `sa-artifact-mcp` (first GCP writes — owner-reviewed commands); Cloud Run
+- Runbook 06 increments 3–5: Cloud Run
   MCP service (image, ID-token verification, Terraform module); Agent Engine
   deployment + end-to-end two-request trace; ingress decision gate +
   owner-run teardown.
@@ -106,6 +106,8 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 - Deployment pipeline stance: none yet — local scripts + runbook only; pipelines
   written at promotion (local-decisions.md D3).
+- Git: 3 local commits on `main` not yet pushed (`c728b37`, `44b03ef`,
+  `9d92148`) — owner pushes.
 - Trial credits: near-zero used of zł1,114, expire 2026-12-05. First recurring
   cost now live: Cloud SQL `db-f1-micro` (~$7–10/mo equivalent); can be paused
   with `gcloud sql instances patch --activation-policy NEVER` when idle.
