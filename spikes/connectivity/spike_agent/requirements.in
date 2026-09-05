@@ -1,0 +1,7 @@
+# Connectivity spike disposable agent (Phase 1). google-adk pinned at the
+# version confirmed in Runbook 06 increment 1; google-cloud-aiplatform[adk]
+# supplies vertexai.agent_engines (service_account support) for deployment;
+# google-auth supplies ID-token fetch for the authenticated Cloud Run call.
+google-adk==2.8.0
+google-cloud-aiplatform[adk]==2.1.0
+google-auth>=2.40

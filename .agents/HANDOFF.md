@@ -1,18 +1,33 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-05 (session 4 planning).
+point. Last updated: 2026-09-05 (session 5, Phase 1 in progress).
 
 ## Where we are
 
-- Phase: **0 — Environment & bootstrap: COMPLETE (2026-09-05).**
-  Next: **Phase 1 — Connectivity spike** (docs-local/development-plan.md).
+- Phase: **1 — Connectivity spike: IN PROGRESS** (Runbook 06,
+  `docs-local/runbooks/06-connectivity-spike.md`). Increment 1 done;
+  increments 2–5 (migration/db-IAM, Cloud Run MCP, Agent Engine proof,
+  decision gate/teardown) remain.
 - Docs design: complete and frozen on branch `docs/initial-frozen`; home-phase
   docs in `docs-local/`.
 - Git remote `origin` = private GitLab (`mmz-personal/capstone-project`);
   owner pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 5 (2026-09-05, in progress) — Runbook 06 increment 1 (local only, no
+GCP writes): confirmed interfaces (google-adk 2.8.0, mcp 2.1.1,
+google-cloud-aiplatform 2.1.0; Agent Engine runtime SA via
+`.agent_engine_config.json` → `service_account=` — supported); wrote failing
+then passing deterministic tests (14) for the session-marker store, MCP
+service contract (in-memory transport, fake verified principal through the
+real provider hook), and agent-side correlation-ID probe; implemented
+`spikes/connectivity/spike_mcp/` + `spike_agent/` with three compiled lock
+files and `make spike-connectivity-test`. Deviation recorded: packages named
+`spike_mcp`/`spike_agent` (a local `mcp/` package would shadow the SDK).
+Independent review findings (missing aiplatform pin, unpinned Make target,
+probabilistic test) fixed same session.
 
 Session 4 (2026-09-05) — verified the live Phase 0 inventory against Terraform:
 project ACTIVE, billing enabled, all required APIs enabled, expected resource
@@ -67,8 +82,11 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Remaining Tasks
 
-- Execute the approved Phase 1 connectivity spike plan as Runbook 06; no
-  resource changes have started.
+- Runbook 06 increments 2–5: SQL migration + IAM db grant for
+  `sa-artifact-mcp` (first GCP writes — owner-reviewed commands); Cloud Run
+  MCP service (image, ID-token verification, Terraform module); Agent Engine
+  deployment + end-to-end two-request trace; ingress decision gate +
+  owner-run teardown.
 - Optional later increment: tighten the default compute SA's `roles/editor`
   (pre-existing from project creation).
 - Phase 0 exit criterion "terraform apply reproducible from clean (destroy +
@@ -77,10 +95,10 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Next Steps
 
-1. Review `docs-local/plans/phase-1-connectivity-spike.md`, especially its
-   ingress fallback, deployment/runtime-SA discovery step, and teardown boundary.
-2. Execute the spike as Runbook 06 in small reviewed steps; teardown after
-   evidence.
+1. Runbook 06 increment 2: propose the non-destructive migration command and
+   IAM db grant for owner review; verify through the Cloud Run connector path
+   only (no local direct-IP shortcut).
+2. Then increments 3–5 per `docs-local/plans/phase-1-connectivity-spike.md`.
 3. Then Phase 2 (shared schemas package).
 
 ## Important Notes
