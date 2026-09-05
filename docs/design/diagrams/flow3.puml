@@ -35,10 +35,15 @@ F -> C: release turn lock
 F --> PO: final report references + signed URLs (single response)
 PO -> G: download with signed URL
 G --> PO: report bytes
-else report or signed-URL generation fails, or deadline expires
-note over F,R: orchestration normalizes failure as structured error
+else report or signed-URL generation fails, or deadline expires (retryable)
+note over F,R: orchestration normalizes failure as retryable structured error
 F -> C: keep finalizing + release turn lock
 F --> PO: structured retryable error (single response)
+else non-retryable failure (validation, authorization, deterministic render)
+note over F,R: orchestration normalizes failure as non-retryable structured error
+F -> C: session -> active (rollback to last completed turn state)
+F -> C: release turn lock
+F --> PO: structured non-retryable error (single response)
 end
 end
 @enduml

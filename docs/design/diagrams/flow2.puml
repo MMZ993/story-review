@@ -23,7 +23,7 @@ T -> A: read artifact by supplied session-lineage reference
 A --> T: artifact payload
 end
 T --> F: reply + DelegationDecision
-F -> C: persist turn + decision
+F -> C: persist turn + typed facilitator output
 alt invoke = both reviewers
 par parallel fan-out (asyncio.gather)
 F -> B: invoke (story + prev + extra_context)
