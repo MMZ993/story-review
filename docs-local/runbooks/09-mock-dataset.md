@@ -36,4 +36,19 @@ export).
 
 ## Evidence
 
-(to be appended per increment)
+- Manual test plans authored (2026-09-07, session 13, owner-approved shape):
+  `dataset/manual-plans/` — README (index, format-invariance rule, how-to-run)
+  + one plan per scenario, keyed by scenario (not story id) so every future
+  T2–T6 rendering must pass the same plan: clean (id 5, 2 turns),
+  business-weak (id 10, 3 turns, business-only delegation),
+  engineering-weak (id 14, 3 turns, engineering-only delegation),
+  conflicting (id 17, 2 turns, conversational resolution, no delegation;
+  2-vs-3-turn closing variant documented, variant 1 chosen),
+  partial-resolution (id 18, 3 turns, transcribed from
+  example-interaction.md), unresolvable (id 19, 10 turns, park at the loop
+  safety cap; turn count may vary ±1 but park outcome is invariant),
+  hidden-conflict (id 20, 2 turns, both reviews positive + C-1 at synthesis
+  with zero per-perspective findings). Plans are the authoring source for
+  increment 3's `dataset/expected/<case>.json` (mechanical transcription —
+  same vocabulary). This also settles the deferred decision: expected files
+  are keyed by canonical-case (scenario), not by ADO work-item id.
