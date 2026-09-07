@@ -154,5 +154,9 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
   New Make targets `db-pause`/`db-resume`/`db-status` (PROJECT_ID-guarded).
 - Trial credits: near-zero used of zł1,114, expire 2026-12-05.
 - Old default trial project exists but is unused/ignored.
+- 2026-09-06 (pre-publication hygiene): real project ID redacted from Runbook 06
+  (tree + git history rewrite prepared for owner-run `git filter-repo`); AGENTS.md
+  gained an evidence-sanitization rule; repo scanned for company-internal
+  material — none found (only sanitized capstone requirements in `docs/source/`).
 - `git push` is the owner's; remote added this session, owner pushes both
   branches.
