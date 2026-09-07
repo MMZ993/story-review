@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "case_id": "t1/business-weak",
+  "template": "t1",
+  "scenario": "business-weak",
+  "ado_source_id": 10,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "<p>Given a browser where the PSP SDK reports Google Pay availability, when the checkout payment step renders, then the Google Pay button is shown; otherwise it is hidden. </p><p>Given the customer selects Google Pay, when the payment is initiated, then a payment intent with method google_pay is created and the existing payment flow completes with the order state machine unchanged. </p><p>Given a failed or cancelled Google Pay intent, when the failure is handled, then the flow returns to the payment-list step with the previous selection cleared, no order state change, and the failure logged with the PSP correlation ID. </p><p>Given the enabled method, when the checkout e2e suite and accessibility checks run, then they pass with the button keyboard-accessible. </p>",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T16:02:04.443Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 11,
+      "System.AreaLevel1": "story-review",
+      "System.AreaPath": "story-review",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T16:37:09.233Z",
+      "System.BoardColumn": "New",
+      "System.BoardColumnDone": false,
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T16:37:09.233Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T16:02:04.443Z",
+      "System.Description": "<p><b>Context:</b> The payment service provider exposes Google Pay in their gateway API (POST /payment-intents with method &quot;google_pay&quot;), and the web checkout can render the button via the PSP's JS SDK. The checkout payment-list flow is the existing integration point. </p><p><b>Reason:</b> Competitors have it and customers keep asking for more payment options at checkout. </p><p><b>Scope:</b> Add the method to the existing checkout payment-list flow. Out of scope: other payment methods, native apps. </p>",
+      "System.Id": 10,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "story-review",
+      "System.Parent": 3,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 4,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "checkout; gpay; payments",
+      "System.TeamProject": "story-review",
+      "System.Title": "Google Pay at checkout",
+      "System.Watermark": 33,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": true
+    },
+    "id": 10,
+    "multilineFieldsFormat": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "html",
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/3"
+      }
+    ],
+    "rev": 4,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/10"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "case_id": "t2/engineering-weak",
+  "template": "t2",
+  "scenario": "engineering-weak",
+  "ado_source_id": 23,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T20:26:47.587Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 12,
+      "System.AreaLevel1": "story-review",
+      "System.AreaLevel2": "T2",
+      "System.AreaPath": "story-review\\T2",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T20:26:48.823Z",
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T20:26:48.823Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T20:26:47.587Z",
+      "System.Description": "<p><b>Description:</b> A temporary PSP outage (timeout or 5xx) fails the order outright today: the customer sees an error, the cart is abandoned, and support tickets follow. The order service already distinguishes PSP decline from PSP error, so a legitimate retry is identifiable. </p><p><b>Reason:</b> Payment errors were 38% of abandoned carts last quarter, and the payments team estimates roughly a fifth are transient PSP failures. Support receives ~120 payment-failure tickets/month; halving that saves about 2 agent-days per month. </p><p><b>Implementation:</b> Implement automatic retry for PSP errors only. Retries for declines, changes to the decline messaging, and native apps are out of scope. </p><p><b>For this story:</b> 1. Verify that a payment failing due to a PSP error, rather than a decline, is retried automatically without customer action. 2. Verify that retries stop immediately when a retried payment succeeds or when a failure is a decline. 3. Verify that, when retries are exhausted and the last attempt fails, the customer sees the standard payment-failed page and the order remains recoverable from the cart. 4. Verify that the retry outcome is visible in the existing payments dashboard whenever a retried payment completes, whether by success or final failure. </p><p>--- </p>",
+      "System.Id": 23,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "T2",
+      "System.Parent": 4,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 2,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "payments; reliability; retry",
+      "System.TeamProject": "story-review",
+      "System.Title": "Automatic payment retry on PSP failure",
+      "System.Watermark": 57,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": false
+    },
+    "id": 23,
+    "multilineFieldsFormat": {
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/4"
+      }
+    ],
+    "rev": 2,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/23"
+  }
+}

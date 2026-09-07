@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "case_id": "t6/partial-resolution",
+  "template": "t6",
+  "scenario": "partial-resolution",
+  "ado_source_id": 53,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T20:55:48.307Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 16,
+      "System.AreaLevel1": "story-review",
+      "System.AreaLevel2": "T6",
+      "System.AreaPath": "story-review\\T6",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T20:55:48.8Z",
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T20:55:48.8Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T20:55:48.307Z",
+      "System.Description": "<p>## saved card </p><p>Returning customers enter full card details on every order; checkout for returning customers averages 2m40s, and no payment data is stored today. The Q4 growth goal is +15% conversion for returning customers. Payment-data entry is the 3rd-highest drop-off point in funnel analytics. Keep it to web checkout and cards via the current PSP, not native apps, wallets, or bank transfers. </p><p>When a returning customer with saved payment details reaches checkout, make the saved method available for selection without re-entering card details. If a customer opts to save payment details and payment completes, store the details for future checkouts. When a saved method is used at checkout and payment completes, the customer reaches the confirmation page. </p>",
+      "System.Id": 53,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "T6",
+      "System.Parent": 3,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 2,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "payments; saved-cards",
+      "System.TeamProject": "story-review",
+      "System.Title": "saved card",
+      "System.Watermark": 117,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": false
+    },
+    "id": 53,
+    "multilineFieldsFormat": {
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/3"
+      }
+    ],
+    "rev": 2,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/53"
+  }
+}

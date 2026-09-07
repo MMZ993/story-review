@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "case_id": "t3/conflicting",
+  "template": "t3",
+  "scenario": "conflicting",
+  "ado_source_id": 31,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>When a returning customer with a previously used method loads checkout, the last used method is pre-selected. </li><li>When the pre-selected method is present and the customer confirms the order, payment is charged with that method without a separate selection step. </li><li>When the last used method is no longer available and checkout loads, no method is pre-selected and a message explains why. </li> </ul>",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T20:37:26.317Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 13,
+      "System.AreaLevel1": "story-review",
+      "System.AreaLevel2": "T3",
+      "System.AreaPath": "story-review\\T3",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T20:37:27.537Z",
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T20:37:27.537Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T20:37:26.317Z",
+      "System.Description": "<p>When a signed-in returning customer reaches web checkout, I want their last used payment method pre-selected without a separate selection step, so I can remove checkout steps and provide the requested one-tap pay experience. </p><p>Checkout currently shows all available payment methods with no default; returning customers re-pick their method on every order. The one-page checkout redesign under this feature aims to remove checkout steps. Funnel analytics show that returning customers spend a median 11 seconds selecting a payment method they used on the previous order. UX research flagged method selection as the top friction point for returning customers, and marketing asked for a &quot;one-tap pay&quot; experience. </p><p>Scope is web checkout for signed-in returning customers. Out of scope are guest checkout, native apps, and adding new payment methods. </p>",
+      "System.Id": 31,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "T3",
+      "System.Parent": 3,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 2,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "checkout; payments; ux",
+      "System.TeamProject": "story-review",
+      "System.Title": "Auto-select last used payment method at checkout",
+      "System.Watermark": 73,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": false
+    },
+    "id": 31,
+    "multilineFieldsFormat": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "html",
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/3"
+      }
+    ],
+    "rev": 2,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/31"
+  }
+}

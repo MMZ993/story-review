@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "case_id": "t1/partial-resolution",
+  "template": "t1",
+  "scenario": "partial-resolution",
+  "ado_source_id": 18,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "<p>Given a returning customer with saved payment details, when they reach checkout, then their saved method is available for selection without re-entering card details. </p><p>Given a customer who opts to save payment details, when payment completes, then the details are stored for future checkouts. </p><p>Given a saved method used at checkout, when payment completes, then the customer reaches the confirmation page. </p>",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T18:20:42.02Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 11,
+      "System.AreaLevel1": "story-review",
+      "System.AreaPath": "story-review",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T18:20:43.32Z",
+      "System.BoardColumn": "New",
+      "System.BoardColumnDone": false,
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T18:20:43.32Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T18:20:42.02Z",
+      "System.Description": "<p><b>Context:</b> Returning customers re-enter full card details on every order; checkout for returning customers averages 2m40s. No payment data is stored today. </p><p><b>Reason:</b> Q4 growth goal: +15% conversion for returning customers; payment-data entry is the 3rd-highest drop-off point in funnel analytics. </p><p><b>Scope:</b> Web checkout, cards via the current PSP. Out of scope: native apps, wallets, bank transfers. </p>",
+      "System.Id": 18,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "story-review",
+      "System.Parent": 3,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 2,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "payments; saved-cards",
+      "System.TeamProject": "story-review",
+      "System.Title": "Save payment details for returning customers",
+      "System.Watermark": 47,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": true
+    },
+    "id": 18,
+    "multilineFieldsFormat": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "html",
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/3"
+      }
+    ],
+    "rev": 2,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/18"
+  }
+}

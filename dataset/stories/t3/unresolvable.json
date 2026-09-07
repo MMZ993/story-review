@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "case_id": "t3/unresolvable",
+  "template": "t3",
+  "scenario": "unresolvable",
+  "ado_source_id": 33,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>When an international customer reaches checkout, checkout is usable for them. </li><li>When prices are displayed in a non-EUR market, they are correct for that market. </li><li>When an international order is placed, it can be fulfilled like a domestic one. </li> </ul>",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T20:37:29.74Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 13,
+      "System.AreaLevel1": "story-review",
+      "System.AreaLevel2": "T3",
+      "System.AreaPath": "story-review\\T3",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T20:37:31.017Z",
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T20:37:31.017Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T20:37:29.74Z",
+      "System.Description": "<p>When international customers reach an English-only, EUR-only checkout that offers cards and PayPal only, I want checkout localized for international customers, so I can support the shop's international expansion. </p><p>The shop already ships to several EU markets; checkout has not followed the international expansion. Sales wants five additional markets live this year. Support reports non-English tickets already take days to resolve. Finance has no position on display currencies and FX pricing, and there is no single owner for international checkout. </p><p>Scope is not defined: markets, languages, currencies, and local payment methods are all open. </p>",
+      "System.Id": 33,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "T3",
+      "System.Parent": 3,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 2,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "international; localization; payments",
+      "System.TeamProject": "story-review",
+      "System.Title": "Localize checkout for international customers",
+      "System.Watermark": 77,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": false
+    },
+    "id": 33,
+    "multilineFieldsFormat": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "html",
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/3"
+      }
+    ],
+    "rev": 2,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/33"
+  }
+}

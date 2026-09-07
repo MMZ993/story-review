@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "case_id": "t6/conflicting",
+  "template": "t6",
+  "scenario": "conflicting",
+  "ado_source_id": 52,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T20:55:46.6Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 16,
+      "System.AreaLevel1": "story-review",
+      "System.AreaLevel2": "T6",
+      "System.AreaPath": "story-review\\T6",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T20:55:47.11Z",
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T20:55:47.11Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T20:55:46.6Z",
+      "System.Description": "<p>## last one </p><p>Checkout currently shows every available payment method with no default, so returning customers pick their method again on every order. The one-page checkout redesign under this feature is meant to remove checkout steps. Funnel analytics say returning customers spend a median 11 seconds selecting the method used on their previous order. UX research called method selection the top friction point for returning customers, and marketing asked for a &quot;one-tap pay&quot; experience. This is web checkout for signed-in returning customers, not guest checkout, native apps, or new payment methods. </p><p>When a returning customer has a previously used method and checkout loads, pre-select the last used method. With that pre-selected method, when the customer confirms the order, charge payment with that method without a separate selection step. If the last used method is no longer available when checkout loads, pre-select nothing and explain why in a message. </p>",
+      "System.Id": 52,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "T6",
+      "System.Parent": 3,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 2,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "checkout; payments; ux",
+      "System.TeamProject": "story-review",
+      "System.Title": "last one",
+      "System.Watermark": 115,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": false
+    },
+    "id": 52,
+    "multilineFieldsFormat": {
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/3"
+      }
+    ],
+    "rev": 2,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/52"
+  }
+}
