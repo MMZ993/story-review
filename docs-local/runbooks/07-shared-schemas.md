@@ -23,8 +23,16 @@ primitives).
 |---|---|---|
 | 1 | Package skeleton, strict primitives (`base.py`), locks, Make target | DONE (2026-09-06) |
 | 2 | Errors + story/review/synthesis/facilitator/judge domain group | DONE (2026-09-06) |
-| 3 | HTTP API + durable Cloud SQL record models | TODO |
+| 3 | HTTP API + durable Cloud SQL record models | DONE (2026-09-06) |
 | 4 | MCP tool models, consumer install/import proof, diff review, independent review | TODO |
+
+Increment 4 must include a mechanical export-list test in
+`test_package_install.py`: assert `__all__` equals exactly the set of shared
+names declared in `docs/design/schemas.md` (no missing, no extras) and that
+`ArtifactRecord` is **not** re-exported — so the internal/public boundary is
+CI-enforced, not convention (decision from session 9: keep `ArtifactRecord`
+inside the shared package per the frozen spec; moving it out would be a
+future design change).
 
 ## Increment 1 — package skeleton and strict primitives
 
@@ -120,3 +128,37 @@ internal). Tests written first (`test_base_and_errors.py` TestErrors + new
 - Constructing an alternate run ID by reversing the fixture UUID string breaks
   the 8-4-4-4-12 hex groups (first group becomes 12 chars); use a second fixed
   UUID-shaped fixture instead (`OTHER_RUN_ID` in the domain tests).
+
+## Increment 3 — HTTP API and durable-record groups
+
+Implemented `api.py` and `records.py` verbatim from the corresponding
+`docs/design/schemas.md` sections; extended the public `__init__` exports
+(now 64 names incl. `CanonicalOperationResult` and the five record models;
+`ArtifactRecord` still internal). Tests written first (`test_api_models.py`,
+`test_records.py`), confirmed red on ImportError, then green. The shared
+`artifact_reference` fixture helper moved from `test_review_models.py` to
+`conftest.py` (used by three test files).
+
+### Evidence
+
+- `make review-schemas-test`: **99 passed** (62 previous + 37 new), zero
+  warnings/skips, after implementation and again after the `__init__` export
+  change; `git diff --check` clean.
+- Contract coverage: unique requested formats (request/summary/record);
+  exact-one turn action (TurnRequest, TurnView, TurnRecord, incl. turn-1
+  exemption); outcome↔state alignment and report-on-finalize-only + unique
+  formats (TurnResponse, CanonicalTurnResult); report-format↔reference match
+  (ReportDownload); issues-mirror-delegation (Create/TurnResponse); opening
+  no-delegate rule; SessionDetail completion (all requested formats, none
+  before completed); SessionRecord completion contract (final review of this
+  run + exact report-format set); TurnRecord succeeded requires outcome +
+  completion time; AgentRunRecord facilitator-only attempt limits (≤2
+  transport attempts, corrective re-prompts facilitator-only, finished states
+  require finished_at).
+
+### Gotchas
+
+- `CreateSessionResponse.state` (`Literal["active"]`) and
+  `opening_turn_number` (`Literal[1]`) are required fields without defaults —
+  test fixtures must pass them explicitly; the validator tests then hit the
+  intended validator instead of `Field required`.

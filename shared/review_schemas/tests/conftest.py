@@ -39,3 +39,29 @@ def fixed_uuid() -> UUID:
 @pytest.fixture
 def fixed_ts() -> datetime:
     return FIXED_TS
+
+
+def artifact_reference(type_: str, **overrides) -> dict:
+    """A valid ArtifactReference payload for the given artifact type."""
+    perspectives = {"review-business": "business", "review-engineering": "engineering"}
+    content_types = {
+        "story": "application/json",
+        "review-business": "application/json",
+        "review-engineering": "application/json",
+        "synthesis": "application/json",
+        "finalized-review": "application/json",
+        "report-md": "text/markdown",
+        "report-pdf": "application/pdf",
+    }
+    base = {
+        "artifact_id": f"art-{UUID_STR}",
+        "story_run_id": RUN_ID,
+        "type": type_,
+        "version": 1,
+        "created_at": FIXED_TS,
+        "content_type": content_types[type_],
+        "checksum_sha256": "cd" * 32,
+    }
+    if type_ in perspectives:
+        base["perspective"] = perspectives[type_]
+    return base | overrides
