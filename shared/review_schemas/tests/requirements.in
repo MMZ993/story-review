@@ -1,0 +1,6 @@
+# Test dependency inputs for the review_schemas contract tests.
+# The local package is installed by path in the test invocation
+# (`--with-editable .` in the Makefile target), not via this lock, because
+# uv resolves relative editable paths in locks against the invocation cwd.
+# Lock is compiled with: uv pip compile tests/requirements.in -o tests/requirements.lock
+pytest>=8

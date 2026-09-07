@@ -5,7 +5,7 @@ PROJECT_ID ?= $(shell sed -nE 's/^export PROJECT_ID="?([^"]+)"?.*/\1/p' infra/en
 REGION     ?= europe-west4
 SMOKE_MODEL ?= gemini-2.5-flash
 
-.PHONY: help smoke-vertex spike-connectivity-test compose-up compose-down terraform-plan terraform-apply db-pause db-resume db-status
+.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test compose-up compose-down terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -31,6 +31,11 @@ spike-db-bootstrap: ## Phase 1 spike: one-time DB admin bootstrap (needs SPIKE_D
 spike-connectivity-test: ## Phase 1 spike: deterministic store/contract/agent-probe tests
 	uv run --with-requirements spikes/connectivity/tests/requirements.lock \
 		python -m pytest spikes/connectivity/tests -q --asyncio-mode=auto
+
+review-schemas-test: ## Phase 2: deterministic shared-schema contract tests
+	cd shared/review_schemas && \
+		uv run --no-project --with-requirements tests/requirements.lock \
+		--with-editable . python -m pytest tests -q
 
 compose-up: ## Local development stack (Phase 4+)
 	@echo "compose-up: stub — defined when MCP services land (Phase 4)"
