@@ -87,6 +87,19 @@ from review_schemas.records import (
     TurnLeaseRecord,
     TurnRecord,
 )
+from review_schemas.mcp import (
+    GetArtifactInput,
+    GetArtifactOutput,
+    GetStoryInput,
+    ListArtifactsInput,
+    ListArtifactsOutput,
+    ListStoriesInput,
+    ListStoriesOutput,
+    RenderReportInput,
+    RenderReportOutput,
+    SaveArtifactInput,
+    SaveArtifactOutput,
+)
 
 __all__ = [
     # base
@@ -162,4 +175,16 @@ __all__ = [
     "StoryRunRecord",
     "TurnLeaseRecord",
     "TurnRecord",
+    # mcp
+    "GetArtifactInput",
+    "GetArtifactOutput",
+    "GetStoryInput",
+    "ListArtifactsInput",
+    "ListArtifactsOutput",
+    "ListStoriesInput",
+    "ListStoriesOutput",
+    "RenderReportInput",
+    "RenderReportOutput",
+    "SaveArtifactInput",
+    "SaveArtifactOutput",
 ]

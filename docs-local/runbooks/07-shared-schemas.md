@@ -162,3 +162,73 @@ Implemented `api.py` and `records.py` verbatim from the corresponding
   `opening_turn_number` (`Literal[1]`) are required fields without defaults —
   test fixtures must pass them explicitly; the validator tests then hit the
   intended validator instead of `Field required`.
+
+## Increment 4 — MCP contract group, consumer proof, and phase close
+
+Implemented `review_schemas/mcp.py` verbatim from the "MCP tool models and
+authorization" section of `docs/design/schemas.md` (the two inline
+type/perspective dicts extracted as named helpers `CONTENT_MODEL_BY_TYPE` /
+`PERSPECTIVE_BY_REVIEW_TYPE` per the code-reads-like-a-book rule; observable
+behavior unchanged). Extended the public `__init__` exports to 75 names with
+the eleven MCP models; `ArtifactRecord` still deliberately internal.
+
+Tests written first and confirmed red on `ModuleNotFoundError:
+review_schemas.mcp`, then green. `test_mcp_models.py` covers all MCP
+inputs/outputs and every validator; `test_package_install.py` holds the
+mechanical export-list test and the clean path-install proof.
+
+Independent read-only review (subagent, read-only tools) returned two
+findings, both fixed: missing valid-boundary cases for
+`ListArtifactsInput.limit` (1/500) and `ListArtifactsOutput.items` (500), and
+missing per-class docstrings in `mcp.py` (development-rules docstring rule).
+
+### Evidence
+
+- `make review-schemas-test`: **142 passed** (99 previous + 43 new), zero
+  warnings/skips; `git diff --check` clean.
+- Contract coverage: save/get exact-type checks (all five save types valid;
+  content-model mismatch; perspective required/forbidden per type, incl.
+  review content perspective mismatch and final-review cross-run); get
+  output reference↔content match incl. report-* references rejected;
+  list filter compatibility (matching/absent perspective OK, conflicting
+  perspective and non-review perspective rejected; limit/offset bounds and
+  boundary values 1/500; items max 500); render input run+type match and
+  output format↔`report-<format>` reference.
+- Mechanical export review: all **56** spec `class` names present in the
+  implementation (sorted diff empty) and all 22 type aliases accounted for;
+  `__all__` (75 names) equals the spec-derived expected list exactly;
+  `ArtifactRecord` absent from exports and namespace.
+- Install proof (in-test and manual, from `/tmp` cwd, imports resolve inside
+  the venv's `site-packages`):
+  `uv venv <tmp>/venv` → `uv pip install --python …/bin/python -r
+  requirements.lock` → `uv pip install --python …/bin/python --no-deps
+  shared/review_schemas` → python asserts `version('review-schemas') ==
+  '0.1.0'`, full `__all__`, and site-packages provenance. Total wall time
+  ~0.5 s thanks to the warm uv cache.
+- Phase-close lock recompile: both locks' **content** (pinned versions)
+  is identical; the test lock's generated header comment is cosmetic — it
+  echoes the exact invocation line, so compiling from inside `tests/` (the
+  canonical runbook command) and from the package root with explicit
+  `tests/` paths produce the same content with different headers. No
+  recorded command is affected.
+
+### Gotchas
+
+- `story-99` is a *valid* `StoryId` (`^story-[0-9]{2}$`); `story-9` is the
+  invalid boundary. Invalid-example tests must actually be invalid.
+- `ReviewReport` content with a mismatched perspective is rejected inside the
+  union (finding-prefix validator) before `SaveArtifactInput`'s model
+  validator runs; to reach the "review content perspective" branch the
+  content must be internally valid (e.g. a well-formed engineering report
+  saved as `review-business`).
+- `ListArtifactsOutput.total` and `GetArtifactInput.story_run_id` are
+  required fields without defaults — fixtures must pass them explicitly.
+- `uv venv` + two `uv pip install` steps complete in well under a second with
+  a warm cache, so the in-test install proof costs nothing at suite runtime.
+
+### Phase 2 exit criteria — PASS
+
+All criteria from the plan verified: full spec coverage (named-model diff
+above), deterministic suite green, path-install import proven outside the
+repo working tree, version 0.1.0, evidence recorded here, Cloud SQL never
+resumed (still `STOPPED/NEVER` throughout the phase).

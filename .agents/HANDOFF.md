@@ -1,13 +1,15 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-06 (session 9: Phase 2 increments 1–3 — primitives,
-errors, domain group, API + records; only MCP group remains).
+point. Last updated: 2026-09-06 (session 10: Phase 2 increment 4 + phase close —
+MCP models, install proof, export-list test, diff review, independent review;
+Phase 2 COMPLETE).
 
 ## Where we are
 
-- Phase: **2 — Shared schemas: IN PROGRESS** (increments 1–3 of 4 done; plan at
-  `docs-local/plans/phase-2-shared-schemas.md`, evidence in Runbook 07).
+- Phase: **2 — Shared schemas: COMPLETE** (all four increments done; plan at
+  `docs-local/plans/phase-2-shared-schemas.md`, evidence and phase-close PASS
+  in Runbook 07).
   Phase 1 is complete: its end-to-end trace passed with D8 fallback and all spike
   resources were torn down (Runbook 06 increment 5).
 - Docs design: complete and frozen on branch `docs/initial-frozen`; home-phase
@@ -16,6 +18,28 @@ errors, domain group, API + records; only MCP group remains).
   owner pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 10 (2026-09-06) — Phase 2 increment 4 + phase close (local-only; Cloud
+SQL stayed STOPPED). Implemented `review_schemas/mcp.py` verbatim from the
+spec's MCP section (inline dicts extracted as named helpers, observable
+behavior unchanged) with the eleven MCP models; extended public `__init__`
+exports to 75 names. Tests written first and confirmed red on
+ModuleNotFoundError. `test_mcp_models.py` (39 tests): save/get exact-type
+checks, perspective rules incl. review-content mismatch and final-review
+cross-run, get output reference↔content match (report-* rejected), list
+filter compatibility and bounds/boundary values, render input run+type and
+output format↔reference. `test_package_install.py` (4 tests): mechanical
+export-list equality against a spec-derived 75-name list, `ArtifactRecord`
+internal, and a genuine clean-venv path-install proof (uv venv + locked
+requirements + `--no-deps` path install; python run from `/tmp` asserts
+version 0.1.0, full `__all__`, site-packages provenance). Mechanical
+named-model diff vs `docs/design/schemas.md`: all 56 classes and all type
+aliases present. Independent read-only review (subagent) returned two
+findings — missing valid-boundary cases (limit 1/500, items 500) and missing
+`mcp.py` class docstrings — both fixed, suite re-run green. Phase 2 exit
+criteria PASS; evidence in Runbook 07 §Increment 4. Lock recompile at close:
+content unchanged, test-lock header comment corrected (increment-2 cwd
+leftover). **Uncommitted at this writing** (owner decides commit).
 
 Session 9 (2026-09-06) — Phase 2 increments 1–3 (local-only; Cloud SQL stayed
 STOPPED). Increment 1: created `shared/review_schemas` (pyproject v0.1.0, hatchling,
@@ -157,6 +181,17 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Verification and Review
 
+Session 10:
+- `make review-schemas-test`: **142 passed** (99 + 43 new), zero
+  warnings/skips, after review fixes; `git diff --check` clean; both locks
+  recompiled (content identical).
+- Manual install probe from `/tmp`: version 0.1.0, import resolves inside
+  venv site-packages (~0.5 s warm-cache).
+- Named-model diff: 56/56 spec classes, all aliases present; `__all__`
+  equals the spec-derived list; `ArtifactRecord` absent.
+- Independent read-only review: 2 findings (Minor/Important), both fixed and
+  re-verified; no unresolved findings.
+
 Session 9:
 - `make review-schemas-test`: 99 passed (increments 1–3), zero warnings/skips;
   `git diff --check` clean; test-first red confirmed for every increment.
@@ -186,11 +221,9 @@ Session 7 and earlier:
 
 ## Remaining Tasks
 
-- Phase 2 increment 4: MCP tool models + consumer install/import proof,
-  **mechanical export-list test** (`__all__` == spec names exactly;
-  `ArtifactRecord` absent — see Runbook 07 increment-4 note), named-model diff
-  review vs `docs/design/schemas.md`, independent read-only review, close phase.
-- Increment 3 output committed as `bcd1c1b`; tree clean; push pending (owner).
+- Session 10 output uncommitted: `shared/review_schemas` increment 4
+  (`mcp.py`, `__init__.py` exports, both new test files, test-lock header
+  fix) plus Runbook 07 increment-4 section and this HANDOFF update.
 - Optional later increment: tighten the default compute SA's `roles/editor`
   (pre-existing from project creation).
 - Phase 0 exit criterion "terraform apply reproducible from clean (destroy +
@@ -199,14 +232,12 @@ Session 7 and earlier:
 
 ## Next Steps
 
-1. Owner pushes session 9 (commits `a4086b5`, `47c2d6c`, `bcd1c1b` — sanity-
-   checked for secrets/identifiers before push; owner identity in commit
-   metadata is intentionally public).
-2. Session 10: Phase 2 increment 4 — MCP models, install proof, mechanical
-   export-list test, diff review, independent review, phase close; reading
-   `docs/design/schemas.md` §MCP only.
-3. Keep Cloud SQL paused; Phase 2 has no database or GCP dependency.
-3. Keep Cloud SQL paused; Phase 2 has no database or GCP dependency.
+1. Owner: commit session 10 (agent proposes on request) and push session 9+10
+  commits.
+2. Session 11: Phase 3 planning per `docs-local/development-plan.md`
+  (dataset files and expected outcomes); Phase 2 closed with no GCP or
+   database dependency.
+3. Keep Cloud SQL paused until a phase needs it.
 
 ## Important Notes
 
@@ -231,6 +262,12 @@ Session 7 and earlier:
   capstone requirements in `docs/source/`; owner decides on including them in a
   public mirror). GitHub mirror pending (owner, via GitLab GUI); keep repo private
   until final review.
+- 2026-09-06 (session 10): the real project ID had leaked back into
+  `.agents/HANDOFF.md` (session 8's filter-repo rule note, added after that
+  session's zero-hits check). Replaced with `<real-project-id>` in the tree;
+  the literal value remains in **git history** — owner will run another
+  `git filter-repo --replace-text` pass before any public mirror (decision:
+  placeholder now + rewrite later).
 - The rewrite's clean clone (`~/projects/capstone-project-clean`) was deleted by
   the owner after verification — it is no longer needed; the internal GitLab
   remote holds the rewritten history and is the source for the future GitHub
