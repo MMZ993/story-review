@@ -1,5 +1,8 @@
 # Story description templates — `dataset/story-templates.md`
 
+Canonical per-scenario fact lists live in
+[`canonical-facts.md`](canonical-facts.md) — renderers work from there.
+
 ## Template vs. story quality — two independent axes
 
 - **Template** = the *format* a team uses (structure, sections, conventions).

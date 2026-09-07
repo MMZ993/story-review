@@ -64,6 +64,10 @@ iteration. T1 baseline column: 7/7.
   areas created); T2 column drafted by subagent from T1 canonical facts
   (`dataset/drafts/t2/`, reviewed PASS) and authored in ADO as ids 21–27
   (area `T2`, AC field empty — the T2 field-location test).
+- Session 13 (continued): canonical fact document `dataset/canonical-facts.md`
+  authored (per-scenario facts / criteria / must-not-add / title /
+  provenance, linked from story-templates.md) — the retro-write canonical-
+  facts task is DONE; it is the authoritative renderer input for T3–T6.
 
 ### Earlier sessions (digest — detail lives in runbooks and git history)
 

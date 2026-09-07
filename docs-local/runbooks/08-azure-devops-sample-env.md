@@ -329,5 +329,10 @@ Learned (dataset authoring, 2026-09-07):
       (criteria live under "For this story:" in the description — the T2
       field-location test), same tags/titles as T1, parent links verified
       (21→4, 22→3, 23→4, 24→3, 25→3, 26→3, 27→4), backlog iteration.
+- [x] Canonical fact document (2026-09-07, session 13):
+      `dataset/canonical-facts.md` — one entry per scenario (facts, criteria,
+      must-not-add = planted gap protection, title, provenance ids),
+      assembled from the verified T2 must-retain lists. Linked from
+      `story-templates.md`; the authoritative renderer input for T3–T6.
 - [ ] Reproducible query saved.
 - [ ] JSON export produced and shape recorded.
