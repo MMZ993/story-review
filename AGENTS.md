@@ -83,6 +83,21 @@ notes) so a fresh session catches up via this file.
   (`~/.config/gcloud/application_default_credentials.json`) is the credential; no
   key files.
 
+## Docs-first rule (standing instruction)
+
+Before acting on any task — code, infra, tests, or docs changes — consult the
+relevant sections of `docs/` (authoritative design) and `docs-local/`
+(home-phase reality: development plan, runbooks, local decisions). Code and
+infrastructure follow the docs, never the reverse. The catch-up reading above
+is the session-start baseline, not a substitute: a mid-session task in an area
+not yet read requires looking it up in the docs first.
+
+If you find an inconsistency — doc vs doc, or doc vs reality — do **not**
+silently work around it and do **not** silently fix it. Raise it with the
+owner, agree the resolution, then record it: implementation deviations in
+`docs-local/local-decisions.md`; fundamental design changes as a change in
+`docs/` itself (with the owner's approval).
+
 ## Repository conventions
 
 - Docs-driven: `docs/` is the authoritative capstone design; changes to
