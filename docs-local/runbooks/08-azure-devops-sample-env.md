@@ -334,5 +334,17 @@ Learned (dataset authoring, 2026-09-07):
       must-not-add = planted gap protection, title, provenance ids),
       assembled from the verified T2 must-retain lists. Linked from
       `story-templates.md`; the authoritative renderer input for T3–T6.
+- [x] T3 + T4 columns authored (2026-09-07, session 13, owner-approved):
+      drafted by two parallel subagents from `dataset/canonical-facts.md`
+      (drafts in `dataset/drafts/t3/`, `dataset/drafts/t4/`; independent
+      read-only subagent review — all 14 PASS: no fact loss, no additions,
+      gaps preserved, template conformance incl. T4 title-facts-in-body;
+      agent spot-checked hidden-conflict in both columns — both capture
+      statements unreconciled). Authored via a draft-parsing script
+      (paragraphs → `<p>`, criteria → `<ul><li>`): T3 ids 28–34 (job-story
+      framing line first, AC field = informal bullets), T4 ids 35–41 (title =
+      full story sentence, AC field = informal bullets), areas `T3`/`T4`,
+      same parents/tags as T1/T2, backlog iteration, all verified (area /
+      parent / AC / tags per item).
 - [ ] Reproducible query saved.
 - [ ] JSON export produced and shape recorded.
