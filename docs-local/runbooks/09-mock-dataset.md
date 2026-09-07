@@ -6,8 +6,8 @@ no Cloud SQL (the instance stays STOPPED throughout). Prerequisites (az CLI,
 ADO sample org/project, backlog authoring, export) are codified in
 Runbook 08.
 
-Status: IN PROGRESS (opened 2026-09-07; increment 1 blocked on the Runbook 08
-export).
+Status: IN PROGRESS (opened 2026-09-07; increments 0–2 done — matrix
+authored in Runbook 08; increment 1 done 2026-09-08; next: increment 3).
 
 ## Scope
 
@@ -29,8 +29,8 @@ export).
 | # | Scope | Status |
 |---|---|---|
 | 0 | ADO sample environment, backlog authoring, export | Runbook 08 |
-| 1 | Format ground truth, conventions, D9 decision, README | BLOCKED (Runbook 08 export) |
-| 2 | Story authoring (six scenarios) | pending |
+| 1 | Format ground truth, conventions, D9 decision, README | DONE (2026-09-08) |
+| 2 | Story authoring (six scenarios) | DONE (Runbook 08, matrix T1–T6) |
 | 3 | Expected-file authoring | pending |
 | 4 | Loader harness + validation tests (test-first), Make target | pending |
 
@@ -59,3 +59,29 @@ export).
   from files, in the hosted demo from a Google-hosted mock endpoint standing
   in for a real ADO connection (fetch path identical, only the backing
   endpoint differs).
+- [x] Increment 1 — export + conventions (2026-09-08, session 14,
+      owner-approved): `dataset/tools/export_ado.py` exports all 42 stories
+      + 3 context items into `dataset/stories/` (`t1`–`t6` per-template
+      folders + `context/`), re-keyed to case ids `<template>/<scenario>`
+      with the ADO id demoted to `ado_source_id` provenance. Envelope:
+      schema_version, case_id, template, scenario, ado_source_id,
+      exported_at, `work_item` (verbatim, HTML fields as-is). Resolution:
+      template from `System.AreaPath`, scenario from the provenance ids in
+      canonical-facts.md (T1–T4, T6) + t5-enabler-spec.md (T5); loud aborts
+      on unknown/missing/duplicate/mismatched ids; counts asserted (42+3).
+      Sanitization: `_links` dropped recursively; URL strings rewritten to
+      `$ADO_ORG`/`<project-id>` placeholders (org name and project GUID
+      leak via imageUrl/relation/url fields — caught by post-export check);
+      author identity objects reduced to `Story Author` /
+      `<author>@example.com` with account ids (id/descriptor/url/imageUrl)
+      dropped — owner decision after the owner email was caught by the
+      identifier check (personal data stays out of git / the public mirror).
+      Owner decisions: export VERBATIM, preparation as a separate later
+      step (no transform-on-export); `exported_at` in envelope. Recorded as
+      the D9 amendment in local-decisions.md; `dataset/README.md` written
+      (provenance, layout, conventions, license note). Post-export checks:
+      45 files, zero `_links`/org-name/GUID/email/account-descriptor hits,
+      envelope shape verified, T6/hidden-conflict description carries both
+      capture statements.
+      Gotcha: WIQL `az boards query --wiql` rows return the id as the sole
+      value per row object.

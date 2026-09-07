@@ -137,9 +137,40 @@ must not leak into the dataset as identifiers:
   root. Variants hang under the same Epic/Feature as their T1 originals, so
   hierarchy context is identical across templates; `System.AreaPath`
   partitions the export for free (no tag parsing, no teams, no extra
-  projects). Exported variants re-key to canonical ids like `clean-t2`;
-  expected files stay per scenario — every variant must pass the same
-  scenario's manual plan (`dataset/manual-plans/`) unchanged.
+  projects). Expected files stay per scenario — every variant must pass the
+  same scenario's manual plan (`dataset/manual-plans/`) unchanged.
+
+### D9 amendment — export format and test-case identity (2026-09-08, session 14)
+
+Owner-approved with the first export run (`dataset/tools/export_ado.py`):
+
+- **Test case = one story in one template** (owner rule): case id is
+  `<template>/<scenario>` (e.g. `t3/conflicting`) — refining the earlier
+  illustrative `clean-t2` form. Two similar stories (e.g. a tags-varied
+  stress duplicate) are two test cases: `t1/clean.json` and
+  `t1/clean-2.json`, each with its own expected file.
+- Folder layout: `dataset/stories/<template>/<scenario>.json`; epic and
+  features export to `dataset/stories/context/` (hierarchy context, not
+  test cases). `dataset/expected/<template>/<scenario>.json` mirrors
+  `stories/` 1:1 (authored in Runbook 09 increment 3).
+- File shape: envelope (`schema_version`, `case_id`, `template`,
+  `scenario`, `ado_source_id`, `exported_at`) + the **verbatim** ADO
+  work-item JSON under `work_item` (HTML fields as-is). Fidelity/trimming
+  decisions apply to a SEPARATE preparation step against these files —
+  never a transform-on-export.
+- Export sanitization (identifier hygiene, not fidelity): every `_links`
+  key dropped recursively (org URLs, volatile avatars); URL strings
+  rewritten `dev.azure.com/<org>` → `dev.azure.com/$ADO_ORG` and the
+  project GUID segment → `<project-id>`; author identity objects
+  (`System.CreatedBy`/`ChangedBy`/`AuthorizedBy`/...) reduced to
+  `displayName: "Story Author"` + `uniqueName: "<author>@example.com"`
+  with account-resolvable ids (id, descriptor, url, imageUrl) dropped
+  (owner decision: personal data must not enter git / the public mirror).
+- Story→case resolution in the export: template from `System.AreaPath`,
+  scenario from the provenance ids in `canonical-facts.md` (T1–T4, T6) and
+  `t5-enabler-spec.md` (T5); the script aborts on any unknown id,
+  missing/duplicate story, or area-path/provenance mismatch, and asserts
+  the expected counts (42 stories + 3 context items).
 
 ## Differences from `docs/` (summary)
 
