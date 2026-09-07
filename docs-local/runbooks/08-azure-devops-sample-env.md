@@ -311,5 +311,11 @@ Learned (dataset authoring, 2026-09-07):
       free" (business hook) — each innocuous alone, contradictory together.
       T1 baseline column is now 7/7 scenario stories (ids 5, 10, 14, 17, 18,
       19, 20).
+- [x] Template-matrix areas (2026-09-07, owner-approved D9 structure): one
+      project, one area path per template — `T2`–`T6` created at root via
+      `az boards area project create --name` (T1 stays the root/default
+      area; variants will sit under the same Features as their T1
+      originals). Gotcha: `area project list` output is a nested tree —
+      flatten with `jq '.. | .name? // empty'`.
 - [ ] Reproducible query saved.
 - [ ] JSON export produced and shape recorded.
