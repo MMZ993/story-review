@@ -22,7 +22,7 @@ primitives).
 | # | Scope | Status |
 |---|---|---|
 | 1 | Package skeleton, strict primitives (`base.py`), locks, Make target | DONE (2026-09-06) |
-| 2 | Errors + story/review/synthesis/facilitator/judge domain group | TODO |
+| 2 | Errors + story/review/synthesis/facilitator/judge domain group | DONE (2026-09-06) |
 | 3 | HTTP API + durable Cloud SQL record models | TODO |
 | 4 | MCP tool models, consumer install/import proof, diff review, independent review | TODO |
 
@@ -86,3 +86,37 @@ reason (ImportError), then implemented.
 - The prefixed IDs (`run-`, `sess-`, `art-`, `arun-`) embed the *hyphenated*
   UUID string (36 chars → total length 40/41), not 32 plain hex chars; the
   fixture UUID string must keep the hyphens.
+
+## Increment 2 — error and domain model groups
+
+Implemented `errors.py`, `review.py`, `synthesis.py`, `facilitator.py`,
+`judge.py` verbatim from the corresponding `docs/design/schemas.md` sections;
+grew the public `__init__` re-exports (39 names; `ArtifactRecord` deliberately
+internal). Tests written first (`test_base_and_errors.py` TestErrors + new
+`test_review_models.py`), confirmed red on ImportError, then green.
+
+### Evidence
+
+- `make review-schemas-test`: **62 passed** (26 increment-1 + 5 errors + 31
+  domain), zero warnings/skips, after implementation and again after the
+  `__init__` export change; `git diff --check` clean.
+- Validator coverage (valid boundary + observable invalid per invariant):
+  retry-hint invariant and bounds; finding-prefix/perspective match;
+  ArtifactReference perspective↔type and content-type↔type maps (incl.
+  non-review types rejecting any perspective); ArtifactRecord gs:// URI;
+  SynthesisReport paired inputs (missing key, wrong ref type, cross-run);
+  DelegationDecision reuse/extra-context combination; FacilitatorTurnOutput
+  resolutions-on-reuse-only-turn; FinalizedReview synthesis-reference
+  run/type match and open-issues-requires-acceptance; JudgeResult dimension
+  uniqueness, 0–4 bounds, pass threshold (min ≥ 3, avg ≥ 3.5, no blocker).
+
+### Gotchas
+
+- Pydantic field constraints fire **before** model validators, so some
+  invalid inputs are rejected with the constraint error, not the validator's
+  message (e.g. a 1-key `inputs` dict fails `too_short` before the paired-input
+  validator; a JudgeResult score of 5 fails the 0–4 bound before the pass
+  rule). Tests assert the observable rejection, not the message.
+- Constructing an alternate run ID by reversing the fixture UUID string breaks
+  the 8-4-4-4-12 hex groups (first group becomes 12 chars); use a second fixed
+  UUID-shaped fixture instead (`OTHER_RUN_ID` in the domain tests).

@@ -1,7 +1,111 @@
 """Public API of the review_schemas package.
 
 Deliberate re-exports only: consumers import from `review_schemas`, never from
-the internal modules. The surface grows with each Phase 2 increment (errors,
-domain models, API/records, MCP) — every shared model named in
-docs/design/schemas.md must appear here before Phase 2 closes.
+the internal modules. Every shared model named in docs/design/schemas.md must
+appear here before Phase 2 closes. `ArtifactRecord` stays internal to the
+persistence layer (importable from `review_schemas.synthesis`, not re-exported).
 """
+
+from review_schemas.base import (
+    AgentRunId,
+    ArtifactId,
+    ArtifactType,
+    CorrelationId,
+    Format,
+    HttpsUrl,
+    IdempotencyKey,
+    LeaseToken,
+    Perspective,
+    RecordState,
+    RunId,
+    SaveArtifactType,
+    SessionId,
+    SessionState,
+    Sha256,
+    ShortText,
+    StoryId,
+    StrictModel,
+    Text,
+    TurnOutcome,
+    UtcDatetime,
+)
+from review_schemas.errors import (
+    ErrorBody,
+    ErrorCode,
+    ErrorEnvelope,
+    ToolError,
+)
+from review_schemas.review import (
+    Finding,
+    ReviewReport,
+    StoryDetail,
+    StorySummary,
+)
+from review_schemas.synthesis import (
+    ArtifactReference,
+    ConflictItem,
+    SynthesisReport,
+)
+from review_schemas.facilitator import (
+    ConversationSummary,
+    DelegationDecision,
+    FacilitatorTurnOutput,
+    FinalizedReview,
+    ResolutionDraft,
+    ResolutionItem,
+)
+from review_schemas.judge import (
+    JudgeDimensionScore,
+    JudgeIssue,
+    JudgeResult,
+)
+
+__all__ = [
+    # base
+    "AgentRunId",
+    "ArtifactId",
+    "ArtifactType",
+    "CorrelationId",
+    "Format",
+    "HttpsUrl",
+    "IdempotencyKey",
+    "LeaseToken",
+    "Perspective",
+    "RecordState",
+    "RunId",
+    "SaveArtifactType",
+    "SessionId",
+    "SessionState",
+    "Sha256",
+    "ShortText",
+    "StoryId",
+    "StrictModel",
+    "Text",
+    "TurnOutcome",
+    "UtcDatetime",
+    # errors
+    "ErrorBody",
+    "ErrorCode",
+    "ErrorEnvelope",
+    "ToolError",
+    # review
+    "Finding",
+    "ReviewReport",
+    "StoryDetail",
+    "StorySummary",
+    # synthesis (ArtifactRecord intentionally internal)
+    "ArtifactReference",
+    "ConflictItem",
+    "SynthesisReport",
+    # facilitator
+    "ConversationSummary",
+    "DelegationDecision",
+    "FacilitatorTurnOutput",
+    "FinalizedReview",
+    "ResolutionDraft",
+    "ResolutionItem",
+    # judge
+    "JudgeDimensionScore",
+    "JudgeIssue",
+    "JudgeResult",
+]
