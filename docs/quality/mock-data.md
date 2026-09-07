@@ -27,6 +27,7 @@ real backlog's shape.
 | Conflicting story | business and engineering findings contradict — synthesis flags conflicts, PO resolves via dialogue |
 | Partial-resolution story | PO clarification resolves one side only — re-review of one perspective, new conflict on the other side emerges |
 | Unresolvable story | hits loop safety cap — facilitator parks the story |
+| Hidden-conflict story | both reviews individually positive, but their justifications rest on contradictory assumptions — synthesis flags the cross-perspective conflict, PO resolves via dialogue |
 
 ## Expected-file contract (`dataset/expected/<case>.json`)
 

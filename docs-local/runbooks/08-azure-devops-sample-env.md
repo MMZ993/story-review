@@ -226,7 +226,11 @@ Learned (dataset authoring, 2026-09-07):
   contract; metadata semantic/display classification. Extra templates and the
   semantic-vs-usability measure split noted as considerations only.
 - `az boards work-item update --id N --fields "System.Tags=a; b"` for tags;
-  ADO returns tags alphabetically sorted.
+  ADO returns tags alphabetically sorted. Note: `work-item update` does NOT
+  accept `--project` (unlike `create`) — org flag only. Flat-list queries are
+  `az boards query --wiql ...` (not `az devops query`), and `System.Parent`
+  is not returned unless explicitly projected — verify parents via
+  `work-item show --expand all` relations instead.
 - Owner decisions on backlog realism (2026-09-07): stories are reviewed in the
   BACKLOG, pre-estimation/pre-sprint; descriptions are FREE-FORMAT per team
   (no unified template — dataset must not force one); task work items vs the
@@ -282,5 +286,30 @@ Learned (dataset authoring, 2026-09-07):
       sprint — review/estimation happens against the backlog, sprints are for
       already-ready stories. All stories + tasks (ids 5-16) moved to the root
       iteration (`$ADO_PROJECT`) = backlog; verified.
+- [x] Remaining three T1 scenario stories authored (2026-09-07, agent-run with
+      owner approval): id 17 CONFLICTING "Auto-select last used payment method
+      at checkout" (tags checkout; payments; ux — business will flag auto-charge
+      risk vs engineering flagging the one-page latency budget; findings
+      contradict), id 18 PARTIAL-RESOLUTION "Save payment details for returning
+      customers" (tags payments; saved-cards — deliberate mirror of
+      example-interaction.md `story-04`: no consent/retention policy,
+      "faster" unmeasured, wording implies raw storage), id 19 UNRESOLVABLE
+      "Localize checkout for international customers" (tags international;
+      localization; payments — undefined scope, no single owner, designed to
+      never converge so the facilitator parks at the loop cap). All under
+      Feature 3, backlog iteration, hierarchy links verified
+      (Hierarchy-Reverse → 3 each), tags verified alphabetical. **T1 baseline
+      column complete: 6/6 scenario stories (ids 5, 10, 14, 17, 18, 19).**
+- [x] Scenario extension (2026-09-07, owner-approved): docs/quality/mock-data.md
+      scenario table extended to a 7th row — HIDDEN-CONFLICT (both reviews
+      individually positive, justifications rest on contradictory assumptions,
+      synthesis flags). Story id 20 "30-minute order edit window after
+      purchase" authored under Feature 4 (tags checkout; orders; support,
+      backlog iteration, parent → 4 verified). Planted hooks: Context states
+      "captures payment immediately at order placement" (engineering hook);
+      Reason states "payment is only reserved… releasing the reservation is
+      free" (business hook) — each innocuous alone, contradictory together.
+      T1 baseline column is now 7/7 scenario stories (ids 5, 10, 14, 17, 18,
+      19, 20).
 - [ ] Reproducible query saved.
 - [ ] JSON export produced and shape recorded.
