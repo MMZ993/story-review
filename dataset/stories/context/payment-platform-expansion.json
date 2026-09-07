@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "case_id": "context/payment-platform-expansion",
+  "template": "context",
+  "scenario": null,
+  "ado_source_id": 2,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T14:41:42.423Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 11,
+      "System.AreaLevel1": "story-review",
+      "System.AreaPath": "story-review",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T14:41:42.423Z",
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T14:41:42.423Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T14:41:42.423Z",
+      "System.Description": "<p>Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate. </p>",
+      "System.Id": 2,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "story-review",
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 1,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.TeamProject": "story-review",
+      "System.Title": "Payment Platform Expansion",
+      "System.Watermark": 2,
+      "System.WorkItemType": "Epic"
+    },
+    "id": 2,
+    "multilineFieldsFormat": {
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/4"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/3"
+      }
+    ],
+    "rev": 1,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/2"
+  }
+}

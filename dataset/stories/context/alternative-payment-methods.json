@@ -1,0 +1,255 @@
+{
+  "schema_version": 1,
+  "case_id": "context/alternative-payment-methods",
+  "template": "context",
+  "scenario": null,
+  "ado_source_id": 3,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T14:41:46.127Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 11,
+      "System.AreaLevel1": "story-review",
+      "System.AreaPath": "story-review",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T14:41:46.127Z",
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T14:41:46.127Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T14:41:46.127Z",
+      "System.Id": 3,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "story-review",
+      "System.Parent": 2,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 1,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.TeamProject": "story-review",
+      "System.Title": "Alternative Payment Methods",
+      "System.Watermark": 3,
+      "System.WorkItemType": "Feature"
+    },
+    "id": 3,
+    "multilineFieldsFormat": {},
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/43"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/32"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/22"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/33"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/31"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/36"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/46"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/29"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/52"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/39"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/38"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/18"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/19"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/45"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/17"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/25"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/47"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/50"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/26"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/10"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/2"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/53"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/54"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/40"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/24"
+      }
+    ],
+    "rev": 1,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/3"
+  }
+}

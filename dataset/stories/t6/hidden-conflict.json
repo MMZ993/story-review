@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "case_id": "t6/hidden-conflict",
+  "template": "t6",
+  "scenario": "hidden-conflict",
+  "ado_source_id": 55,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T20:55:51.67Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 16,
+      "System.AreaLevel1": "story-review",
+      "System.AreaLevel2": "T6",
+      "System.AreaPath": "story-review\\T6",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T20:55:52.18Z",
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T20:55:52.18Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T20:55:51.67Z",
+      "System.Description": "<p>## 30m edit </p><p>Customers cannot modify an order's address, size, or quantity after checkout completes; today the only route is cancel-and-reorder or a support ticket. The order pipeline captures payment immediately at order placement. Support handles ~90 order-change tickets per week, and cancel-and-reorder loses a share of those orders entirely. This is a CX roadmap item under the Q4 goal of cutting avoidable support contacts by 20%. Payment handling carries no cost: the customer's payment is only reserved during the day, so releasing the reservation is free. Cover edits to shipping address and item size/quantity, not changing the payment method, subscription orders, or native apps. </p><p>For a completed order with an edit requested within 30 minutes, update the order in place with no new order created. If the edit changes the order total, automatically charge or refund the difference. For an edit requested after the 30-minute window, tell the customer to contact support. </p>",
+      "System.Id": 55,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "T6",
+      "System.Parent": 4,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 2,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "checkout; orders; support",
+      "System.TeamProject": "story-review",
+      "System.Title": "30m edit",
+      "System.Watermark": 121,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": false
+    },
+    "id": 55,
+    "multilineFieldsFormat": {
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/4"
+      }
+    ],
+    "rev": 2,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/55"
+  }
+}

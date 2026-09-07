@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "case_id": "t6/engineering-weak",
+  "template": "t6",
+  "scenario": "engineering-weak",
+  "ado_source_id": 51,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T20:55:44.787Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 16,
+      "System.AreaLevel1": "story-review",
+      "System.AreaLevel2": "T6",
+      "System.AreaPath": "story-review\\T6",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T20:55:45.267Z",
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T20:55:45.267Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T20:55:44.787Z",
+      "System.Description": "<p>## retry </p><p>A temporary PSP outage, timeout or 5xx, fails the order outright today: the customer sees an error, abandons the cart, and support tickets follow. The order service already distinguishes a PSP decline from a PSP error, so a legitimate retry is identifiable. Payment errors were 38% of abandoned carts last quarter and the payments team estimates roughly a fifth are transient PSP failures. Support gets ~120 payment-failure tickets/month; halving that saves about 2 agent-days per month. This is automatic retry for PSP errors only, not retries for declines, changes to decline messaging, or native apps. </p><p>If payment failed due to a PSP error, not a decline, retry automatically without customer action. Stop retries immediately when a retried payment succeeds or the failure is a decline. If retries are exhausted and the last attempt fails, show the standard payment-failed page and leave the order recoverable from the cart. Whenever a retried payment completes, whether success or final failure, make the retry outcome visible in the existing payments dashboard. </p>",
+      "System.Id": 51,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "T6",
+      "System.Parent": 4,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 2,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "payments; reliability; retry",
+      "System.TeamProject": "story-review",
+      "System.Title": "retry",
+      "System.Watermark": 113,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": false
+    },
+    "id": 51,
+    "multilineFieldsFormat": {
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/4"
+      }
+    ],
+    "rev": 2,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/51"
+  }
+}

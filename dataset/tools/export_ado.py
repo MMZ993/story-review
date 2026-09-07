@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""Export the ADO story matrix into dataset/stories/ as re-keyed JSON files.
+
+Design (Phase 3 increment 1, D9):
+- Case id = "<template>/<scenario>" (e.g. "t3/conflicting"); one story file
+  per test case, one folder per template. Context items (epic + features)
+  go to stories/context/ — they are hierarchy context, not test cases.
+- Each story file is an envelope + the verbatim ADO work-item JSON under
+  "work_item". Fidelity decisions (trimming, HTML) happen in a SEPARATE
+  later step against these files — never transformed on the fly.
+- ADO ids are temporary authoring references: the scenario is resolved via
+  the provenance lines in dataset/canonical-facts.md (the authoritative
+  id map), the template via the area path. The ADO id survives only as
+  ado_source_id provenance.
+- "_links" keys are stripped recursively: they contain org URLs (identifier
+  leak into git) and volatile avatar hrefs; everything else is verbatim.
+
+Aborts loudly (exit 1) on any unknown id, missing story, duplicate case id,
+or area-path/provenance template mismatch. Expected counts are asserted:
+42 stories + 3 context items.
+
+Usage:
+    set -a; source infra/envs/ado.env; set +a
+    python3 dataset/tools/export_ado.py
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
+STORIES_DIR = REPO / "dataset" / "stories"
+CANONICAL = REPO / "dataset" / "canonical-facts.md"
+T5SPEC = REPO / "dataset" / "t5-enabler-spec.md"
+CONTEXT_IDS = {2, 3, 4}  # epic + two features
+EXPECTED_STORIES = 42
+EXPECTED_CONTEXT = 3
+TEMPLATE_BY_AREA = {None: "t1", "T2": "t2", "T3": "t3", "T4": "t4", "T5": "t5", "T6": "t6"}
+SLUGS = [
+    "clean", "business-weak", "engineering-weak", "conflicting",
+    "partial-resolution", "unresolvable", "hidden-conflict",
+]
+
+
+def ado(*args: str) -> dict:
+    org = os.environ.get("ADO_ORG")
+    project = os.environ.get("ADO_PROJECT")
+    if not org or not project:
+        sys.exit("ADO_ORG / ADO_PROJECT not set (set -a; source infra/envs/ado.env; set +a)")
+    r = subprocess.run(
+        ["az", "boards", *args, "--org", f"https://dev.azure.com/{org}", "--output", "json"],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        sys.exit(f"az failed: {' '.join(args[:3])}\n{r.stderr}")
+    return json.loads(r.stdout)
+
+
+def anonymize_identities(obj):
+    """Replace author identity fields with placeholders (owner decision:
+    personal data must not enter git / the public mirror).
+
+    Applies to identity objects under work_item.fields (System.CreatedBy,
+    System.ChangedBy, System.AuthorizedAs, System.AssignedTo, ...):
+    uniqueName -> "<author>@example.com", displayName -> "Story Author",
+    and account-resolvable ids (id, descriptor, url, imageUrl) dropped —
+    they map to the real MSA/AAD account.
+    """
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            if isinstance(v, dict) and {"displayName", "uniqueName"} <= v.keys():
+                v = {kk: vv for kk, vv in v.items()
+                     if kk not in ("id", "descriptor", "url", "imageUrl")}
+                v = {**v, "displayName": "Story Author", "uniqueName": "<author>@example.com"}
+            else:
+                v = anonymize_identities(v)
+            out[k] = v
+        return out
+    if isinstance(obj, list):
+        return [anonymize_identities(v) for v in obj]
+    return obj
+
+
+def sanitize_urls(obj, org: str):
+    """Replace org name and project GUID inside URL strings.
+
+    Keeps the export shape (fidelity decision applies to trimming, not to
+    identifier hygiene): `https://dev.azure.com/<org>/...` ->
+    `https://dev.azure.com/$ADO_ORG/...`, and the project GUID segment
+    (first path segment after the org in _apis URLs) -> `<project-id>`.
+    """
+    org_re = re.compile(r"https://dev\.azure\.com/" + re.escape(org) + r"(/[^/]*)?(/_apis/.*)")
+    guid_re = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+    def fix(s: str) -> str:
+        m = org_re.match(s)
+        if m:
+            second = "/<project-id>" if (m.group(1) and guid_re.match(m.group(1)[1:])) else (m.group(1) or "")
+            return f"https://dev.azure.com/$ADO_ORG{second}{m.group(2)}"
+        return s
+
+    if isinstance(obj, dict):
+        return {k: sanitize_urls(v, org) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [sanitize_urls(v, org) for v in obj]
+    if isinstance(obj, str):
+        return fix(obj)
+    return obj
+
+
+def strip_links(obj):
+    """Recursively remove every "_links" key (org URLs, volatile avatars)."""
+    if isinstance(obj, dict):
+        return {k: strip_links(v) for k, v in obj.items() if k != "_links"}
+    if isinstance(obj, list):
+        return [strip_links(v) for v in obj]
+    return obj
+
+
+def provenance_map() -> dict[int, tuple[str, str]]:
+    """Parse provenance lines -> {ado_id: (template, scenario)}.
+
+    T1-T4/T6 come from canonical-facts.md (renderings of the canonical
+    facts); T5 from t5-enabler-spec.md (self-contained enablers, mirrored
+    per scenario by design).
+    """
+    mapping: dict[int, tuple[str, str]] = {}
+    sources = [(CANONICAL, r"^- provenance: (.+)$"),
+               (T5SPEC, r"^- provenance: (.+)$")]
+    for path, line_re in sources:
+        text = path.read_text()
+        for m in re.finditer(r"^## (\S+)\n$(.*?)((?=^## )|\Z)", text, re.M | re.S):
+            scenario = m.group(1)
+            pm = re.search(line_re, m.group(2), re.M)
+            if not pm:
+                sys.exit(f"{path.name}: no provenance line under '{scenario}'")
+            for tm, ids in re.findall(r"T(\d) ids? ((?:\d+[,\s]+)*\d+)", pm.group(1)):
+                for id_str in re.findall(r"\d+", ids):
+                    ado_id = int(id_str)
+                    if ado_id in mapping:
+                        sys.exit(f"duplicate provenance id {ado_id} ({path.name})")
+                    mapping[ado_id] = (f"t{tm}", scenario)
+    return mapping
+
+
+def main() -> None:
+    prov = provenance_map()
+    query = (
+        "SELECT [System.Id] FROM WorkItems "
+        "WHERE [System.TeamProject] = '{p}' "
+        "AND [System.WorkItemType] IN ('User Story', 'Epic', 'Feature') "
+        "ORDER BY [System.Id]"
+    ).format(p=os.environ["ADO_PROJECT"])
+    rows = ado("query", "--wiql", query)
+    ids = sorted(int(list(r.values())[0]) if not r.get("id") else int(r["id"]) for r in rows)
+    story_ids = [i for i in ids if i not in CONTEXT_IDS]
+    context_ids = [i for i in ids if i in CONTEXT_IDS]
+
+    if story_ids != sorted(prov):
+        sys.exit(
+            f"ADO id set does not match canonical-facts provenance.\n"
+            f"  in ADO only: {sorted(set(story_ids) - set(prov))}\n"
+            f"  in provenance only: {sorted(set(prov) - set(story_ids))}"
+        )
+    if len(story_ids) != EXPECTED_STORIES:
+        sys.exit(f"expected {EXPECTED_STORIES} stories, query returned {len(story_ids)}")
+    if sorted(context_ids) != sorted(CONTEXT_IDS):
+        sys.exit(f"expected context ids {sorted(CONTEXT_IDS)}, got {sorted(context_ids)}")
+
+    exported_at = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+
+    for wid in ids:
+        item = anonymize_identities(sanitize_urls(strip_links(
+            ado("work-item", "show", "--id", str(wid), "--expand", "all")),
+            os.environ["ADO_ORG"],
+        ))
+        fields = item["fields"]
+        area = fields.get("System.AreaPath", "").split("\\", 1)[1] if "\\" in fields.get("System.AreaPath", "") else None
+        template = TEMPLATE_BY_AREA.get(area)
+        if template is None:
+            sys.exit(f"id {wid}: unknown area path {fields.get('System.AreaPath')!r}")
+
+        if wid in CONTEXT_IDS:
+            case = f"context/{fields['System.Title'].lower().replace(' ', '-')}"
+            path = STORIES_DIR / "context" / f"{case.split('/', 1)[1]}.json"
+            template = "context"
+            scenario = None
+        else:
+            prov_tm, prov_slug = prov[wid]
+            if template != prov_tm:
+                sys.exit(f"id {wid}: area-path template {template} != provenance template {prov_tm}")
+            scenario = prov_slug
+            case = f"{template}/{scenario}"
+            path = STORIES_DIR / template / f"{scenario}.json"
+
+        envelope = {
+            "schema_version": 1,
+            "case_id": case,
+            "template": template,
+            "scenario": scenario,
+            "ado_source_id": wid,
+            "exported_at": exported_at,
+            "work_item": item,
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(envelope, indent=2, ensure_ascii=False) + "\n")
+        print(f"{case:32s} ado id {wid}  -> {path.relative_to(REPO)}")
+
+    print(f"\n{len(story_ids)} stories + {len(context_ids)} context items exported at {exported_at}")
+
+
+if __name__ == "__main__":
+    main()

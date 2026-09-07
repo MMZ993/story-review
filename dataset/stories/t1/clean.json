@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "case_id": "t1/clean",
+  "template": "t1",
+  "scenario": "clean",
+  "ado_source_id": 5,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "<p>Given an order whose payment succeeded, when the confirmation email job runs, then the email is sent within 2 minutes with the invoice PDF attached. </p><p>Given the order API response, when the invoice PDF is rendered, then line items with unit prices, per-item VAT rate, and gross total match GET /orders/{id} exactly. </p><p>Given a hard-bouncing recipient address, when the confirmation email is sent, then it is retried once after 5 minutes and then written to the mail audit log (no silent loss). </p><p>Given an invoice rendering failure, when the confirmation email job runs, then the email is still sent without the attachment and the failure appears on the alerting dashboard (no customer-visible error). </p>",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T15:47:52.31Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 11,
+      "System.AreaLevel1": "story-review",
+      "System.AreaPath": "story-review",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T16:36:57.68Z",
+      "System.BoardColumn": "New",
+      "System.BoardColumnDone": false,
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T16:36:57.68Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T15:47:52.31Z",
+      "System.Description": "<p><b>Context:</b> Customers receive a plain-text order confirmation with no price breakdown. The order service already returns complete invoice data (GET /orders/{id}: line items, unit prices, VAT rates, totals). </p><p><b>Reason:</b> B2B customers and expense claims require a formal invoice document. Top request from B2B account managers this quarter; order data is complete, so this is rendering + attachment only. </p><p><b>Scope:</b> This story adds invoice rendering and email attachment. Out of scope: credit notes, self-service invoice re-download from the account page. </p>",
+      "System.Id": 5,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "story-review",
+      "System.Parent": 4,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 4,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "checkout; email; invoice",
+      "System.TeamProject": "story-review",
+      "System.Title": "Invoice PDF in order confirmation email",
+      "System.Watermark": 32,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": true
+    },
+    "id": 5,
+    "multilineFieldsFormat": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "html",
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/4"
+      }
+    ],
+    "rev": 4,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/5"
+  }
+}

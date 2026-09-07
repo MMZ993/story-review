@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "case_id": "t1/unresolvable",
+  "template": "t1",
+  "scenario": "unresolvable",
+  "ado_source_id": 19,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "<p>Given an international customer, when they reach checkout, then checkout is usable for them. </p><p>Given a non-EUR market, when prices are displayed, then they are correct for that market. </p><p>Given an international order, when it is placed, then it can be fulfilled like a domestic one. </p>",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T18:20:51.68Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 11,
+      "System.AreaLevel1": "story-review",
+      "System.AreaPath": "story-review",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T18:20:52.983Z",
+      "System.BoardColumn": "New",
+      "System.BoardColumnDone": false,
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T18:20:52.983Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T18:20:51.68Z",
+      "System.Description": "<p><b>Context:</b> Checkout is English-only, EUR-only, and offers cards and PayPal only, although the shop already ships to several EU markets. Checkout has not followed the international expansion. </p><p><b>Reason:</b> Sales wants five additional markets live this year; support reports non-English tickets already take days to resolve; finance has no position on display currencies and FX pricing. There is no single owner for international checkout. </p><p><b>Scope:</b> Not defined — markets, languages, currencies, and local payment methods are all open. </p>",
+      "System.Id": 19,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "story-review",
+      "System.Parent": 3,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 2,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "international; localization; payments",
+      "System.TeamProject": "story-review",
+      "System.Title": "Localize checkout for international customers",
+      "System.Watermark": 49,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": true
+    },
+    "id": 19,
+    "multilineFieldsFormat": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "html",
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/3"
+      }
+    ],
+    "rev": 2,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/19"
+  }
+}

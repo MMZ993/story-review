@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "case_id": "t1/hidden-conflict",
+  "template": "t1",
+  "scenario": "hidden-conflict",
+  "ado_source_id": 20,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "<p>Given a completed order, when the customer requests an edit within 30 minutes, then the order is updated in place without a new order being created. </p><p>Given an edit that changes the order total, when the edit is applied, then the customer is automatically charged or refunded the difference. </p><p>Given the 30-minute window has elapsed, when the customer requests an edit, then the customer is told to contact support. </p>",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T18:31:01.4Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 11,
+      "System.AreaLevel1": "story-review",
+      "System.AreaPath": "story-review",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T18:31:03.45Z",
+      "System.BoardColumn": "New",
+      "System.BoardColumnDone": false,
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T18:31:03.45Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T18:31:01.4Z",
+      "System.Description": "<p><b>Context:</b> Customers cannot modify an order (address, size, quantity) after checkout completes; the only path today is cancel-and-reorder or a support ticket. The order pipeline captures payment immediately at order placement. Support handles ~90 order-change tickets per week; cancel-and-reorder loses a share of those orders entirely. </p><p><b>Reason:</b> CX roadmap item under the Q4 goal of cutting avoidable support contacts by 20%. Payment handling carries no cost: the customer's payment is only reserved during the day, so releasing the reservation is free. </p><p><b>Scope:</b> Edits to shipping address and item size/quantity. Out of scope: changing the payment method, subscription orders, native apps. </p>",
+      "System.Id": 20,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "story-review",
+      "System.Parent": 4,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 2,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "checkout; orders; support",
+      "System.TeamProject": "story-review",
+      "System.Title": "30-minute order edit window after purchase",
+      "System.Watermark": 51,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": true
+    },
+    "id": 20,
+    "multilineFieldsFormat": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "html",
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/4"
+      }
+    ],
+    "rev": 2,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/20"
+  }
+}

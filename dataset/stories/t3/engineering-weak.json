@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "case_id": "t3/engineering-weak",
+  "template": "t3",
+  "scenario": "engineering-weak",
+  "ado_source_id": 30,
+  "exported_at": "2026-09-07T21:13:32+00:00",
+  "work_item": {
+    "fields": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>When payment failed due to PSP error (not decline), the system retries automatically without customer action. </li><li>When a retried payment succeeds, or failure is a decline, retries stop immediately. </li><li>When retries are exhausted and the last attempt fails, the customer sees the standard payment-failed page and the order remains recoverable from the cart. </li><li>When any retried payment completes, whether success or final failure, the retry outcome is visible in the existing payments dashboard. </li> </ul>",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-07T20:37:24.517Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 13,
+      "System.AreaLevel1": "story-review",
+      "System.AreaLevel2": "T3",
+      "System.AreaPath": "story-review\\T3",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-07T20:37:25.803Z",
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-07T20:37:25.803Z",
+      "System.CommentCount": 0,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-07T20:37:24.517Z",
+      "System.Description": "<p>When a temporary PSP outage causes a payment to fail outright, I want to retry PSP errors automatically, so I can reduce abandoned carts and payment-failure support tickets. </p><p>A temporary PSP outage (timeout, 5xx) fails the order outright today: the customer sees an error, the cart is abandoned, and support tickets follow. The order service already distinguishes PSP decline from PSP error, so a legitimate retry is identifiable. Payment errors were 38% of abandoned carts last quarter; the payments team estimates roughly a fifth are transient PSP failures. Support receives ~120 payment-failure tickets/month; halving that saves about 2 agent-days per month. </p><p>Scope is automatic retry for PSP errors only. Out of scope are retries for declines, changes to the decline messaging, and native apps. </p>",
+      "System.Id": 30,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "T3",
+      "System.Parent": 4,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 2,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "payments; reliability; retry",
+      "System.TeamProject": "story-review",
+      "System.Title": "Automatic payment retry on PSP failure",
+      "System.Watermark": 71,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": false
+    },
+    "id": 30,
+    "multilineFieldsFormat": {
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "html",
+      "System.Description": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/4"
+      }
+    ],
+    "rev": 2,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/30"
+  }
+}
