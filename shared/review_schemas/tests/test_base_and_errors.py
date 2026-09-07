@@ -197,3 +197,54 @@ class TestFormatLiteral:
     def test_other_format_rejected(self):
         with pytest.raises(ValidationError):
             _Probe.model_validate(valid_payload() | {"fmt": "docx"})
+
+
+class TestErrors:
+    """ErrorBody/ErrorEnvelope/ToolError — increment 2."""
+
+    def _body(self, **overrides) -> dict:
+        base = {
+            "code": "SESSION_NOT_FOUND",
+            "message": "session does not exist",
+            "correlation_id": FIXED_UUID,
+            "retryable": False,
+        }
+        return base | overrides
+
+    def test_non_retryable_body_valid(self):
+        from review_schemas.errors import ErrorBody, ErrorEnvelope, ToolError
+
+        body = ErrorBody.model_validate(self._body())
+        assert body.retry_after_seconds is None
+        assert ErrorEnvelope.model_validate({"error": self._body()}).error == body
+        assert ToolError.model_validate({"error": self._body()}).error.code == "SESSION_NOT_FOUND"
+
+    def test_retryable_requires_hint(self):
+        from review_schemas.errors import ErrorBody
+
+        ok = ErrorBody.model_validate(self._body(retryable=True, retry_after_seconds=30))
+        assert ok.retry_after_seconds == 30
+        with pytest.raises(ValidationError, match="retry"):
+            ErrorBody.model_validate(self._body(retryable=True))
+        with pytest.raises(ValidationError, match="retry"):
+            ErrorBody.model_validate(self._body(retryable=False, retry_after_seconds=30))
+
+    def test_hint_bounds(self):
+        from review_schemas.errors import ErrorBody
+
+        with pytest.raises(ValidationError):
+            ErrorBody.model_validate(self._body(retryable=True, retry_after_seconds=0))
+        with pytest.raises(ValidationError):
+            ErrorBody.model_validate(self._body(retryable=True, retry_after_seconds=3601))
+
+    def test_unknown_code_rejected(self):
+        from review_schemas.errors import ErrorBody
+
+        with pytest.raises(ValidationError):
+            ErrorBody.model_validate(self._body(code="TEAPOT_ERROR"))
+
+    def test_optional_agent_field(self):
+        from review_schemas.errors import ErrorBody
+
+        body = ErrorBody.model_validate(self._body(agent="facilitator"))
+        assert body.agent == "facilitator"
