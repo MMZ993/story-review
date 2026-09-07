@@ -27,7 +27,7 @@ from review_schemas.synthesis import (
     SynthesisReport,
 )
 
-from conftest import FIXED_TS, FIXED_UUID, RUN_ID, UUID_STR
+from conftest import FIXED_TS, FIXED_UUID, RUN_ID, artifact_reference
 
 STORY_ID = "story-07"
 OTHER_RUN_ID = "run-ffffffff-90ab-4cda-b0de-1f2e3d4c5b6a"
@@ -41,32 +41,6 @@ def finding(**overrides) -> dict:
         "severity": "minor",
         "category": "completeness",
     }
-    return base | overrides
-
-
-def artifact_reference(type_: str, **overrides) -> dict:
-    """A valid ArtifactReference payload for the given artifact type."""
-    perspectives = {"review-business": "business", "review-engineering": "engineering"}
-    content_types = {
-        "story": "application/json",
-        "review-business": "application/json",
-        "review-engineering": "application/json",
-        "synthesis": "application/json",
-        "finalized-review": "application/json",
-        "report-md": "text/markdown",
-        "report-pdf": "application/pdf",
-    }
-    base = {
-        "artifact_id": f"art-{UUID_STR}",
-        "story_run_id": RUN_ID,
-        "type": type_,
-        "version": 1,
-        "created_at": FIXED_TS,
-        "content_type": content_types[type_],
-        "checksum_sha256": "cd" * 32,
-    }
-    if type_ in perspectives:
-        base["perspective"] = perspectives[type_]
     return base | overrides
 
 

@@ -59,6 +59,34 @@ from review_schemas.judge import (
     JudgeIssue,
     JudgeResult,
 )
+from review_schemas.api import (
+    CanonicalOperationResult,
+    CanonicalReportResult,
+    CanonicalTurnResult,
+    CreateSessionRequest,
+    CreateSessionResponse,
+    FinalizeRequest,
+    HealthDependency,
+    HealthResponse,
+    ListSessionsQuery,
+    ListSessionsResponse,
+    ListStoriesQuery,
+    ListStoriesResponse,
+    ReportDownload,
+    ReportResponse,
+    SessionDetail,
+    SessionSummary,
+    TurnRequest,
+    TurnResponse,
+    TurnView,
+)
+from review_schemas.records import (
+    AgentRunRecord,
+    SessionRecord,
+    StoryRunRecord,
+    TurnLeaseRecord,
+    TurnRecord,
+)
 
 __all__ = [
     # base
@@ -108,4 +136,30 @@ __all__ = [
     "JudgeDimensionScore",
     "JudgeIssue",
     "JudgeResult",
+    # api
+    "CanonicalOperationResult",
+    "CanonicalReportResult",
+    "CanonicalTurnResult",
+    "CreateSessionRequest",
+    "CreateSessionResponse",
+    "FinalizeRequest",
+    "HealthDependency",
+    "HealthResponse",
+    "ListSessionsQuery",
+    "ListSessionsResponse",
+    "ListStoriesQuery",
+    "ListStoriesResponse",
+    "ReportDownload",
+    "ReportResponse",
+    "SessionDetail",
+    "SessionSummary",
+    "TurnRequest",
+    "TurnResponse",
+    "TurnView",
+    # records (trusted internal consumers: persistence, orchestration)
+    "AgentRunRecord",
+    "SessionRecord",
+    "StoryRunRecord",
+    "TurnLeaseRecord",
+    "TurnRecord",
 ]
