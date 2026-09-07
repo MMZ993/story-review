@@ -21,7 +21,7 @@ gaps below are exactly the seeds each plan's arc requires.
 
 ## clean
 
-- provenance: T1 id 5, T2 id 21
+- provenance: T1 id 5, T2 id 21, T3 id 28, T4 id 35, T6 id 49
 - title: Invoice PDF in order confirmation email
 - facts:
   - customers currently receive a plain-text order confirmation with no price breakdown
@@ -39,7 +39,7 @@ gaps below are exactly the seeds each plan's arc requires.
 
 ## business-weak
 
-- provenance: T1 id 10, T2 id 22
+- provenance: T1 id 10, T2 id 22, T3 id 29, T4 id 36, T6 id 50
 - title: Google Pay at checkout
 - facts:
   - the PSP exposes Google Pay in its gateway API (`POST /payment-intents`, method `google_pay`)
@@ -59,7 +59,7 @@ gaps below are exactly the seeds each plan's arc requires.
 
 ## engineering-weak
 
-- provenance: T1 id 14, T2 id 23
+- provenance: T1 id 14, T2 id 23, T3 id 30, T4 id 37, T6 id 51
 - title: Automatic payment retry on PSP failure
 - facts:
   - a temporary PSP outage (timeout, 5xx) fails the order outright today: customer sees an error, cart abandoned, support tickets follow
@@ -79,7 +79,7 @@ gaps below are exactly the seeds each plan's arc requires.
 
 ## conflicting
 
-- provenance: T1 id 17, T2 id 24
+- provenance: T1 id 17, T2 id 24, T3 id 31, T4 id 38, T6 id 52
 - title: Auto-select last used payment method at checkout
 - facts:
   - checkout currently shows all available payment methods with no default; returning customers re-pick their method on every order
@@ -99,7 +99,7 @@ gaps below are exactly the seeds each plan's arc requires.
 
 ## partial-resolution
 
-- provenance: T1 id 18, T2 id 25 (mirrors `docs/design/example-interaction.md` story-04)
+- provenance: T1 id 18, T2 id 25, T3 id 32, T4 id 39, T6 id 53 (mirrors `docs/design/example-interaction.md` story-04)
 - title: Save payment details for returning customers
 - facts:
   - returning customers re-enter full card details on every order; checkout for returning customers averages 2m40s; no payment data is stored today
@@ -118,7 +118,7 @@ gaps below are exactly the seeds each plan's arc requires.
 
 ## unresolvable
 
-- provenance: T1 id 19, T2 id 26
+- provenance: T1 id 19, T2 id 26, T3 id 33, T4 id 40, T6 id 54
 - title: Localize checkout for international customers
 - facts:
   - checkout is English-only, EUR-only, offers cards and PayPal only
@@ -139,7 +139,7 @@ gaps below are exactly the seeds each plan's arc requires.
 
 ## hidden-conflict
 
-- provenance: T1 id 20, T2 id 27
+- provenance: T1 id 20, T2 id 27, T3 id 34, T4 id 41, T6 id 55
 - title: 30-minute order edit window after purchase
 - facts (both contradictory capture statements are canonical and must both survive, unreconciled):
   - customers cannot modify an order (address, size, quantity) after checkout completes; the only path today is cancel-and-reorder or a support ticket
