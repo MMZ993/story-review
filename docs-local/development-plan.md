@@ -46,7 +46,7 @@ MCP only). Assessed low-risk (outbound call from Cloud Run to a public Google AP
 with ADC); live proof is folded into Phase 8 exit criteria rather than reopening
 Phase 1.
 
-## Phase 2 — Shared schemas package — planned
+## Phase 2 — Shared schemas package — done (2026-09-06; Runbook 07; post-reviewed session 11, suite 147)
 
 Scope: `shared/review_schemas` implementing docs/design/schemas.md exactly (strict
 models, validators, error taxonomy) + unit tests.
@@ -56,7 +56,7 @@ Exit criteria: model/validator unit tests pass; package installable from
 
 Cost: none.
 
-## Phase 3 — Mock dataset — planned
+## Phase 3 — Mock dataset — in progress (2026-09-07; plan `docs-local/plans/phase-3-mock-dataset.md`; ADO env Runbook 08, dataset work Runbook 09)
 
 Scope: `dataset/stories/` + `dataset/expected/` — all six scenario types
 (clean, business-weak, engineering-weak, conflicting, partial-resolution,
