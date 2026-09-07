@@ -190,8 +190,7 @@ Session 7 and earlier:
   **mechanical export-list test** (`__all__` == spec names exactly;
   `ArtifactRecord` absent — see Runbook 07 increment-4 note), named-model diff
   review vs `docs/design/schemas.md`, independent read-only review, close phase.
-- Increment 3 output uncommitted: `shared/review_schemas/**` (api/records modules,
-  `__init__`, tests), Runbook 07, HANDOFF.
+- Increment 3 output committed as `bcd1c1b`; tree clean; push pending (owner).
 - Optional later increment: tighten the default compute SA's `roles/editor`
   (pre-existing from project creation).
 - Phase 0 exit criterion "terraform apply reproducible from clean (destroy +
@@ -200,9 +199,13 @@ Session 7 and earlier:
 
 ## Next Steps
 
-1. Commit increment 3 when the owner approves.
-2. Session 10: Phase 2 increment 4 — MCP models, install proof, diff review,
-   independent review, phase close; reading `docs/design/schemas.md` §MCP only.
+1. Owner pushes session 9 (commits `a4086b5`, `47c2d6c`, `bcd1c1b` — sanity-
+   checked for secrets/identifiers before push; owner identity in commit
+   metadata is intentionally public).
+2. Session 10: Phase 2 increment 4 — MCP models, install proof, mechanical
+   export-list test, diff review, independent review, phase close; reading
+   `docs/design/schemas.md` §MCP only.
+3. Keep Cloud SQL paused; Phase 2 has no database or GCP dependency.
 3. Keep Cloud SQL paused; Phase 2 has no database or GCP dependency.
 
 ## Important Notes
