@@ -1,8 +1,9 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-08 (session 14: T5 + T6 columns authored — matrix
-  COMPLETE, T1–T6 × 7 scenarios, ids 5–55; next: export + Runbook 09).
+Last updated: 2026-09-08 (session 14: T5 + T6 authored — matrix COMPLETE;
+  export done (Runbook 09 increment 1, 45 sanitized JSON files); next:
+  expected files + loader).
 
 ## Where we are
 
@@ -102,6 +103,23 @@ iteration. T1 baseline column: 7/7.
   identical to T1 mirrors, parents verified (49→4, 50→3, 51→4, 52→3,
   53→3, 54→3, 55→4). canonical-facts.md provenance lines now carry all
   template ids (T1–T4 retro-added, T6 added).
+- Session 14 (continued): **export done (Runbook 09 increment 1)**.
+  `dataset/tools/export_ado.py` exports the full matrix to
+  `dataset/stories/`: per-template folders `t1`–`t6` + `context/` (epic+
+  features), case id = `<template>/<scenario>` (**owner rule: 1 test case =
+  1 story in 1 template**; stress duplicates get `-2` suffixes = separate
+  test cases), ADO id demoted to `ado_source_id`. Envelope + verbatim
+  `work_item` (owner decision: export VERBATIM, preparation/trimming is a
+  separate later step). Sanitization: `_links` dropped, URLs rewritten to
+  `$ADO_ORG`/`<project-id>` (org name + project GUID leak via imageUrl/
+  relation/url fields — caught post-export); author identities anonymized
+  to `Story Author`/`<author>@example.com` with account ids dropped
+  (owner decision: personal data stays out of git). Story→case resolution:
+  area path → template, provenance ids (canonical-facts + t5-enabler-spec)
+  → scenario; loud aborts + count asserts (42+3). Post-export checks all
+  pass (45 files, zero identifier hits). `dataset/README.md` written;
+  D9 amendment recorded in local-decisions.md; Runbook 09 increment 1
+  marked DONE (increments 0–2 done; next: 3 = expected files, 4 = loader).
 
 ### Earlier sessions (digest — detail lives in runbooks and git history)
 
@@ -135,6 +153,21 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 14:
+- T5 and T6 drafts: independent read-only subagent reviews — T6 7/7 PASS;
+  T5 all substantive checks PASS (sole flag: the self-check authoring
+  artifacts — reviewer miss, not a defect).
+- ADO authoring verified per item live: area path, backlog iteration,
+  tags, parent links (Hierarchy-Reverse), AC bullet counts; id 48/55 both
+  capture statements unreconciled; WIQL confirms exactly 42 stories +
+  epic/features (ids 5–55).
+- Export: post-export checks all pass — 45 files, envelope shape, zero
+  identifier hits (org name, project GUID, owner email, MSA descriptor,
+  visualstudio tenant URL, `_links`); identifier check run BEFORE commit
+  (AGENTS.md rule).
+- No schema/test code touched: `make review-schemas-test` not re-run
+  (loader/dataset tests are Runbook 09 increment 4).
+
 Session 12:
 - Phase 2 post-review (owner-run, session 11): suite **147 passed**;
   `2d639b3` verified and accepted.
@@ -153,14 +186,16 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Remaining Tasks
 
-- **Phase 3 continuation (Runbook 08/09, next session):** retro-write canonical
-  fact lists for all seven T1 stories (5/10/14/17/18/19/20 — the T1 column is
-  complete; id 20's must-not-add list must forbid clarifying the capture
-  model); then export script + remaining D9 items (fidelity/trimming,
-  metadata classification — ID-decoupling, JSON/mock-endpoint serving, and
-  the ADO matrix structure [one area path per template, T2–T6 areas created]
-  are already recorded/settled in local-decisions.md D9); then Runbook 09
-  dataset/expected/loader work.
+- **Phase 3 continuation (Runbook 09, next session):** increments 0–2 DONE
+  (matrix authored + exported); next is increment 3 — expected files
+  transcribed from `dataset/manual-plans/` into
+  `dataset/expected/<template>/<scenario>.json` (7 scenarios × 6 templates,
+  vocabulary per docs/design/schemas.md, deterministic assertions per
+  docs/quality/evaluation-tests.md) — then increment 4 (loader harness,
+  test-first, `make dataset-test`). Deferred D9 items still open:
+  fidelity/trimming (separate preparation step against the verbatim
+  export) and metadata semantic/display classification (expected-file
+  design time).
 - ~~Owner teardown of the redaction pass~~ DONE (2026-09-07, owner):
   `~/projects/capstone-project-filter2` removed; `/tmp/project-id-replace.txt`
   left in place deliberately (tmp clears itself).
@@ -176,19 +211,21 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. Next: export + remaining D9 items (fidelity/trimming, metadata
-   classification); Runbook 09 increments 1–4 (expected files transcribed
-   from the plans, loader harness, `make dataset-test`). Matrix authoring is
-   COMPLETE (T1–T6 × 7 scenarios, ids 5–55); T6 done this session (49–55).
+1. Next: Runbook 09 increment 3 (expected files transcribed from
+   `dataset/manual-plans/` into `dataset/expected/<template>/<scenario>.json`)
+   and increment 4 (loader harness, test-first, `make dataset-test`).
+   Export/increment 1 done this session; matrix COMPLETE (ids 5–55).
 
 ## Important Notes
 
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
-- Git: session 11's `2d639b3` and the session-12 commit are local until the
-  owner pushes; before that, remote sits at the rewritten `main` `649f7c4`
-  (76 commits, zero ID hits, `docs/initial-frozen` = `d5cb413` unchanged).
-  Old hashes (`a519899`, `bcd1c1b`, `dadd2e1`, `9482e6a`) are superseded.
+- Git: session 14 produced six commits (`a74bcc6`, `1f39e19`, `310765a`,
+  `73bd8a5`, `5b00339`, `07b6d5f`); the first four are pushed by the owner,
+  the last two (`5b00339` export+JSON, `07b6d5f` docs) are local until the
+  owner pushes — remote `main` currently at `73bd8a5`. Old history note:
+  `docs/initial-frozen` = `d5cb413`; superseded hashes `a519899`,
+  `bcd1c1b`, `dadd2e1`, `9482e6a`, `649f7c4` were from the rewrite era.
   Check `git status -sb` before assuming the remote is current — tracking
   refs can be stale.
 - Azure DevOps (Phase 3 ground truth): free org `$ADO_ORG` (gitignored
