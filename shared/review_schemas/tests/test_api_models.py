@@ -209,6 +209,16 @@ class TestTurnModels:
         with pytest.raises(ValidationError, match="facilitator reply"):
             TurnResponse.model_validate(self._turn_response(facilitator_reply=None))
 
+    def test_issues_mirror_delegation_open_issues(self):
+        with pytest.raises(ValidationError, match="mirror"):
+            TurnResponse.model_validate(self._turn_response(issues=["i1", "extra"]))
+
+    def test_synthesis_reference_must_be_synthesis_type(self):
+        with pytest.raises(ValidationError, match="synthesis"):
+            TurnResponse.model_validate(
+                self._turn_response(synthesis=artifact_reference("story"))
+            )
+
 
 class TestSessionModels:
     def _summary(self, **overrides) -> dict:
@@ -244,6 +254,10 @@ class TestSessionModels:
             payload | {"reports": [report_download("md"), report_download("pdf")]}
         )
         assert len(ok.reports) == 2
+        with pytest.raises(ValidationError, match="unique"):
+            SessionDetail.model_validate(
+                payload | {"reports": [report_download("md"), report_download("md")]}
+            )
 
 
 class TestReportAndCanonicalModels:
@@ -289,6 +303,24 @@ class TestReportAndCanonicalModels:
             }
         )
         assert len(final.report_references) == 2
+
+    def test_canonical_turn_state_matches_outcome(self):
+        with pytest.raises(ValidationError, match="state does not match"):
+            CanonicalTurnResult.model_validate(
+                self._canonical_turn(outcome="park", state="active")
+            )
+
+    def test_canonical_turn_report_references_must_be_unique(self):
+        with pytest.raises(ValidationError, match="unique"):
+            CanonicalTurnResult.model_validate(
+                self._canonical_turn(outcome="finalize", state="completed")
+                | {
+                    "report_references": [
+                        artifact_reference("report-md"),
+                        artifact_reference("report-md"),
+                    ]
+                }
+            )
 
     def test_canonical_turn_rejects_non_report_references(self):
         with pytest.raises(ValidationError, match="only report"):

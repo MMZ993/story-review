@@ -83,6 +83,15 @@ class TestSessionRecord:
         with pytest.raises(ValidationError, match="only report"):
             self._record(report_references=[artifact_reference("synthesis")])
 
+    def test_report_reference_formats_must_be_unique(self):
+        with pytest.raises(ValidationError, match="unique"):
+            self._record(
+                report_references=[
+                    artifact_reference("report-md"),
+                    artifact_reference("report-md"),
+                ]
+            )
+
     def test_completed_requires_final_review_and_all_formats(self):
         with pytest.raises(ValidationError, match="completed session requires"):
             self._record(state="completed")

@@ -4,8 +4,11 @@ Implements `docs-local/plans/phase-2-shared-schemas.md` against the frozen contr
 `docs/design/schemas.md`. Local-only phase: no GCP access, no Terraform, no Cloud SQL
 (the instance stays STOPPED throughout).
 
-Status: IN PROGRESS 2026-09-06 (session 9: increment 1 — package skeleton and strict
-primitives).
+Status: COMPLETE 2026-09-06 (phase close; see Phase close section below).
+Post-phase review (session 11): independent read-only review re-run — no contract
+divergences; two Minor findings fixed (missing negative tests for four
+cross-field validator branches; stale status markers in this file). Suite: 147
+passed.
 
 ## Scope
 
@@ -24,7 +27,7 @@ primitives).
 | 1 | Package skeleton, strict primitives (`base.py`), locks, Make target | DONE (2026-09-06) |
 | 2 | Errors + story/review/synthesis/facilitator/judge domain group | DONE (2026-09-06) |
 | 3 | HTTP API + durable Cloud SQL record models | DONE (2026-09-06) |
-| 4 | MCP tool models, consumer install/import proof, diff review, independent review | TODO |
+| 4 | MCP tool models, consumer install/import proof, diff review, independent review | DONE (2026-09-06) |
 
 Increment 4 must include a mechanical export-list test in
 `test_package_install.py`: assert `__all__` equals exactly the set of shared
