@@ -132,6 +132,14 @@ must not leak into the dataset as identifiers:
   (mock endpoint standing in for a real ADO connection, which the demo
   project deliberately has none of). The MCP fetch path must be identical in
   both cases — only the backing endpoint differs.
+- Matrix structure inside ADO (settled 2026-09-07): **one project, one area
+  path per template** — root area = T1, `T2`–`T6` areas created at project
+  root. Variants hang under the same Epic/Feature as their T1 originals, so
+  hierarchy context is identical across templates; `System.AreaPath`
+  partitions the export for free (no tag parsing, no teams, no extra
+  projects). Exported variants re-key to canonical ids like `clean-t2`;
+  expected files stay per scenario — every variant must pass the same
+  scenario's manual plan (`dataset/manual-plans/`) unchanged.
 
 ## Differences from `docs/` (summary)
 

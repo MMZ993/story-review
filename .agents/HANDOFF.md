@@ -111,10 +111,11 @@ cross-checks, test-first red/green, review findings fixed).
 - **Phase 3 continuation (Runbook 08/09, next session):** retro-write canonical
   fact lists for all seven T1 stories (5/10/14/17/18/19/20 — the T1 column is
   complete; id 20's must-not-add list must forbid clarifying the capture
-  model); then export script + remaining D9 items (fidelity/trimming, ADO
-  matrix structure, metadata classification — the ID-decoupling and
-  JSON/mock-endpoint serving parts of D9 are already recorded in
-  local-decisions.md); then Runbook 09 dataset/expected/loader work.
+  model); then export script + remaining D9 items (fidelity/trimming,
+  metadata classification — ID-decoupling, JSON/mock-endpoint serving, and
+  the ADO matrix structure [one area path per template, T2–T6 areas created]
+  are already recorded/settled in local-decisions.md D9); then Runbook 09
+  dataset/expected/loader work.
 - ~~Owner teardown of the redaction pass~~ DONE (2026-09-07, owner):
   `~/projects/capstone-project-filter2` removed; `/tmp/project-id-replace.txt`
   left in place deliberately (tmp clears itself).
