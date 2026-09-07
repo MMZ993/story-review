@@ -1,7 +1,7 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-06 (session 7, Phase 1 closed; Phase 2 plan ready).
+point. Last updated: 2026-09-06 (session 7 addendum: Cloud Run → Agent Engine leg recorded as deferred test item).
 
 ## Where we are
 
@@ -14,6 +14,8 @@ point. Last updated: 2026-09-06 (session 7, Phase 1 closed; Phase 2 plan ready).
   owner pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 7 addendum (2026-09-06) — identified and recorded a Phase 1 test gap: the **Cloud Run (orchestration) → Agent Engine** direction was never spike-tested (Phase 1 proved only Agent Engine → Cloud Run MCP). Assessed low-risk (outbound call from Cloud Run to a public Google API with ADC); decision: do not reopen Phase 1, fold live proof into Phase 8 exit criteria. `development-plan.md` updated (Phase 1 deferred item + Phase 8 exit criterion incl. `sa-orchestration` `aiplatform.user` and `:streamQuery?alt=sse` checks per Runbook 06 gotchas 3–4).
 
 Session 7 (2026-09-06) — reviewed the completed Phase 1 evidence and wrote the
 Phase 2 master implementation plan at `docs-local/plans/phase-2-shared-schemas.md`.

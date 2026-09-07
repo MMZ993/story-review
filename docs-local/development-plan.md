@@ -40,6 +40,12 @@ ID-token-authenticated fallback; all disposable resources were torn down.
 Cost: small — one Agent Engine resource, one Cloud Run service, Cloud SQL already up.
 Teardown after recording evidence.
 
+Deferred item (recorded 2026-09-06): the reverse leg — Cloud Run (orchestration)
+→ Agent Engine — was **not** spike-tested (Phase 1 tested Agent Engine → Cloud Run
+MCP only). Assessed low-risk (outbound call from Cloud Run to a public Google API
+with ADC); live proof is folded into Phase 8 exit criteria rather than reopening
+Phase 1.
+
 ## Phase 2 — Shared schemas package — planned
 
 Scope: `shared/review_schemas` implementing docs/design/schemas.md exactly (strict
@@ -112,7 +118,11 @@ pointers; smoke tests; observability wiring (structured logs, traces, dashboards
 alerts); versioning proof: redeploy one agent as a new versioned resource, re-point,
 roll back.
 
-Exit criteria: full system works on GCP; versioning/rollback evidence recorded;
+Exit criteria: full system works on GCP; **including live proof of the
+Cloud Run (orchestration) → Agent Engine leg, untested in Phase 1** (verify
+`sa-orchestration` IAM incl. `roles/aiplatform.user` for session create, and
+`:streamQuery?alt=sse` from Cloud Run — see Runbook 06 gotchas 3–4); versioning/rollback
+evidence recorded;
 requirements-coverage rows for deployment/versioning/observability move toward
 verified.
 
