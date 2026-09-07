@@ -346,5 +346,24 @@ Learned (dataset authoring, 2026-09-07):
       full story sentence, AC field = informal bullets), areas `T3`/`T4`,
       same parents/tags as T1/T2, backlog iteration, all verified (area /
       parent / AC / tags per item).
+- [x] T5 enabler column authored (2026-09-08, session 14, owner-approved):
+      T5 is a TYPE variant, not a rendering — authoring input is the new
+      `dataset/t5-enabler-spec.md` (owner-approved design: each enabler is
+      the engineering-side counterpart of its scenario, same world, planted
+      flaw preserved verbatim, expected review arc identical to the
+      scenario's manual plan; excluded from cross-template invariance
+      assertions per `story-templates.md`). Drafts in `dataset/drafts/t5/`
+      (subagent, t3-style + self-check); independent read-only subagent
+      review: all substantive checks PASS (sole flag: the self-check
+      sections — authoring artifacts, not ADO content). Authored via a
+      spec-driven script (`/tmp/author_t5.py`, same HTML mapping as T3/T4,
+      run with owner approval): ids 42–48 (clean 42, business-weak 43,
+      engineering-weak 44, conflicting 45, partial-resolution 46,
+      unresolvable 47, hidden-conflict 48), area `story-review\T5`, backlog
+      iteration, tags identical to T1 mirrors, AC field = bullets, parents
+      verified (42→4, 43→3, 44→4, 45→3, 46→3, 47→3, 48→4); id 48 verified
+      to carry both capture statements unreconciled. Gotcha: `infra/envs/
+      ado.env` has no `export` — use `set -a; source infra/envs/ado.env;
+      set +a` when scripting against it. Matrix columns T1–T5 complete.
 - [ ] Reproducible query saved.
 - [ ] JSON export produced and shape recorded.
