@@ -43,10 +43,20 @@ canonical content model (variants rendered from per-scenario canonical facts);
 T1-T6 (structured / sectioned maintenance / job story / classic user story /
 enabler-as-TYPE-variant / free text); HTML split out as a Phase 4 ingestion
 stress. Independent subagent review of the template design: 4 Important
-findings, all adopted. Three T1 stories authored: id 5 clean (Invoice PDF in
-confirmation email), id 10 business-weak (Google Pay at checkout), id 14
-engineering-weak (Automatic payment retry on PSP failure) — hierarchy-verified,
-tagged, backlog iteration.
+findings, all adopted. The six T1 baseline stories are COMPLETE: id 5 clean
+(Invoice PDF in confirmation email), id 10 business-weak (Google Pay at
+checkout), id 14 engineering-weak (Automatic payment retry on PSP failure),
+id 17 conflicting (Auto-select last used payment method at checkout), id 18
+partial-resolution (Save payment details for returning customers — mirror of
+example-interaction.md `story-04`), id 19 unresolvable/park-at-cap (Localize
+checkout for international customers). Owner then extended coverage with a
+7th scenario (docs/quality/mock-data.md table row added, owner-approved):
+HIDDEN-CONFLICT — id 20 "30-minute order edit window after purchase" under
+Feature 4: both reviews individually positive (engineering hook: "captures
+payment immediately at order placement"; business hook: "payment only
+reserved… release is free"), synthesis must flag the contradiction with
+zero per-perspective findings. All hierarchy-verified, tagged, backlog
+iteration. T1 baseline column: 7/7.
 
 ### Earlier sessions (digest — detail lives in runbooks and git history)
 
@@ -98,13 +108,13 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Remaining Tasks
 
-- **Phase 3 continuation (Runbook 08/09, next session):** draft + author the
-  remaining three T1 stories (conflicting, partial-resolution — mirrors
-  `story-04` of example-interaction.md —, unresolvable/park-at-cap);
-  retro-write canonical fact lists for stories 5/10/14; then reproducible
-  query + JSON export (increment 1/D9 decisions incl. fidelity/trimming,
-  ADO matrix structure, canonical-case ID in expected files, metadata
-  classification); then Runbook 09 dataset/expected/loader work.
+- **Phase 3 continuation (Runbook 08/09, next session):** retro-write canonical
+  fact lists for all seven T1 stories (5/10/14/17/18/19/20 — the T1 column is
+  complete; id 20's must-not-add list must forbid clarifying the capture
+  model); then reproducible query + JSON export (increment 1/D9 decisions
+  incl. fidelity/trimming, ADO matrix structure, canonical-case ID in expected
+  files — settled as scenario-keyed — metadata classification); then Runbook
+  09 dataset/expected/loader work.
 - ~~Owner teardown of the redaction pass~~ DONE (2026-09-07, owner):
   `~/projects/capstone-project-filter2` removed; `/tmp/project-id-replace.txt`
   left in place deliberately (tmp clears itself).
@@ -121,10 +131,9 @@ cross-checks, test-first red/green, review findings fixed).
 ## Next Steps
 
 1. Owner pushes `main` (session-12 commit).
-2. Next session: remaining three T1 scenario stories (draft → review → CLI
-   authoring, as this session's three), per Runbook 08 step 4.
-3. Then: export + D9 decisions; Runbook 09 increments 1–4 (expected files,
-   loader harness, `make dataset-test`).
+2. Next session: review/confirm the seven manual plans, then
+   export + D9 decisions; Runbook 09 increments 1–4 (expected files
+   transcribed from the plans, loader harness, `make dataset-test`).
 4. Keep Cloud SQL paused until a phase needs it.
 
 ## Important Notes
