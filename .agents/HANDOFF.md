@@ -1,12 +1,13 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-06 (session 8: docs-first rule, deferred CR→AE
-test item, project-ID redaction + history rewrite).
+point. Last updated: 2026-09-06 (session 9: Phase 2 increment 1 — shared-schemas
+skeleton + strict primitives).
 
 ## Where we are
 
-- Phase: **2 — Shared schemas: PLANNED** (`docs-local/plans/phase-2-shared-schemas.md`).
+- Phase: **2 — Shared schemas: IN PROGRESS** (increment 1 of 4 done; plan at
+  `docs-local/plans/phase-2-shared-schemas.md`, evidence in Runbook 07).
   Phase 1 is complete: its end-to-end trace passed with D8 fallback and all spike
   resources were torn down (Runbook 06 increment 5).
 - Docs design: complete and frozen on branch `docs/initial-frozen`; home-phase
@@ -16,7 +17,21 @@ test item, project-ID redaction + history rewrite).
 
 ## Previous Session Summary
 
-Session 7 addendum (2026-09-06) — see Session 8 summary above (CR→AE gap recorded).
+Session 9 (2026-09-06) — Phase 2 increment 1 (local-only; Cloud SQL stayed
+STOPPED): created `shared/review_schemas` (pyproject v0.1.0, hatchling, pydantic
+2.13.5 lock; pytest-only test lock) with `review_schemas/base.py` implementing
+the strict base types verbatim from `docs/design/schemas.md`, and the Make
+target `review-schemas-test` (`--with-requirements` + `--with-editable .`).
+Test-first: 26 tests in `tests/test_base_and_errors.py` (base part) confirmed
+failing on ImportError, then green; phase-gate recompile+rerun also 26 passed.
+Runbook 07 created with evidence and four gotchas (uv resolves relative
+requirements paths against cwd; `--with-requirements` ignores editable entries
+in locks; hatchling requires the declared README; prefixed IDs embed the
+hyphenated UUID string). Errors tests (ErrorBody/Envelope/ToolError) deferred to
+increment 2 by plan. Independent review deferred to phase close (increment 4)
+per plan.
+
+Session 8 addendum (2026-09-06) — see Session 8 summary above (CR→AE gap recorded).
 
 Session 8 (2026-09-06) — docs hardening + pre-publication hygiene (no code, no
 GCP changes; Cloud SQL remained PAUSED):
@@ -137,6 +152,11 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Verification and Review
 
+Session 9:
+- `make review-schemas-test`: 26 passed, zero warnings/skips, before and
+  after lock recompilation; `git diff --check` clean; no pre-commit config in
+  repo; package build itself validated by the editable install.
+
 Session 8:
 - `git log --all -S <real-project-id>`: zero hits after the rewrite, in
   both the clean clone and the resynced working copy (HEAD = origin/main =
@@ -162,10 +182,13 @@ Session 7 and earlier:
 
 ## Remaining Tasks
 
-- Implement Phase 2 from `docs-local/plans/phase-2-shared-schemas.md`: start
-  with the failing strict-primitives tests, then create the versioned package and
-  locks; request independent review before accepting the shared contract.
-- Create a Phase 2 runbook/evidence entry when implementation starts or completes.
+- Phase 2 increment 2: errors (`ErrorBody`/`ErrorEnvelope`/`ToolError`) plus the
+  story/review/synthesis/facilitator/judge domain group (test-first; grow the
+  public `__init__` exports; errors tests append to `test_base_and_errors.py`).
+- Phase 2 increments 3–4 after that (API + records; MCP + install proof,
+  diff review vs `docs/design/schemas.md`, independent review, close phase).
+- Session 9 output is uncommitted (owner decides commit timing): Makefile,
+  `shared/review_schemas/**`, Runbook 07, HANDOFF.
 - Optional later increment: tighten the default compute SA's `roles/editor`
   (pre-existing from project creation).
 - Phase 0 exit criterion "terraform apply reproducible from clean (destroy +
@@ -174,9 +197,9 @@ Session 7 and earlier:
 
 ## Next Steps
 
-1. Review and approve `docs-local/plans/phase-2-shared-schemas.md` before code work.
-2. Implement its increment 1 test-first, using the frozen schema document as the
-   field-level checklist.
+1. Commit session 9 output (increment 1) when the owner approves.
+2. Session 10: Phase 2 increment 2 — errors + domain model group, test-first,
+   reading only the relevant `docs/design/schemas.md` sections.
 3. Keep Cloud SQL paused; Phase 2 has no database or GCP dependency.
 
 ## Important Notes
