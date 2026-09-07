@@ -1,7 +1,8 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-06 (session 7 addendum: Cloud Run → Agent Engine leg recorded as deferred test item).
+point. Last updated: 2026-09-06 (session 8: docs-first rule, deferred CR→AE
+test item, project-ID redaction + history rewrite).
 
 ## Where we are
 
@@ -15,7 +16,36 @@ point. Last updated: 2026-09-06 (session 7 addendum: Cloud Run → Agent Engine 
 
 ## Previous Session Summary
 
-Session 7 addendum (2026-09-06) — identified and recorded a Phase 1 test gap: the **Cloud Run (orchestration) → Agent Engine** direction was never spike-tested (Phase 1 proved only Agent Engine → Cloud Run MCP). Assessed low-risk (outbound call from Cloud Run to a public Google API with ADC); decision: do not reopen Phase 1, fold live proof into Phase 8 exit criteria. `development-plan.md` updated (Phase 1 deferred item + Phase 8 exit criterion incl. `sa-orchestration` `aiplatform.user` and `:streamQuery?alt=sse` checks per Runbook 06 gotchas 3–4).
+Session 7 addendum (2026-09-06) — see Session 8 summary above (CR→AE gap recorded).
+
+Session 8 (2026-09-06) — docs hardening + pre-publication hygiene (no code, no
+GCP changes; Cloud SQL remained PAUSED):
+
+- Recorded the **Cloud Run (orchestration) → Agent Engine** test gap from Phase 1:
+`development-plan.md` got a Phase 1 "deferred item" note and a Phase 8 exit
+criterion (live proof: `sa-orchestration` IAM incl. `roles/aiplatform.user`,
+`:streamQuery?alt=sse` from Cloud Run — Runbook 06 gotchas 3–4). Decision:
+Phase 1 stays closed.
+- Added a **docs-first rule** to `AGENTS.md`: consult `docs/`+`docs-local/`
+before any task; on inconsistency, raise with the owner — never silently work
+around or fix; record in local-decisions / change `docs/` with approval.
+- **Repo scan for company-internal material** (files + full history, commit
+metadata, remotes): none found. Only company-derived content is the sanitized
+capstone assignment in `docs/source/` (no identifiers) — owner's call whether
+it stays in a public mirror.
+- **Project-ID redaction**: real GCP project ID appeared once in Runbook 06
+(introduced in commit `d0e9a43`); removed from the tree; an **evidence
+sanitization rule** added to `AGENTS.md` (no persistent identifiers in pasted
+evidence — use `$PROJECT_ID` form; disposable random IDs acceptable).
+- **Git history rewritten** (owner-run `git filter-repo --replace-text` in a
+fresh clone, rule `<real-project-id>==>$PROJECT_ID`): 70 commits, zero
+hits post-rewrite (verified); rewritten `main` force-pushed to the internal
+GitLab; `docs/initial-frozen` untouched. Working copy resynced (HEAD =
+origin/main = `e126e5b`, no diff, tree clean).
+- Commits (post-rewrite hashes): `ee3c694` (deferred test item), `c907fc9`
+(docs-first rule), `e126e5b` (project-ID redaction + sanitization rule).
+- GitHub mirror deferred by the owner (to be added later via GitLab GUI); keep
+the repo private until final review (incl. the `docs/source/` decision).
 
 Session 7 (2026-09-06) — reviewed the completed Phase 1 evidence and wrote the
 Phase 2 master implementation plan at `docs-local/plans/phase-2-shared-schemas.md`.
@@ -107,6 +137,16 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 ## Verification and Review
 
+Session 8:
+- `git log --all -S <real-project-id>`: zero hits after the rewrite, in
+  both the clean clone and the resynced working copy (HEAD = origin/main =
+  `e126e5b`, `git diff origin/main` empty).
+- Rewritten runbook line verified across all historical versions (`git grep`
+  over `rev-list --all`): all show the `$PROJECT_ID` placeholder.
+- Commit count preserved (70); `docs/initial-frozen` hashes unchanged.
+
+Session 7 and earlier:
+
 - All three runbooks: `init`/`fmt -check -recursive`/`validate` passed; plans
   reviewed by the owner before each apply; applies matched expected counts.
 - Runbook 03: gcloud SA list, project IAM policy, and terraform outputs matched
@@ -143,9 +183,10 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
 
 - Deployment pipeline stance: none yet — local scripts + runbook only; pipelines
   written at promotion (local-decisions.md D3).
-- Git: push state is the owner's; at last wrap-up several local commits
-  (`c728b37`, `44b03ef`, `9d92148`, plus the pending increment-3 commit)
-  awaited push — check `git status -sb` before assuming the remote is current.
+- Git: push state is the owner's; as of session 8 everything is pushed —
+  working copy, clean clone, and internal GitLab all at `e126e5b` (rewritten
+  history; old hashes like `c728b37`/`44b03ef`/`9d92148`/`f41ac10` are
+  superseded). Check `git status -sb` before assuming the remote is current.
 - Spike resources REMOVED (increment 5, 2026-09-06): Cloud Run service, agent
   engine, AR images, and `spike` schema gone; terraform plan clean (no drift).
   Spike source, tests, and runbook evidence preserved in git.
@@ -154,9 +195,14 @@ reviewed, evidenced Terraform/check increments, each committed atomically:
   New Make targets `db-pause`/`db-resume`/`db-status` (PROJECT_ID-guarded).
 - Trial credits: near-zero used of zł1,114, expire 2026-12-05.
 - Old default trial project exists but is unused/ignored.
-- 2026-09-06 (pre-publication hygiene): real project ID redacted from Runbook 06
-  (tree + git history rewrite prepared for owner-run `git filter-repo`); AGENTS.md
-  gained an evidence-sanitization rule; repo scanned for company-internal
-  material — none found (only sanitized capstone requirements in `docs/source/`).
-- `git push` is the owner's; remote added this session, owner pushes both
-  branches.
+- 2026-09-06 (pre-publication hygiene, session 8): real project ID redacted from
+  Runbook 06 in tree AND git history (owner-run `git filter-repo`; verified zero
+  hits; force-pushed). AGENTS.md gained an evidence-sanitization rule + docs-first
+  rule. Repo scanned for company-internal material — none found (only sanitized
+  capstone requirements in `docs/source/`; owner decides on including them in a
+  public mirror). GitHub mirror pending (owner, via GitLab GUI); keep repo private
+  until final review.
+- The rewrite's clean clone (`~/projects/capstone-project-clean`) was deleted by
+  the owner after verification — it is no longer needed; the internal GitLab
+  remote holds the rewritten history and is the source for the future GitHub
+  mirror.
