@@ -68,6 +68,12 @@ iteration. T1 baseline column: 7/7.
   authored (per-scenario facts / criteria / must-not-add / title /
   provenance, linked from story-templates.md) — the retro-write canonical-
   facts task is DONE; it is the authoritative renderer input for T3–T6.
+  T3 (job story, ids 28–34) and T4 (classic user story, ids 35–41) drafted
+  from it by parallel subagents, independently reviewed (14/14 PASS), and
+  authored in ADO (areas T3/T4, AC field = informal bullets, T4 titles =
+  full story sentences). Matrix columns T1–T4 now complete (7 scenarios
+  each); T5 (enabler TYPE variant, self-contained — not renderings) and T6
+  (free text, must still carry all canonical facts) remain.
 
 ### Earlier sessions (digest — detail lives in runbooks and git history)
 
@@ -143,10 +149,12 @@ cross-checks, test-first red/green, review findings fixed).
 ## Next Steps
 
 1. Owner pushes `main` (session-12 commit).
-2. Next session: T3–T6 columns (same draft → review → author flow; T5 is
-   the enabler TYPE variant — self-contained, not renderings), then
-   export + remaining D9 items; Runbook 09 increments 1–4 (expected files
-   transcribed from the plans, loader harness, `make dataset-test`).
+2. Next session: T5 (self-contained enabler stories per scenario — NOT
+   renderings of the user-actor canonical facts; excluded from invariance
+   assertions) and T6 (free text carrying every canonical fact) via the same
+   draft → review → author flow; then export + remaining D9 items; Runbook 09
+   increments 1–4 (expected files transcribed from the plans, loader
+   harness, `make dataset-test`).
 4. Keep Cloud SQL paused until a phase needs it.
 
 ## Important Notes
