@@ -317,5 +317,17 @@ Learned (dataset authoring, 2026-09-07):
       area; variants will sit under the same Features as their T1
       originals). Gotcha: `area project list` output is a nested tree —
       flatten with `jq '.. | .name? // empty'`.
+- [x] T2 column authored (2026-09-07, session 13, owner-approved; drafted by
+      subagent from the T1 stories per the canonical-fact rules in
+      `dataset/story-templates.md`, drafts + must-retain/must-not-add lists
+      in `dataset/drafts/t2/`; independent subagent review PASS + agent
+      live-T1 cross-check: no fact loss, no additions, all planted gaps
+      preserved — incl. both hidden-conflict capture statements, unreconciled).
+      Ids 21–27 (clean 21, business-weak 22, engineering-weak 23,
+      conflicting 24, partial-resolution 25, unresolvable 26,
+      hidden-conflict 27), each in area `story-review\T2`, AC field empty
+      (criteria live under "For this story:" in the description — the T2
+      field-location test), same tags/titles as T1, parent links verified
+      (21→4, 22→3, 23→4, 24→3, 25→3, 26→3, 27→4), backlog iteration.
 - [ ] Reproducible query saved.
 - [ ] JSON export produced and shape recorded.

@@ -57,6 +57,13 @@ payment immediately at order placement"; business hook: "payment only
 reserved… release is free"), synthesis must flag the contradiction with
 zero per-perspective findings. All hierarchy-verified, tagged, backlog
 iteration. T1 baseline column: 7/7.
+- Session 13 (continued): seven per-scenario manual test plans in
+  `dataset/manual-plans/` (PO scripts + expected turns, keyed by scenario —
+  format invariance); D9 recorded (canonical case ids, not ADO ids;
+  JSON/mock-endpoint story serving; one area path per template — T2–T6
+  areas created); T2 column drafted by subagent from T1 canonical facts
+  (`dataset/drafts/t2/`, reviewed PASS) and authored in ADO as ids 21–27
+  (area `T2`, AC field empty — the T2 field-location test).
 
 ### Earlier sessions (digest — detail lives in runbooks and git history)
 
@@ -132,8 +139,9 @@ cross-checks, test-first red/green, review findings fixed).
 ## Next Steps
 
 1. Owner pushes `main` (session-12 commit).
-2. Next session: review/confirm the seven manual plans, then
-   export + D9 decisions; Runbook 09 increments 1–4 (expected files
+2. Next session: T3–T6 columns (same draft → review → author flow; T5 is
+   the enabler TYPE variant — self-contained, not renderings), then
+   export + remaining D9 items; Runbook 09 increments 1–4 (expected files
    transcribed from the plans, loader harness, `make dataset-test`).
 4. Keep Cloud SQL paused until a phase needs it.
 
