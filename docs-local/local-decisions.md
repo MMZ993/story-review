@@ -113,6 +113,26 @@ This matches the allowance in `docs/operations/connectivity-identity.md`.
 Deferred (post-spike): private connectivity (PSC/VPC) is revisited only if
 Agent Engine networking support and cost justify it.
 
+## D9 — Dataset identity decoupled from ADO work-item IDs; JSON-backed story serving
+
+(2026-09-07, session 13.) The free Azure DevOps org/project is an
+**authoring-time tool only** — its work-item IDs are temporary references and
+must not leak into the dataset as identifiers:
+
+- The dataset's stable keys are **canonical case ids** (scenario slugs:
+`clean`, `business-weak`, …, `hidden-conflict`), matching the manual test
+  plans (`dataset/manual-plans/`) and the future expected files.
+- An export script (Runbook 08/09, increment 1) fetches the stories from ADO
+  into `dataset/stories/*.json` shaped as close as practical to a real ADO
+  work-item export — and **re-keys** each story from the ADO id to its
+  canonical case id (ADO id kept, if at all, as clearly-marked provenance
+  metadata, e.g. `ado_source_id`).
+- Story serving: the story MCP server (Phase 4) fetches stories from the
+  JSON files locally; for the hosted demo the JSON is served from Google
+  (mock endpoint standing in for a real ADO connection, which the demo
+  project deliberately has none of). The MCP fetch path must be identical in
+  both cases — only the backing endpoint differs.
+
 ## Differences from `docs/` (summary)
 
 | Topic | `docs/` (company) | Home phase |
