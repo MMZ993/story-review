@@ -20,6 +20,15 @@ Formatting differences may produce at most info-level reviewer notes.
 
 ## Scenario → current story instance (T1 baseline column)
 
+**ADO work-item IDs are temporary authoring-time references, not dataset
+identifiers (local decision D9).** The stable keys are the canonical case ids
+(the plan file names below). The export script will re-key stories from ADO
+ids to canonical case ids (ADO id retained only as marked provenance); the
+story MCP server will serve from the exported JSON — locally from files, in
+the hosted demo from a Google-hosted mock endpoint standing in for a real
+ADO connection. Wherever a plan says "story id N", read "the current T1
+instance of this case (ADO id N at authoring time)".
+
 | Plan | Scenario | T1 story id | Title |
 |---|---|---|---|
 | `clean.md` | Clean | 5 | Invoice PDF in order confirmation email |

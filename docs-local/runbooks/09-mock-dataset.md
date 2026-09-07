@@ -51,4 +51,11 @@ export).
   with zero per-perspective findings). Plans are the authoring source for
   increment 3's `dataset/expected/<case>.json` (mechanical transcription —
   same vocabulary). This also settles the deferred decision: expected files
-  are keyed by canonical-case (scenario), not by ADO work-item id.
+  are keyed by canonical-case (scenario), not by ADO work-item id — now
+  formalized as **D9** in `docs-local/local-decisions.md`: ADO ids are
+  temporary authoring references; the export script re-keys stories to
+  canonical case ids (ADO id kept only as marked provenance, e.g.
+  `ado_source_id`); the story MCP serves from the exported JSON — locally
+  from files, in the hosted demo from a Google-hosted mock endpoint standing
+  in for a real ADO connection (fetch path identical, only the backing
+  endpoint differs).
