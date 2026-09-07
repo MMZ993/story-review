@@ -1,9 +1,8 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-point. Last updated: 2026-09-07 (session 12: Phase 2 post-review accepted +
-commit `2d639b3`; Phase 3 plan written, ADO sample environment stood up
-(Runbook 08), dataset template matrix designed; story authoring in progress).
+Last updated: 2026-09-08 (session 14: T5 enabler column authored — spec,
+  drafts, review, ADO ids 42–48; matrix T1–T5 complete, T6 next).
 
 ## Where we are
 
@@ -71,9 +70,24 @@ iteration. T1 baseline column: 7/7.
   T3 (job story, ids 28–34) and T4 (classic user story, ids 35–41) drafted
   from it by parallel subagents, independently reviewed (14/14 PASS), and
   authored in ADO (areas T3/T4, AC field = informal bullets, T4 titles =
-  full story sentences). Matrix columns T1–T4 now complete (7 scenarios
-  each); T5 (enabler TYPE variant, self-contained — not renderings) and T6
-  (free text, must still carry all canonical facts) remain.
+  full story sentences). Matrix columns T1–T4 complete (7 scenarios each).
+- Session 14 (continued): T5 column authored. Design decision (owner-approved):
+  each T5 enabler is the engineering-side counterpart of its scenario — same
+  story world, planted flaw preserved verbatim, expected review arc identical
+  to the scenario's manual plan (T5 stays excluded from cross-template
+  invariance assertions per story-templates.md; verdict-mirroring is by
+  design). Authoring input `dataset/t5-enabler-spec.md` (framing, facts,
+  criteria, must-not-add, expected verdict per scenario; extra business-weak
+  clause: no technical-effort justification standing in for business value).
+  Drafts in `dataset/drafts/t5/` (subagent, t3-style with self-check);
+  independent read-only subagent review: all substantive checks PASS (only
+  the authoring-artifact self-check sections were flagged — not ADO content).
+  ADO ids: clean 42, business-weak 43, engineering-weak 44, conflicting 45,
+  partial-resolution 46, unresolvable 47, hidden-conflict 48 — area `T5`,
+  backlog iteration, tags identical to T1 mirrors, parents verified
+  (42→4, 43→3, 44→4, 45→3, 46→3, 47→3, 48→4), AC bullets verified, id 48
+  carries both capture statements unreconciled. Matrix T1–T5 complete; T6
+  (free text, must carry every canonical fact) remains.
 
 ### Earlier sessions (digest — detail lives in runbooks and git history)
 
@@ -148,14 +162,10 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. Owner pushes `main` (session-12 commit).
-2. Next session: T5 (self-contained enabler stories per scenario — NOT
-   renderings of the user-actor canonical facts; excluded from invariance
-   assertions) and T6 (free text carrying every canonical fact) via the same
+1. Next session: T6 (free text carrying every canonical fact) via the same
    draft → review → author flow; then export + remaining D9 items; Runbook 09
    increments 1–4 (expected files transcribed from the plans, loader
-   harness, `make dataset-test`).
-4. Keep Cloud SQL paused until a phase needs it.
+   harness, `make dataset-test`). T5 is done (ids 42–48).
 
 ## Important Notes
 
