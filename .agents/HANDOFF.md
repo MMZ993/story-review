@@ -1,8 +1,8 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-08 (session 14: T5 enabler column authored — spec,
-  drafts, review, ADO ids 42–48; matrix T1–T5 complete, T6 next).
+Last updated: 2026-09-08 (session 14: T5 + T6 columns authored — matrix
+  COMPLETE, T1–T6 × 7 scenarios, ids 5–55; next: export + Runbook 09).
 
 ## Where we are
 
@@ -88,6 +88,20 @@ iteration. T1 baseline column: 7/7.
   (42→4, 43→3, 44→4, 45→3, 46→3, 47→3, 48→4), AC bullets verified, id 48
   carries both capture statements unreconciled. Matrix T1–T5 complete; T6
   (free text, must carry every canonical fact) remains.
+- Session 14 (continued): T6 column authored — the MATRIX IS COMPLETE
+  (T1–T6 × 7 scenarios, ADO ids 5–55). Drafts in `dataset/drafts/t6/`
+  (subagent from `dataset/canonical-facts.md`, quick-notes register, terse
+  titles, criteria woven into plain prose); independent read-only subagent
+  review: **7/7 PASS** (every fact/criterion/scope present, all planted
+  gaps absent, hidden-conflict both capture statements unreconciled, no
+  lists/scaffolding). ADO ids: clean 49, business-weak 50, engineering-weak
+  51, conflicting 52, partial-resolution 53, unresolvable 54,
+  hidden-conflict 55 — area `T6`, backlog iteration, terse titles
+  ("Invoice mail", "GP", "retry", "last one", "saved card", "intl",
+  "30m edit"), AC field EMPTY (the T6 no-criteria-field stress), tags
+  identical to T1 mirrors, parents verified (49→4, 50→3, 51→4, 52→3,
+  53→3, 54→3, 55→4). canonical-facts.md provenance lines now carry all
+  template ids (T1–T4 retro-added, T6 added).
 
 ### Earlier sessions (digest — detail lives in runbooks and git history)
 
@@ -162,10 +176,10 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. Next session: T6 (free text carrying every canonical fact) via the same
-   draft → review → author flow; then export + remaining D9 items; Runbook 09
-   increments 1–4 (expected files transcribed from the plans, loader
-   harness, `make dataset-test`). T5 is done (ids 42–48).
+1. Next: export + remaining D9 items (fidelity/trimming, metadata
+   classification); Runbook 09 increments 1–4 (expected files transcribed
+   from the plans, loader harness, `make dataset-test`). Matrix authoring is
+   COMPLETE (T1–T6 × 7 scenarios, ids 5–55); T6 done this session (49–55).
 
 ## Important Notes
 

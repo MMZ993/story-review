@@ -365,5 +365,22 @@ Learned (dataset authoring, 2026-09-07):
       to carry both capture statements unreconciled. Gotcha: `infra/envs/
       ado.env` has no `export` — use `set -a; source infra/envs/ado.env;
       set +a` when scripting against it. Matrix columns T1–T5 complete.
+- [x] T6 free-text column authored (2026-09-08, session 14, owner-approved):
+      **matrix COMPLETE — T1–T6 × 7 scenarios (ids 5–55)**. Drafts in
+      `dataset/drafts/t6/` (subagent from `dataset/canonical-facts.md`;
+      quick-notes register, terse titles, criteria woven into prose — T6's
+      rule: every canonical fact incl. criteria in prose, missing facts are
+      a defect not a variation). Independent read-only subagent review
+      7/7 PASS. Authored via a draft-parsing script (T6 twist: AC field
+      deliberately EMPTY — the no-criteria-field stress; self-check section
+      excluded from ingestion): ids 49–55 (clean 49, business-weak 50,
+      engineering-weak 51, conflicting 52, partial-resolution 53,
+      unresolvable 54, hidden-conflict 55), area `story-review\T6`, backlog
+      iteration, terse titles ("Invoice mail", "GP", "retry", "last one",
+      "saved card", "intl", "30m edit"), tags identical to T1 mirrors,
+      parents verified (49→4, 50→3, 51→4, 52→3, 53→3, 54→3, 55→4); id 55
+      verified to carry both capture statements unreconciled.
+      `dataset/canonical-facts.md` provenance lines now list all template
+      ids (T3/T4 retro-added, T6 added).
 - [ ] Reproducible query saved.
 - [ ] JSON export produced and shape recorded.
