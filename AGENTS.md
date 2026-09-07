@@ -79,6 +79,13 @@ notes) so a fresh session catches up via this file.
 - They live only in the gitignored `infra/envs/home.env`. Runbooks and commands use
   shell variables (`$PROJECT_ID`, `$BILLING_ACCOUNT`, ...) and start with
   `source infra/envs/home.env`.
+- **Evidence must be sanitized before it enters git.** Pasted outputs in runbooks,
+  HANDOFF, commits, or issues must not contain the real project ID or other
+  persistent identifiers — replace them with the shell-variable form
+  (`$PROJECT_ID`, `$PROJECT_ID-sessions`, ...) even inside "verbatim" output
+  blocks. Random resource IDs (revision hashes, engine IDs, correlation IDs) of
+  already-torn-down disposable resources are acceptable, but prefer placeholders
+  (`<service-url>`, `<engine-id>`) for anything resolvable.
 - Never commit identifiers, SA keys, tokens, or `*.env` files. ADC
   (`~/.config/gcloud/application_default_credentials.json`) is the credential; no
   key files.
