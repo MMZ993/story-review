@@ -1,9 +1,9 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-09 (session 17 — Phase 4 opened: plan written,
-  increment 0 shared-schema catch-up done + reviewed, suite 151 green;
-  frozen-branch reconciliation check closed).
+Last updated: 2026-09-09 (session 18 — Phase 4 increment 1 correction:
+  public story contracts no longer leak dataset evaluation metadata; shared
+  schema 0.3.0, reviewed, suite 152 green).
 
 ## Where we are
 
@@ -22,6 +22,21 @@ Last updated: 2026-09-09 (session 17 — Phase 4 opened: plan written,
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 18 (2026-09-09) — **Phase 4 increment 1 correction**:
+- Owner identified `StorySummary.quality_class` as an evaluation-oracle leak:
+  real Azure DevOps stories do not know their expected review outcome.
+  Owner approved the resulting design-contract correction.
+- `quality_class` removed from the authoritative `StorySummary` and inherited
+  `StoryDetail`, so it cannot appear in API/MCP results; the strict public
+  models explicitly reject it. Dataset `scenario` and expected contracts stay
+  evaluation-only. `shared/review_schemas` bumped 0.2.0 → **0.3.0**.
+- Phase 4 mapping plan, D9 amendment 4, D9 amendment 5 (decision record), and
+  Runbook 10 updated to remove the stale mapping. No environment action; Cloud
+  SQL remained STOPPED/NEVER.
+- Independent read-only review: first pass found the missing direct
+  `StoryDetail` rejection test and stale docstring; both fixed. Follow-up:
+  **Ready to proceed**, no findings.
 
 Session 17 (2026-09-09) — **Phase 4 opened** (plan + increment 0):
 - **Frozen-branch reconciliation check** (prior next-step 0): full-tree diff
@@ -223,6 +238,18 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 18:
+- Test-first: focused `StorySummary` rejection test failed red as expected
+  (`DID NOT RAISE ValidationError`); implementation then made it green.
+- `make review-schemas-test`: **152 passed** (including public
+  `StorySummary` and `StoryDetail` rejection coverage, clean-install/version
+  assertion); `make dataset-test`: **36 passed** (one pre-existing Pydantic
+  deprecation warning for loader `Field(unique=True)`). `git diff --check`
+  passed.
+- Independent read-only review: first pass **Needs fixes** (1 Important:
+  `StoryDetail` rejection coverage; 1 Minor stale docstring), both fixed;
+  follow-up **Ready to proceed**, no findings.
+
 Session 17:
 - `make review-schemas-test`: **151 passed** (147 + 4 new behavior tests,
   red-first ImportError on `ContextStory`); `make dataset-test`:
@@ -308,8 +335,9 @@ cross-checks, test-first red/green, review findings fixed).
 
 1. **Phase 4 increment 1 — story MCP server** (plan
    `docs-local/plans/phase-4-mcp-servers.md`): preparation module
-   (envelope → `StoryDetail` per the D9-amendment-4 mapping table, HTML
-   flattening, golden snapshots over all 45 files), then `list_stories` /
+   (envelope → `StoryDetail` per the corrected D9-amendment-4 mapping table,
+   with dataset `scenario` never mapped or returned; HTML flattening, golden
+   snapshots over all 45 files), then `list_stories` /
    `get_story` tools with spike-pattern auth wiring, error taxonomy,
    Dockerfile (copies `dataset/stories/` only). Test-first per increment.
 2. Phase 4 increments 2–5 follow the plan (artifact → report → compose →
@@ -325,9 +353,9 @@ cross-checks, test-first red/green, review findings fixed).
   session 15; also recorded in the extensions plan).
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
-- Git: main is **3 ahead of origin** after session 17 (`cf48512` plan,
-  `6452b15` schema, `68c08cf` handoff) plus the wrap-up chore commit —
-  **owner still needs to push**. `docs/initial-frozen` is pushed and
+- Git: main was **4 ahead of origin** at session start; session-18 changes
+  are uncommitted. The owner still needs to push existing commits after any
+  requested new commits. `docs/initial-frozen` is pushed and
   reconciled (sole accepted divergence: the `docs/index.md` docs-local
   pointer from `c5dc040`).
   Session-16 cherry-picks: `dfbde69`, `7b9975d`, `a787dbe` (hidden-conflict

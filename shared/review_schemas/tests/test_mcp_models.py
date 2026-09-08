@@ -51,7 +51,6 @@ def story_detail() -> dict:
         "story_id": STORY_ID,
         "title": "Payments retry",
         "status": "ready",
-        "quality_class": "B",
         "description": "full story text",
         "epic_context": "epic",
         "roadmap_context": "roadmap",
@@ -104,7 +103,7 @@ class TestListAndGetStory:
     def test_list_output_defaults_and_max_length(self):
         empty = ListStoriesOutput()
         assert empty.stories == []
-        refs = [{"story_id": STORY_ID, "title": "t", "status": "ready", "quality_class": "B"}]
+        refs = [{"story_id": STORY_ID, "title": "t", "status": "ready"}]
         assert len(ListStoriesOutput(stories=refs * 50).stories) == 50
         with pytest.raises(ValidationError):
             ListStoriesOutput(stories=refs * 51)

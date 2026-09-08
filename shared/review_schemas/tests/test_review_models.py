@@ -54,7 +54,7 @@ def finding(**overrides) -> dict:
 class TestStoryModels:
     def test_summary_and_detail(self):
         summary = StorySummary.model_validate(
-            {"story_id": STORY_ID, "title": "Payments retry", "status": "ready", "quality_class": "B"}
+            {"story_id": STORY_ID, "title": "Payments retry", "status": "ready"}
         )
         assert isinstance(summary, StorySummary)
         detail = StoryDetail.model_validate(
@@ -68,6 +68,26 @@ class TestStoryModels:
         assert detail.acceptance_criteria == []
         assert detail.comments == []
         assert detail.context_stories == []
+
+    def test_public_story_models_reject_dataset_evaluation_metadata(self):
+        """Story API and MCP payloads must not expose the dataset-only label."""
+        summary = {
+            "story_id": STORY_ID,
+            "title": "Payments retry",
+            "status": "ready",
+            "quality_class": "business-weak",
+        }
+        with pytest.raises(ValidationError):
+            StorySummary.model_validate(summary)
+        with pytest.raises(ValidationError):
+            StoryDetail.model_validate(
+                summary
+                | {
+                    "description": "full story text",
+                    "epic_context": "epic",
+                    "roadmap_context": "roadmap",
+                }
+            )
 
     def test_detail_accepts_comments_and_context_stories(self):
         comment = {
@@ -88,7 +108,6 @@ class TestStoryModels:
                 "story_id": STORY_ID,
                 "title": "t",
                 "status": "s",
-                "quality_class": "q",
                 "description": "d",
                 "epic_context": "e",
                 "roadmap_context": "r",
@@ -129,7 +148,6 @@ class TestStoryModels:
             "story_id": STORY_ID,
             "title": "t",
             "status": "s",
-            "quality_class": "q",
             "description": "d",
             "epic_context": "e",
             "roadmap_context": "r",
@@ -154,7 +172,6 @@ class TestStoryModels:
             "story_id": STORY_ID,
             "title": "t",
             "status": "s",
-            "quality_class": "q",
             "description": "d",
             "epic_context": "e",
             "roadmap_context": "r",

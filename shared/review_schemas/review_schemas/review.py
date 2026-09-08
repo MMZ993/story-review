@@ -1,9 +1,9 @@
 """Story and review models.
 
 Implements the story/review part of the domain section of
-docs/design/schemas.md: `StorySummary`/`StoryDetail` (dataset payloads),
-`Finding` (one review observation), and `ReviewReport` (one perspective's
-review of a story, with the finding-prefix invariant).
+docs/design/schemas.md: `StorySummary`/`StoryDetail` (runtime story
+payloads), `Finding` (one review observation), and `ReviewReport` (one
+perspective's review of a story, with the finding-prefix invariant).
 """
 
 from __future__ import annotations
@@ -28,7 +28,6 @@ class StorySummary(StrictModel):
     story_id: StoryId
     title: ShortText
     status: ShortText
-    quality_class: ShortText
 
 
 class StoryComment(StrictModel):
@@ -53,7 +52,7 @@ class ContextStory(StrictModel):
 
 
 class StoryDetail(StorySummary):
-    """Full dataset story payload used as review input."""
+    """Full runtime story payload used as review input."""
 
     description: Text
     acceptance_criteria: list[Text] = Field(default_factory=list, max_length=100)

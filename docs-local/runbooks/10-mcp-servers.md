@@ -40,6 +40,19 @@ tests plus extended default assertions in the existing summary/detail test:
 valid nested payload, strict-field rejection, relation literal, cap 50/5
 overflow); `make dataset-test` **36 passed**.
 
+### Increment 1 correction — runtime story contract (local, no cost)
+
+Owner-approved 2026-09-09. Before story-server preparation began, the owner
+identified `StorySummary.quality_class` as an evaluation-data leak: real Azure
+DevOps stories do not know their expected review result. The authoritative
+schema, shared implementation, and all public API/MCP consumers now omit it;
+`dataset` retains its `scenario` only for test evaluation. The new behavior
+contract rejects a public story payload carrying `quality_class`.
+
+```
+make review-schemas-test  # focused test red first, then 152 passed green
+```
+
 Gotchas learned:
 
 - `tests/test_package_install.py` pins both the package version and the

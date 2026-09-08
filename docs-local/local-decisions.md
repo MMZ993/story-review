@@ -255,8 +255,8 @@ Owner decisions at Phase 4 increment 0 (plan
 - **Preparation runs at server startup, in memory**: the story MCP reads
   `/app/dataset/stories/` envelopes, flattens HTML rich-text fields to the
   design `Text` projection, and maps ADO fields to `StoryDetail` per the
-  mapping table (title/status ← System fields; `quality_class` from
-  area/tags; epic/roadmap context from the parent envelopes in
+  mapping table (title/status ← System fields; epic/roadmap context from
+  the parent envelopes in
   `dataset/stories/context/`). Images stay dataset-agnostic; a committed
   golden snapshot pins the preparation output per story file. The export
   files remain verbatim (D9 principle unchanged).
@@ -264,3 +264,14 @@ Owner decisions at Phase 4 increment 0 (plan
 - `shared/review_schemas` 0.2.0: `StoryComment` + `ContextStory` added to
   `StoryDetail` per schemas.md (code catching up to the session-16 design
   change); test-first, suite 151 green.
+
+### D9 amendment 5 — Dataset evaluation metadata stays outside runtime story contracts
+
+Owner-approved 2026-09-09 during Phase 4 increment 1. `quality_class` was
+removed from the public `StorySummary`/`StoryDetail` schemas and therefore
+from API and MCP list results. It was a test-oracle leak: a real Azure DevOps
+story does not carry its expected review outcome. The dataset envelope's
+`scenario` and `dataset/expected/` contracts retain that evaluation metadata
+for the Phase 9 runner only; story preparation must never map or return it.
+`shared/review_schemas` is version 0.3.0; its contract test rejects a public
+story payload containing `quality_class`.
