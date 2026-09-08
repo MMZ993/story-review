@@ -50,7 +50,9 @@ canonical model when they are semantic review inputs; display-only decoration
 ## Matrix structure
 
 Scenarios (clean / business-weak / engineering-weak / conflicting /
-partial-resolution / unresolvable) × templates (T1–T6), with story quality as a
+partial-resolution / unresolvable / hidden-conflict — see
+`docs/quality/mock-data.md` for the scenario table) × templates (T1–T6), with
+story quality as a
 third dimension in stress datasets (well-filled / partially vague / vague —
 including deliberately mismatched pairs: beautiful template, vague content, and
 vice versa). All scenarios are first authored in T1 (baseline column); other
@@ -190,7 +192,8 @@ must still contain every canonical fact (see the canonical content model).
 
 ## Usage in the current dataset (first column of the matrix)
 
-All six scenarios are authored in T1 first (the baseline column), then
+All seven scenarios (the six base scenarios plus hidden-conflict) are
+authored in T1 first (the baseline column), then
 duplicated across T2–T6 in later increments. Stories carry **no Effort**
 (review happens pre-estimation, in the backlog) and live in the backlog
 iteration.
