@@ -6,9 +6,9 @@ no Cloud SQL (the instance stays STOPPED throughout). Prerequisites (az CLI,
 ADO sample org/project, backlog authoring, export) are codified in
 Runbook 08.
 
-Status: COMPLETE (opened 2026-09-07; increments 0–4 done 2026-09-08 —
-matrix authored in Runbook 08; export + expected files + loader done;
-make dataset-test green; phase-completion review pending).
+Status: COMPLETE including phase-completion review (opened 2026-09-07;
+increments 0–4 done 2026-09-08; completion review 2026-09-09 session 16 —
+verdict Ready to close Phase 3, 3 Minor doc-drift findings fixed).
 
 ## Scope
 
@@ -158,3 +158,18 @@ make dataset-test green; phase-completion review pending).
       cross-check, plain loop in expand_cases, narrowed pytest.raises,
       top-level test imports + 5 additional negative tests). All 8 fixed
       in the same session; suites re-run green (28 dataset + 147 schemas).
+- [x] **Phase-completion review** (session 16, independent read-only
+      subagent, contract boundary like Phase 2's post-review): verdict
+      **Ready to close Phase 3** — 0 Critical / 0 Important / 3 Minor, all
+      fixed same session:
+      1. `docs/quality/mock-data.md` + `evaluation-tests.md` still described
+         per-case expected files — realigned to scenario-canonical contract
+         (commit docs-only/atomic per the docs-freeze cherry-pick rule);
+      2. `dataset/story-templates.md` matrix paragraph listed six scenarios
+         — hidden-conflict added;
+      3. `dataset/canonical-facts.md` provenance lacked T5 cross-reference —
+         added (T5 ids live in t5-enabler-spec.md, ids 42–48).
+      Reviewer re-verified: 42 story files + 3 context, story_id template-major
+      sequence, sanitization clean across all 111 dataset files, expected
+      files expand to 42 cases, loader strict + vocabulary-consistent with
+      review_schemas; suites 28 + 147 green.

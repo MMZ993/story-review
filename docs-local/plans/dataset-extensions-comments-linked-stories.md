@@ -10,6 +10,12 @@ backlogs accumulate discussion in **comments**, and implementation stories
 often **link** to their analysis/precursor stories while some context lives
 only in the linked item.
 
+Git/commit convention for this session: **commits touching `docs/` must be
+separate and atomic** — never mix `docs/` changes with code, dataset, or
+`docs-local/` changes in the same commit — so the `docs/`-only commits can
+later be cherry-picked cleanly onto `docs/initial-frozen` (the frozen design
+branch tracks design evolution).
+
 ## Extension 1 — comments as review input
 
 ### Mock data (3 new stories, owner-specified)

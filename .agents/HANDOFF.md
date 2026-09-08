@@ -1,16 +1,16 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-08 (session 15: Runbook 09 COMPLETE — expected files
-  (7 scenario-canonical), story-id backfill, loader harness (make dataset-test,
-  28 tests) + REST export path; Runbook 08 REST/PAT verification; independent
-  review Ready-to-proceed, 8 Minor fixed; phase-completion review pending).
+Last updated: 2026-09-09 (session 16: Phase 3 CLOSED — completion review
+  Ready-to-close, 3 Minor doc-drift findings fixed; docs expected-file
+  contract realigned; commit-atomicity rule for docs/ recorded).
 
 ## Where we are
 
-- Phase: **3 — Mock dataset: IN PROGRESS** (plan at
-  `docs-local/plans/phase-3-mock-dataset.md`; ADO env + backlog structure done
-  in Runbook 08; dataset/expected work tracked in Runbook 09).
+- Phase: **3 — Mock dataset: COMPLETE** (closed session 16 after the
+  independent completion review; plan at `docs-local/plans/phase-3-mock-dataset.md`,
+  Runbooks 08 + 09 both COMPLETE).
+- Next: extension session (comments + linked stories) before Phase 4.
 - Phase 2 COMPLETE and post-reviewed (session 11, owner-run: independent review
   + 41 negative tests added, suite **147 passed**; commit `2d639b3`).
 - Phase 1 complete: end-to-end trace passed under the D8 ingress fallback; all
@@ -21,6 +21,28 @@ Last updated: 2026-09-08 (session 15: Runbook 09 COMPLETE — expected files
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 16 (2026-09-09) — **Phase 3 CLOSED**. Independent read-only
+subagent completion review of the dataset + expected files (contract
+boundary): verdict **Ready to close** — 0 Critical/Important, 3 Minor
+doc-drift findings, all fixed same session: (1) `docs/quality/mock-data.md`
+§Expected-file contract + `evaluation-tests.md` still described per-case
+files — realigned to the scenario-canonical contract (semantic-stub
+findings, invariance block, loader expansion), committed docs-only/atomic
+(`5e35128`) per the new cherry-pick rule; (2) story-templates.md matrix
+paragraph now lists seven scenarios incl. hidden-conflict; (3)
+canonical-facts.md provenance cross-references t5-enabler-spec (T5 ids
+42–48). Reviewer re-verified: 42 stories + 3 context, sanitization clean
+across all 111 dataset files, story_id template-major sequence, loader
+vocabulary-consistent with review_schemas, suites 28 + 147 green.
+Phase 3 marked done in development-plan.md; Runbook 09 evidence updated.
+Owner rule recorded (HANDOFF + extensions plan): commits touching `docs/`
+must be separate and atomic — no mixing with code/dataset/docs-local —
+so they can be cherry-picked onto `docs/initial-frozen`. Clarified with
+owner: reviewers' story-input contract (StoryDetail + agents.md input)
+lives in `docs/` and today covers title/description/AC/epic_context/
+roadmap_context; comments + context_stories are the extension session's
+owner-approval design changes.
 
 Session 15 (2026-09-08) — Runbook 09 **increments 3 + 4 DONE — runbook
 COMPLETE** (phase-completion review pending). Increment 3: expected files
@@ -237,14 +259,11 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Remaining Tasks
 
-- **Phase 3 close-out:** Runbook 09 is COMPLETE (increments 0–4). The
-  plan's phase-completion gate — an independent read-only review of the
-  dataset + expected files as a whole (contract boundary, like Phase 2's
-  post-review) — is still pending; run it next session, then mark Phase 3
-  done in `docs-local/development-plan.md`. Deferred D9 items still open:
-  fidelity/trimming (decide at Phase 4 against the verbatim export) and
-  metadata semantic/display classification (now forced by the comments
-  extension).
+- ~~Phase 3 close-out~~ DONE (session 16): completion review Ready-to-close,
+  3 Minor fixed, phase marked done in development-plan.md. Deferred D9 items
+  still open: fidelity/trimming (decide at Phase 4 against the verbatim
+  export) and metadata semantic/display classification (now forced by the
+  comments extension).
 - ~~Owner teardown of the redaction pass~~ DONE (2026-09-07, owner):
   `~/projects/capstone-project-filter2` removed; `/tmp/project-id-replace.txt`
   left in place deliberately (tmp clears itself).
@@ -260,10 +279,7 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. Phase 3 completion review (independent, read-only, dataset + expected
-   files vs `docs/quality/mock-data.md` + `evaluation-tests.md` + schemas
-   vocabulary), then close Phase 3 in the development plan.
-2. Extension session (owner-raised, session 14): comments-as-review-input
+1. Extension session (owner-raised, session 14): comments-as-review-input
    (3 new stories) and linked context stories (structure codified now,
    mock data deferred). Full evaluation + plan:
    `docs-local/plans/dataset-extensions-comments-linked-stories.md` —
@@ -271,13 +287,18 @@ cross-checks, test-first red/green, review findings fixed).
    context_stories; agents/api-contract/mcp-servers) need owner approval;
    both extensions additive/backwards-compatible with the 42 cases. Note:
    new expected files slot into the scenario-canonical scheme (own file per
-   new scenario/content variant; loader registers new SLUGS).
-3. Phase 4 (MCP servers + compose): story MCP serves verbatim from
+   new scenario/content variant; loader registers new SLUGS). Remember the
+   docs/ commit-atomicity rule for the design-change commits.
+2. Phase 4 (MCP servers + compose): story MCP serves verbatim from
    `dataset/stories/` (D9); hosted demo uploads the 45 JSON files to the
    Google-hosted mock endpoint; expected files stay out of runtime images.
 
 ## Important Notes
 
+- **Commit granularity for `docs/`**: commits touching `docs/` must be
+  separate and atomic (never mixed with code/dataset/`docs-local/` changes)
+  so they can later be cherry-picked onto `docs/initial-frozen` (owner rule,
+  session 15; also recorded in the extensions plan).
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
 - Git: session 14 produced six commits (`a74bcc6`, `1f39e19`, `310765a`,
