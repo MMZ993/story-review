@@ -1,12 +1,12 @@
 # Dataset extensions — comments and linked context stories (planning only)
 
-Status: IN PROGRESS (session 16, 2026-09-09): `docs/` design changes DONE
-(`StoryComment`/`ContextStory`, commit `52534ef`); extension 2 dataset
-structure codified + extension 1 comments export DONE (D9 amendment 3,
-loader tests 35 green). Remaining: authoring of the 3 comment stories in
-ADO (C-1–C-3, with the open decisions below), manual plans + expected
-files, SLUGS/story-id registration. Extension 2 mock data stays deferred
-by design.
+Status: MOSTLY DONE (sessions 16): `docs/` design changes (`52534ef`);
+extension 2 dataset structure codified; comments export spike + support;
+3 comment stories authored end-to-end (ADO ids 57–59, story-43..45,
+expected files + manual plans, 36 tests green). REMAINING (deferred by
+owner): extension 2 mock data (linked context stories) — structure is
+codified, authoring later is pure data preparation; open sub-decisions:
+context-only story file placement, link-type mapping at export.
 
 Motivation (owner): both are realism gaps. Blocked/contested stories in real
 backlogs accumulate discussion in **comments**, and implementation stories

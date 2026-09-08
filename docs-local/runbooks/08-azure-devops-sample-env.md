@@ -473,7 +473,7 @@ python3 -c "import export_ado as e; e.fetch_comments('$ADO_PROJECT', 56)"
 | Aspect | Result |
 |---|---|
 | Comments API version | **preview-only**: `7.1` is rejected (VssInvalidPreviewVersionException); must be `7.1-preview.4` |
-| PAT scope | Read-only PAT → **401** on POST; owner widened `rest-verify` to Read & Write for the spike (may be reverted) |
+| PAT scope | Read-only PAT → **401** on POST; owner widened `rest-verify` to Read & Write (PERMANENT — needed for comment authoring; stays) |
 | az CLI fallback | `az rest` cannot authenticate with the MSA login (**AADSTS500011**, as before) — comments export **requires the REST mode**; `export_ado.fetch_comments` aborts loudly in az mode |
 | Response shape | per comment: `id`, `workItemId`, `version`, `text`, `format: "html"` (but `renderedText` empty for plain-posted text — `text` is the canonical content), `mentions: []`, `createdBy`/`modifiedBy`, `createdDate`/`modifiedDate`, `url` |
 | Ordering | API returns **newest first**; `fetch_comments` sorts chronologically ascending |
