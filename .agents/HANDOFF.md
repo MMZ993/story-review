@@ -531,12 +531,12 @@ cross-checks, test-first red/green, review findings fixed).
   session 15; also recorded in the extensions plan).
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
-- Git: session-21 artifact work WAS committed by the owner (`52e6668`,
-  after the stale note below was written). Session-22 increment-3 work
-  (report server, mcp_ingress, refactors, runbook/handoff) is uncommitted
-  — suggested granularity: one increment-3 commit. An untracked
-  `docs-local/plans/future-extensions.md` predates this session (not
-  authored here; owner decides its fate). Check `git status -sb` before assuming the
+- Git: session-22 increment-3 work committed as `d65eb1c` (feat: report
+  mcp server + shared ingress middleware — includes a `.gitignore` addition
+  for `__pycache__/`/`.pytest_cache/`, which had not been ignored);
+  pushed by the owner (origin/main at `d65eb1c`). The owner's draft
+  `docs-local/plans/future-extensions.md` committed separately as
+  `b9afaef` (owner push pending). Check `git status -sb` before assuming the
   remote is current.
   Session-16 cherry-picks: `dfbde69`, `7b9975d`, `a787dbe` (hidden-conflict
   row rode along — correct content-wise). Old history note:
