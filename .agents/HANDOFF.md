@@ -1,11 +1,10 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-08 (session 14 close: T5 + T6 authored — matrix
-  COMPLETE; export done (Runbook 09 increment 1, 45 sanitized JSON files);
-  comments + linked-stories extension planned
-  (docs-local/plans/dataset-extensions-comments-linked-stories.md); next:
-  expected files + loader, then the extension session).
+Last updated: 2026-09-08 (session 15: Runbook 09 increment 3 DONE —
+  expected files (7 scenario-canonical, collapsed from per-template) +
+  story-id backfill + D9 amendment 2; Runbook 08 REST-equivalence
+  verification (PAT path proven); next in-session: increment 4 loader).
 
 ## Where we are
 
@@ -23,7 +22,29 @@ Last updated: 2026-09-08 (session 14 close: T5 + T6 authored — matrix
 
 ## Previous Session Summary
 
-Session 12 (2026-09-07) — Phase 2 accepted; Phase 3 opened; ADO sample env;
+Session 15 (2026-09-08, in progress) — Runbook 09 **increment 3 DONE**:
+expected files authored from `dataset/manual-plans/`, first as 42
+per-template files, then **collapsed (owner decision) to 7 scenario-canonical
+files** `dataset/expected/<scenario>.json` — the loader expands each to the
+6 per-template test cases (format invariance enforced structurally; D9
+amendment 2). Owner-approved decisions recorded: `story_id` = `story-01`…
+`story-42` template-major (backfilled into all 42 story envelopes);
+`expected_findings` = semantic stubs (runtime finding IDs not pinned);
+`expected_turns` includes turn 1; conflicting closing = variant 1
+(2-turn conversational finalize). `facilitator_turn_count` excludes PO
+acceptance turns per schemas.md (clean=1 … unresolvable=10/park).
+Unresolvable turns 2–9 deliberately routing-unpinned. Structural checks on
+all cases PASS. Also **Runbook 08 REST-equivalence increment** (owner-driven):
+az CLI auth does NOT transfer to REST with an MSA login (AADSTS500011) —
+external auth path is a **PAT** (owner-created, Work Items: Read, in
+gitignored `ado.env` as `ADO_PAT`, revoke after increment 4);
+`GET workitems/{id}?$expand=all` is byte-equivalent to the az export;
+`workitemsbatch` ($expand=Relations) interchangeable (drops only internal
+fields); `workitems?ids=` returns fields at 7.1 but no relations. Decision:
+export can move to REST — folded into increment 4 alongside `story_id`
+emission in `export_ado.py`.
+
+Session 14 (2026-09-07/08) — Phase 2 accepted; Phase 3 opened; ADO sample env;
 template matrix (local-only; Cloud SQL stayed STOPPED). Owner ran the Phase 2
 post-review independently (independent review + missing negative tests,
 147 passed, Runbook 07 marked COMPLETE). Phase 3 plan written
