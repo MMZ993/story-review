@@ -53,10 +53,50 @@ contract rejects a public story payload carrying `quality_class`.
 make review-schemas-test  # focused test red first, then 152 passed green
 ```
 
+### Increment 1 (part 1) — dual-source design + schema + preparation (local, no cost)
+
+Owner decisions (session 19, D10 in local-decisions.md): story MCP gets a
+**dual data source** — production path reads live Azure DevOps (PAT: reuse
+`rest-verify` from `ado.env`; Secret Manager at increment 5), mock path
+serves the frozen dataset from GCS (`make dataset-push`, bucket bootstrap at
+increment 5; local tests use a directory location). Source selection =
+deployment env `STORY_SOURCE` + orchestration-only per-call override
+(option a; stateless server). `StoryId` widened to
+`^(story-[0-9]{2}|ado-[0-9]{1,8})$`. Evaluation runs always use `mock`.
+Design docs changed atomically and cherry-picked to `docs/initial-frozen`
+(`37309db`→`5ab7380`, `336ea8e`→`7eb9cec`).
+
+- `shared/review_schemas` **0.4.0**: `StorySource` + `source` field on
+  `ListStoriesInput`/`GetStoryInput` + widened `StoryId` (test-first red:
+  missing `source` attr / `ado-5` rejected).
+- `mcp_servers/story/` uv package `story-mcp`: `flatten.py` (stdlib HTML
+  flattener), `prepare.py` (ADO→`StoryDetail` per the owner-approved mapping
+  table — presented and approved in chat; scenario/template never mapped),
+  45 **golden snapshots** in `tests/golden/` (owner-reviewed once,
+  `tests/generate_golden.py` regenerates).
+- New Makefile target `mcp-story-test` (pattern of `dataset-test`, with
+  `--with ../../dataset/loader` for the envelope models).
+
+```
+make mcp-story-test        # red first (ModuleNotFoundError story_mcp[.prepare]), then 21 passed
+make review-schemas-test   # 154 passed (152 + 2 new source/id tests)
+make dataset-test          # 36 passed (untouched)
+```
+
 Gotchas learned:
 
-- `tests/test_package_install.py` pins both the package version and the
-  exact `__all__` list — a version bump or new export must update that test
-  in the same change (failures are loud, not silent).
-- `StoryId` pattern is `story-NN` (two digits) — dataset story ids 01–45
-  fit; revisit if the dataset ever exceeds 99.
+- Identifier check with an unset variable matches everything (empty regex
+  alternation) — always source BOTH `home.env` and `ado.env` before `rg
+  -l "$PROJECT_ID|$ADO_ORG|..."`; post-commit re-check was clean.
+- Context envelopes (`dataset/stories/context/`) are full envelopes with a
+  `work_item` key, not bare work items — `ContextIndex.from_items` accepts
+  both shapes.
+- `StoryComment.created_at` (AwareDatetime, strict) needs a parsed
+  `datetime` — `fromisoformat` with `Z`→`+00:00`, not a raw string.
+- Schema-change review deferred to the full increment-1 review (server +
+  contract tests still to come).
+- (Carried from increment 0) `tests/test_package_install.py` pins both the
+  package version and the exact `__all__` list — a version bump or new
+  export must update that test in the same change.
+- (Carried from increment 0, now superseded by D10) `StoryId` pattern was
+  `story-NN` two digits only; now `story-[0-9]{2}|ado-[0-9]{1,8}`.

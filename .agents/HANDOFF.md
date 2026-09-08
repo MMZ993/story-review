@@ -1,9 +1,9 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-09 (session 18 — Phase 4 increment 1 correction:
-  public story contracts no longer leak dataset evaluation metadata; shared
-  schema 0.3.0, reviewed, suite 152 green).
+Last updated: 2026-09-09 (session 19 — Phase 4 increment 1 part 1: dual-source
+  story-server design D10, shared schema 0.4.0, preparation pipeline with
+  45 owner-reviewed golden snapshots; suites 154/21/36 green).
 
 ## Where we are
 
@@ -23,23 +23,41 @@ Last updated: 2026-09-09 (session 18 — Phase 4 increment 1 correction:
 
 ## Previous Session Summary
 
-Session 18 (2026-09-09) — **Phase 4 increment 1 correction**:
-- Owner identified `StorySummary.quality_class` as an evaluation-oracle leak:
-  real Azure DevOps stories do not know their expected review outcome.
-  Owner approved the resulting design-contract correction.
-- `quality_class` removed from the authoritative `StorySummary` and inherited
-  `StoryDetail`, so it cannot appear in API/MCP results; the strict public
-  models explicitly reject it. Dataset `scenario` and expected contracts stay
-  evaluation-only. `shared/review_schemas` bumped 0.2.0 → **0.3.0**.
-- Phase 4 mapping plan, D9 amendment 4, D9 amendment 5 (decision record), and
-  Runbook 10 updated to remove the stale mapping. No environment action; Cloud
-  SQL remained STOPPED/NEVER.
-- Independent read-only review: first pass found the missing direct
-  `StoryDetail` rejection test and stale docstring; both fixed. Follow-up:
-  **Ready to proceed**, no findings.
-- Committed as `9950ae9` (docs-only) and `20ccd90` (implementation + local
-  records). The docs commit was cherry-picked to `docs/initial-frozen` as
-  `5307b70`; no push was performed.
+Session 19 (2026-09-09) — **Phase 4 increment 1, part 1: dual-source design +
+preparation**:
+- **D10 design change (owner-driven)**: story MCP server gets a dual data
+  source — `azure` (production path: live ADO REST, WIQL + `$expand=all` +
+  comments; reuse the `rest-verify` PAT from `ado.env`, Secret Manager at
+  increment 5) and `mock` (frozen dataset published to
+  `gs://$PROJECT_ID-story-dataset/` via `make dataset-push`; local tests use
+  a directory location). Selection: deployment `STORY_SOURCE` +
+  orchestration-only per-call override (option a, stateless server);
+  `StoryId` widened `^(story-[0-9]{2}|ado-[0-9]{1,8})$`; evaluation runs
+  always `mock`. Docs changed atomically, cherry-picked to frozen
+  (`37309db`→`5ab7380`, `336ea8e`→`7eb9cec`); D10 recorded; phase-4 plan
+  rescoped (bucket bootstrap + `dataset-push` at increment 1/5, images
+  dataset-agnostic — supersedes D9-amendment-4 baked-image idea).
+- `shared/review_schemas` **0.4.0** (test-first): `StorySource`, `source` on
+  `ListStoriesInput`/`GetStoryInput`, widened `StoryId`.
+- `mcp_servers/story/` uv package `story-mcp`: `flatten.py` (stdlib HTML
+  flattener: strip tags, decode entities, block tags → line/item boundaries),
+  `prepare.py` (owner-approved field-by-field mapping incl. `"Epic — Feature"`
+  epic_context, epic-description roadmap_context, comments sorted by
+  createdDate, linked_stories → ContextStory; scenario/template never
+  mapped), 45 **golden snapshots** (`tests/golden/`, owner-reviewed once,
+  `tests/generate_golden.py` regenerates on approved mapping change).
+- New Makefile target `mcp-story-test`. No environment action; Cloud SQL
+  stayed STOPPED/NEVER.
+- Commits: `37309db`, `7521c81` (docs + docs-local), `336ea8e`, `61acc3f`
+  (pattern tightening + schema 0.4.0), `542569f` (preparation + goldens).
+  All owner-push pending (main +5, docs/initial-frozen +2).
+
+Session 18 (2026-09-09) — **Phase 4 increment 1 correction**: owner
+identified `StorySummary.quality_class` as an evaluation-oracle leak; removed
+from public contracts (strict models reject it), `shared/review_schemas`
+0.3.0, docs/plan/runbook/D9 amendments 4–5 updated; reviewed Ready-to-
+proceed; commits `9950ae9` (→ frozen `5307b70`) + `20ccd90`. Detail in
+Runbook 10 and git history.
 
 Session 17 (2026-09-09) — **Phase 4 opened** (plan + increment 0):
 - **Frozen-branch reconciliation check** (prior next-step 0): full-tree diff
@@ -241,6 +259,20 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 19:
+- Test-first throughout: flattener red (`ModuleNotFoundError: story_mcp`),
+  prepare red (`No module named 'story_mcp.prepare'`), schema red (missing
+  `source` attr / `ado-5` rejected) — all for the intended missing behavior.
+- `make mcp-story-test`: **21 passed** (flattener 11, mapping 9, golden 1);
+  `make review-schemas-test`: **154 passed**; `make dataset-test`:
+  **36 passed** (pre-existing pydantic `Field(unique=True)` warning only);
+  `git diff --check` clean.
+- Golden snapshots (45) reviewed and approved by the owner before commit.
+- Identifier check on committed files clean (gotcha: unset `$ADO_ORG` made
+  the first check a false all-files match — both env files must be sourced;
+  recorded in Runbook 10).
+- Independent review: deferred to the full increment-1 review (part 2).
+
 Session 18:
 - Test-first: focused `StorySummary` rejection test failed red as expected
   (`DID NOT RAISE ValidationError`); implementation then made it green.
@@ -336,15 +368,21 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Phase 4 increment 1 — story MCP server** (plan
-   `docs-local/plans/phase-4-mcp-servers.md`): preparation module
-   (envelope → `StoryDetail` per the corrected D9-amendment-4 mapping table,
-   with dataset `scenario` never mapped or returned; HTML flattening, golden
-   snapshots over all 45 files), then `list_stories` /
-   `get_story` tools with spike-pattern auth wiring, error taxonomy,
-   Dockerfile (copies `dataset/stories/` only). Test-first per increment.
+1. **Phase 4 increment 1, part 2 — story MCP server** (plan
+   `docs-local/plans/phase-4-mcp-servers.md`, rescoped for D10): server
+   (`server.py`: FastMCP Streamable HTTP, stateless), source abstraction
+   (mock: directory or `gs://` location; azure: live REST via PAT — not
+   exercised by local tests, recorded fixtures only), tools
+   `list_stories`/`get_story` with `source` default + override, error
+   taxonomy `ToolError(ErrorBody)`, spike-pattern ID-token middleware
+   (local-profile off switch), contract tests against the ASGI app,
+   dataset-agnostic Dockerfile + build-time no-dataset check,
+   `make dataset-push` upload script (bucket itself at increment 5).
+   Test-first; then the **increment-1 independent review** covering the
+   schema change too (deferred from part 1).
 2. Phase 4 increments 2–5 follow the plan (artifact → report → compose →
-   Cloud Run deploy/smoke; Runbook 10 accumulates evidence).
+   Cloud Run deploy/smoke; Runbook 10 accumulates evidence). Increment 5
+   also: story-dataset bucket bootstrap (Terraform) + PAT secret.
 3. Extension 2 (linked context stories) mock data — deferred by owner;
    structure is codified; authoring later is pure data preparation.
 
@@ -356,11 +394,10 @@ cross-checks, test-first red/green, review findings fixed).
   session 15; also recorded in the extensions plan).
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
-- Git: an external push updated `origin/main` during session wrap-up. Local
-  `main` still has its wrap-up handoff commit(s) to push, and
-  `docs/initial-frozen` has the cherry-picked docs correction `5307b70` to
-  push; check `git status -sb` before pushing. The sole accepted prior
-  divergence remains the `docs/index.md` docs-local pointer from `c5dc040`.
+- Git: **owner push pending from session 19** — local `main` +5
+  (`37309db`, `7521c81`, `336ea8e`, `61acc3f`, `542569f`, plus this
+  wrap-up commit) and `docs/initial-frozen` +2 (`5ab7380`, `7eb9cec`);
+  check `git status -sb` before assuming the remote is current.
   Session-16 cherry-picks: `dfbde69`, `7b9975d`, `a787dbe` (hidden-conflict
   row rode along — correct content-wise). Old history note:
   `docs/initial-frozen` = `d5cb413`; superseded hashes `a519899`,
