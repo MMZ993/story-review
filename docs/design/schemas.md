@@ -37,7 +37,7 @@ StorySource = Literal["azure", "mock"]
 StoryId = Annotated[
     str,
     StringConstraints(
-        pattern=r"^(story|ado)-[0-9]{1,8}$", min_length=5, max_length=12
+        pattern=r"^(story-[0-9]{2}|ado-[0-9]{1,8})$", min_length=5, max_length=12
     ),
 ]
 # `story-NN` ids come from the frozen mock dataset; `ado-N` ids are live
