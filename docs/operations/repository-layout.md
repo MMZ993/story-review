@@ -90,9 +90,13 @@ registry publishing is deferred.
 Cloud Run Docker builds use the repository root as context:
 `docker build -f mcp_servers/<service>/Dockerfile .` (and equivalently for
 orchestration). Dockerfiles copy only their service source plus
-`shared/review_schemas`; the story Dockerfile additionally copies `dataset/stories/` to
-`/app/dataset/stories/`. It must not copy `dataset/expected/` or the dataset root into
-the runtime image. Artifact and report images receive no dataset. This keeps expected
+`shared/review_schemas`; no Dockerfile copies any part of `dataset/`. The story
+server is dataset-agnostic: at startup it fetches the frozen mock dataset from
+GCS (`gs://$PROJECT_ID-story-dataset/`, published via `make dataset-push` —
+see [../quality/mock-data.md](../quality/mock-data.md)) or reads live Azure
+DevOps (deployment `STORY_SOURCE`). Expected files live only in
+dataset git, are never uploaded to the bucket, and must not reach any runtime
+image. Artifact and report images receive no dataset. This keeps expected
 outcomes accessible solely to the evaluation judge.
 
 ## Local compose
@@ -141,7 +145,7 @@ There is exactly one deployment pipeline per unit, with these path filters:
 | `agents-business-reviewer.yml` | `agents/business-reviewer/**`, `prompts/business-reviewer.md`, `shared/review_schemas/**`, `deploy/agents/business-reviewer/**` | `dev` |
 | `agents-engineering-reviewer.yml` | `agents/engineering-reviewer/**`, `prompts/engineering-reviewer.md`, `shared/review_schemas/**`, `deploy/agents/engineering-reviewer/**` | `dev` |
 | `agents-synthesis.yml` | `agents/synthesis/**`, `prompts/synthesis.md`, `shared/review_schemas/**`, `deploy/agents/synthesis/**` | `dev` |
-| `services-story.yml` | `mcp_servers/story/**`, `shared/review_schemas/**`, `dataset/stories/**`, `deploy/cloud-run/story/**` | `dev` |
+| `services-story.yml` | `mcp_servers/story/**`, `shared/review_schemas/**`, `deploy/cloud-run/story/**` | `dev` |
 | `services-artifact.yml` | `mcp_servers/artifact/**`, `shared/review_schemas/**`, `deploy/cloud-run/artifact/**` | `dev` |
 | `services-report.yml` | `mcp_servers/report/**`, `shared/review_schemas/**`, `deploy/cloud-run/report/**` | `dev` |
 | `services-orchestration.yml` | `orchestration/**`, `shared/review_schemas/**`, `deploy/cloud-run/orchestration/**` | `dev` |
