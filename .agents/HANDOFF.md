@@ -2,9 +2,10 @@
 
 Linked from AGENTS.md; updated at every phase transition and material progress
 Last updated: 2026-09-09 (session 16 CONTINUED — extension session:
-  docs/ design changes for comments + context stories; dataset structure
+  comments + context stories; dataset structure
   codified; comments API spike; 3 t1-only comment stories authored end-to-
-  end incl. expected files + manual plans, 45 stories / 36 tests green).
+  end incl. expected files + manual plans, 45 stories / 36 tests green;
+  frozen-branch reconciliation check complete).
 
 ## Where we are
 
@@ -328,14 +329,14 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-0. **Frozen-branch reconciliation check** (next session, owner-approved):
-    older `docs/` commits from sessions 12–15 (e.g. the hidden-conflict
-    row) were never cherry-picked to `docs/initial-frozen` — the two files
-    spot-checked in session 16 are in sync, but run a one-time full-tree
-    diff (`git diff docs/initial-frozen main -- docs/`) and cherry-pick or
-    reconcile any stragglers before relying on the frozen branch as the
-    design-evolution record. Also confirm the owner pushed
-    `docs/initial-frozen`.
+0. ~~Frozen-branch reconciliation check~~ DONE (session 16 continuation):
+    full-tree diff `git diff docs/initial-frozen main -- docs/` shows exactly
+    one divergence — the `docs/index.md` "Local (home) development phase"
+    pointer to `docs-local/` from `c5dc040` (session 12). Owner decision:
+    **leave it** as the sole intentional divergence (home-phase cross-reference,
+    not a design change — does not belong on the frozen design record).
+    All four later docs/ commits confirmed in sync via cherry-picks. Both
+    branches pushed by owner.
 1. **Phase 4 (MCP servers + compose)**: story MCP serves verbatim from
    `dataset/stories/` (D9) — now 45 stories incl. comments; hosted demo
    uploads the JSON files to the Google-hosted mock endpoint; expected
@@ -360,8 +361,10 @@ cross-checks, test-first red/green, review findings fixed).
   `dfbde69` expected-file contract, `7b9975d` comments+context contract,
   `a787dbe` comment scenarios (conflict resolved: the hidden-conflict row
   from session 14 had never been cherry-picked and rode along — correct
-  content-wise). Branch is 3 ahead of its origin — **owner still needs to
-  `git push origin docs/initial-frozen`**. Old history note:
+  content-wise). Branch pushed by owner (2026-09-09, after the
+  reconciliation check). Sole accepted divergence vs main in `docs/`:
+  the `docs/index.md` docs-local pointer from `c5dc040` (see Next Steps 0).
+  Old history note:
   `docs/initial-frozen` = `d5cb413`; superseded hashes `a519899`,
   `bcd1c1b`, `dadd2e1`, `9482e6a`, `649f7c4` were from the rewrite era.
   Check `git status -sb` before assuming the remote is current — tracking
