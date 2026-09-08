@@ -39,7 +39,7 @@ Conventions:
 | Method & path | Purpose |
 |---|---|
 | `GET /stories` | list available stories (proxy to story MCP `list_stories`; optional case-insensitive title `filter`; dataset-bounded, no pagination) |
-| `GET /stories/{story_id}` | story details + epic/roadmap context (proxy to `get_story`) |
+| `GET /stories/{story_id}` | story details + epic/roadmap context, plus comments and context stories when present (proxy to `get_story`) |
 
 Responses: `200` with `ListStoriesResponse` / `StoryDetail`; `404` unknown story;
 `503` retryable upstream (story MCP) error.

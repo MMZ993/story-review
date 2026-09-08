@@ -215,11 +215,28 @@ class StorySummary(StrictModel):
     quality_class: ShortText
 
 
+class StoryComment(StrictModel):
+    author: ShortText  # anonymized persona (e.g. "Story Author", "PO")
+    text: Text
+    created_at: UtcDatetime
+
+
+class ContextStory(StrictModel):
+    story_id: StoryId
+    title: ShortText
+    relation: Literal["related", "depends"]
+    description: Text
+    acceptance_criteria: list[Text] = Field(default_factory=list, max_length=100)
+    comments: list[StoryComment] = Field(default_factory=list, max_length=50)
+
+
 class StoryDetail(StorySummary):
     description: Text
     acceptance_criteria: list[Text] = Field(default_factory=list, max_length=100)
     epic_context: Text
     roadmap_context: Text
+    comments: list[StoryComment] = Field(default_factory=list, max_length=50)
+    context_stories: list[ContextStory] = Field(default_factory=list, max_length=5)
 
 
 class Finding(StrictModel):
@@ -256,7 +273,23 @@ class ReviewReport(StrictModel):
         if any(not finding.id.startswith(prefix) for finding in self.findings):
             raise ValueError("finding ID prefix does not match review perspective")
         return self
+```
 
+Story-detail extensions (additive, both default empty — stories without them
+are unaffected):
+
+- `comments` — backlog discussion attached to the story; **semantic review
+  input**, not display decoration: comment content can resolve or create
+  findings. Authors are anonymized personas (dataset concern). No truncation
+  or summarization in v1 — the list cap (`50`) is the only limit.
+- `context_stories` — linked related/depends items surfaced as a separate
+  structured list (never merged into the main story or `epic_context`).
+  Capped at 5. Context stories are reference material for the review of the
+  **main** story; they are never reviewed themselves. They carry their own
+  description-level content (and comments when present) so reviewers can
+  extract context that was not copied into the main story.
+
+```python
 
 class ConflictItem(StrictModel):
     id: Annotated[

@@ -20,6 +20,14 @@ the simple MCP server fulfilling the technical requirement.
 
 - Backed by the mock dataset (see `../quality/mock-data.md`); expected outcomes are
   **not** exposed through this server.
+- `get_story` returns the full `StoryDetail`, including `comments` and
+  `context_stories` when the story has them (both default empty — dataset
+  stories without them are unaffected). No truncation or summarization in v1;
+  the schema list caps (50 comments, 5 context stories) are the only limits.
+- `list_stories` lists test-case stories only — context-only stories
+  (referenced solely as `context_stories` of a main story) do not appear in
+  the list; they are reachable only through `get_story` of the main story
+  (or directly by id).
 - No writes; versioned with the dataset.
 
 ## Artifact server
