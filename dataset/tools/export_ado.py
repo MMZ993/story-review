@@ -26,12 +26,15 @@ Usage:
 
 from __future__ import annotations
 
+import base64
 import datetime as dt
 import json
 import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -48,11 +51,28 @@ SLUGS = [
 ]
 
 
-def ado(*args: str) -> dict:
+def _sorted_keys(obj):
+    """Recursively sort dict keys (matches the az-era serialization; keeps
+    re-export diffs minimal — only exported_at changes on unchanged data)."""
+    if isinstance(obj, dict):
+        return {k: _sorted_keys(v) for k, v in sorted(obj.items())}
+    if isinstance(obj, list):
+        return [_sorted_keys(v) for v in obj]
+    return obj
+
+
+def use_rest() -> bool:
+    """True when ADO_PAT is set: fetch via REST (Runbook 08 equivalence
+    check, 2026-09-08 — GET workitems/{id}?$expand=all is byte-equivalent
+    to the az fetch). This mirrors the production fetch route; the az CLI
+    path remains the fallback when no PAT is configured."""
+    return bool(os.environ.get("ADO_PAT"))
+
+
+def _ado_cli(*args: str) -> dict:
     org = os.environ.get("ADO_ORG")
-    project = os.environ.get("ADO_PROJECT")
-    if not org or not project:
-        sys.exit("ADO_ORG / ADO_PROJECT not set (set -a; source infra/envs/ado.env; set +a)")
+    if not org:
+        sys.exit("ADO_ORG not set (set -a; source infra/envs/ado.env; set +a)")
     r = subprocess.run(
         ["az", "boards", *args, "--org", f"https://dev.azure.com/{org}", "--output", "json"],
         capture_output=True, text=True,
@@ -60,6 +80,54 @@ def ado(*args: str) -> dict:
     if r.returncode != 0:
         sys.exit(f"az failed: {' '.join(args[:3])}\n{r.stderr}")
     return json.loads(r.stdout)
+
+
+def _rest(method: str, path: str, body: dict | None = None) -> dict:
+    """One Azure DevOps REST call with PAT basic auth (api-version 7.1)."""
+    org = os.environ["ADO_ORG"]
+    token = base64.b64encode(f":{os.environ['ADO_PAT']}".encode()).decode()  # guarded by main()
+    url = f"https://dev.azure.com/{org}/{path}"
+    url += "&api-version=7.1" if "?" in path else "?api-version=7.1"
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method, headers={
+        "Authorization": f"Basic {token}",
+        "Content-Type": "application/json",
+    })
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        sys.exit(f"REST {method} {path} failed: HTTP {exc.code}\n{exc.read().decode()[:500]}")
+    except urllib.error.URLError as exc:
+        sys.exit(f"REST {method} {path} failed: {exc.reason}")
+
+
+def query_ids(project: str) -> list[int]:
+    """WIQL query returning every story/epic/feature id, sorted."""
+    wiql = (
+        "SELECT [System.Id] FROM WorkItems "
+        "WHERE [System.TeamProject] = '{p}' "
+        "AND [System.WorkItemType] IN ('User Story', 'Epic', 'Feature') "
+        "ORDER BY [System.Id]"
+    ).format(p=project)
+    if use_rest():
+        result = _rest("POST", f"{project}/_apis/wit/wiql", {"query": wiql})
+        return sorted(item["id"] for item in result["workItems"])
+    rows = _ado_cli("query", "--wiql", wiql)
+    return sorted(
+        int(list(r.values())[0]) if not r.get("id") else int(r["id"]) for r in rows
+    )
+
+
+def show_item(project: str, wid: int) -> dict:
+    """Fetch one work item with full expansion (all fields + relations).
+
+    REST: single-item GET with $expand=all — the full-fidelity shape
+    verified byte-equivalent to `az boards work-item show --expand all`.
+    """
+    if use_rest():
+        return _rest("GET", f"{project}/_apis/wit/workitems/{wid}?$expand=all")
+    return _ado_cli("work-item", "show", "--id", str(wid), "--expand", "all")
 
 
 def anonymize_identities(obj):
@@ -150,16 +218,29 @@ def provenance_map() -> dict[int, tuple[str, str]]:
     return mapping
 
 
+def story_id_for(template: str, scenario: str) -> str:
+    """Deterministic dataset story id (D9 amendment 2): story-NN, numbered
+    template-major (t1/clean=01 ... t6/hidden-conflict=42). Stress
+    duplicates ('<slug>-2') get their own file but must not silently
+    collide — they abort until explicitly registered here."""
+    base = scenario.rsplit("-2", 1)[0] if scenario.endswith("-2") else scenario
+    if template not in TEMPLATE_BY_AREA.values():
+        sys.exit(f"no story id registered for template {template!r}")
+    t_index = int(template[1]) - 1
+    if base not in SLUGS:
+        sys.exit(f"no story id registered for scenario {scenario!r} (add it to SLUGS first)")
+    if base != scenario:
+        sys.exit(f"stress duplicate {scenario!r} needs its own story id (extend story_id_for)")
+    return f"story-{t_index * len(SLUGS) + SLUGS.index(scenario) + 1:02d}"
+
+
 def main() -> None:
+    missing = [v for v in ("ADO_ORG", "ADO_PROJECT") if not os.environ.get(v)]
+    if missing:
+        sys.exit(f"{'/'.join(missing)} not set (set -a; source infra/envs/ado.env; set +a)")
     prov = provenance_map()
-    query = (
-        "SELECT [System.Id] FROM WorkItems "
-        "WHERE [System.TeamProject] = '{p}' "
-        "AND [System.WorkItemType] IN ('User Story', 'Epic', 'Feature') "
-        "ORDER BY [System.Id]"
-    ).format(p=os.environ["ADO_PROJECT"])
-    rows = ado("query", "--wiql", query)
-    ids = sorted(int(list(r.values())[0]) if not r.get("id") else int(r["id"]) for r in rows)
+    mode = "REST (ADO_PAT)" if use_rest() else "az CLI"
+    ids = query_ids(os.environ["ADO_PROJECT"])
     story_ids = [i for i in ids if i not in CONTEXT_IDS]
     context_ids = [i for i in ids if i in CONTEXT_IDS]
 
@@ -176,9 +257,10 @@ def main() -> None:
 
     exported_at = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 
+    print(f"fetch mode: {mode}")
     for wid in ids:
         item = anonymize_identities(sanitize_urls(strip_links(
-            ado("work-item", "show", "--id", str(wid), "--expand", "all")),
+            show_item(os.environ["ADO_PROJECT"], wid)),
             os.environ["ADO_ORG"],
         ))
         fields = item["fields"]
@@ -207,8 +289,16 @@ def main() -> None:
             "scenario": scenario,
             "ado_source_id": wid,
             "exported_at": exported_at,
-            "work_item": item,
+            "work_item": _sorted_keys(item),
         }
+        if scenario is not None:
+            envelope["story_id"] = story_id_for(template, scenario)
+            envelope = {
+                k: envelope[k] for k in (
+                    "schema_version", "case_id", "story_id", "template",
+                    "scenario", "ado_source_id", "exported_at", "work_item",
+                )
+            }
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(envelope, indent=2, ensure_ascii=False) + "\n")
         print(f"{case:32s} ado id {wid}  -> {path.relative_to(REPO)}")

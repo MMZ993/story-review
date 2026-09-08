@@ -193,7 +193,7 @@
     "at_turn_1": [],
     "later": [
       {
-        "key": "C-r1",
+        "key": "C-1",
         "kind": "recurring",
         "topic": "pilot-scope (turn 7) vs open-ended-scope (turn 2) — canonical re-eruption, re-widened at turn 8",
         "first_seen_turn": 7,
