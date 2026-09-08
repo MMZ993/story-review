@@ -85,8 +85,10 @@ per request.
 ## Secret storage
 
 - All runtime secrets (DB connection identifiers, bucket name, MCP endpoints and
-  audiences, Agent Engine resource IDs) live in Secret Manager, one secret per service,
-  mounted via env-template indirection at deploy time.
+  audiences, Agent Engine resource IDs, the story server's Azure DevOps PAT)
+  live in Secret Manager, one secret per service, mounted via env-template
+  indirection at deploy time. The Azure PAT is only mounted on the story MCP
+  service in production (`azure` source); its egress path is `dev.azure.com`.
 - Deployment values the pipeline needs (GCP project, region, SA emails) are non-secret
   pipeline variables; only the deployment SA key is a secret variable, replaced by
   workload identity federation on production promotion.

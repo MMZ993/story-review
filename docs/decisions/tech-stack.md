@@ -44,8 +44,9 @@ loaded text/hash immutable per process. `AgentRunRecord` includes the required
 image; a schema change bumps the shared package and rebuilds consumers.
 
 Cloud Run builds also use repository-root context. Each service image copies only its
-source and the shared package; the story service additionally copies `dataset/stories/`
-and never `dataset/expected/`. Complete path and staging rules are in
+source and the shared package; no image copies dataset content — the story service
+fetches the mock dataset from GCS (or reads Azure DevOps) at startup. Complete
+path and staging rules are in
 `../operations/repository-layout.md`.
 
 ## Session and MCP strategy
