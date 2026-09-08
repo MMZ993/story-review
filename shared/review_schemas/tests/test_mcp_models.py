@@ -113,6 +113,26 @@ class TestListAndGetStory:
         with pytest.raises(ValidationError):
             GetStoryInput(story_id="story-9")
 
+    def test_get_story_input_accepts_azure_source_ids(self):
+        # D10: live Azure DevOps work items are `ado-N`; mock dataset ids stay
+        # zero-padded `story-NN`.
+        assert GetStoryInput(story_id="ado-5").story_id == "ado-5"
+        assert GetStoryInput(story_id="ado-12345678").story_id == "ado-12345678"
+        with pytest.raises(ValidationError):
+            GetStoryInput(story_id="ado-123456789")
+        with pytest.raises(ValidationError):
+            GetStoryInput(story_id="story-07x")
+
+    def test_source_defaults_to_none_and_accepts_only_known_sources(self):
+        assert GetStoryInput(story_id=STORY_ID).source is None
+        assert ListStoriesInput().source is None
+        assert GetStoryInput(story_id="ado-5", source="azure").source == "azure"
+        assert ListStoriesInput(source="mock").source == "mock"
+        with pytest.raises(ValidationError):
+            GetStoryInput(story_id=STORY_ID, source="gcs")
+        with pytest.raises(ValidationError):
+            ListStoriesInput(source=None, extra="field")
+
 
 class TestSaveArtifact:
     def _input(self, type_: str, content: dict, perspective: str | None = None, **overrides):
