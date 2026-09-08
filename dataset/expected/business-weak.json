@@ -1,0 +1,132 @@
+{
+  "scenario": "business-weak",
+  "schema_version": 1,
+  "requested_formats": [
+    "md"
+  ],
+  "po_script": [
+    {
+      "message": "Target is Android web traffic — 31% of checkout sessions, and post-purchase surveys name Google Pay most often. Success = checkout conversion for Android users +2pp within two months of launch. Priority: this quarter, before the holiday peak."
+    },
+    {
+      "po_accepted": true
+    }
+  ],
+  "expected_turns": [
+    {
+      "turn_number": 1,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "invoke": "none",
+        "reuse_previous": false,
+        "extra_context_expected": false,
+        "open_issues_empty": false
+      },
+      "produced_artifacts": [
+        {
+          "type": "review-business",
+          "version": 1
+        },
+        {
+          "type": "review-engineering",
+          "version": 1
+        },
+        {
+          "type": "synthesis",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "Opening turn: business findings presented (value not justified/measurable), engineering positive; no conflicts; PO asked for the business case. open_issues carry the business gap topics."
+    },
+    {
+      "turn_number": 2,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "invoke": "business",
+        "reuse_previous": false,
+        "extra_context_expected": true,
+        "open_issues_empty": false
+      },
+      "produced_artifacts": [
+        {
+          "type": "review-business",
+          "version": 2
+        },
+        {
+          "type": "synthesis",
+          "version": 2
+        }
+      ],
+      "semantic_notes": "Business-only delegation with the PO-supplied case as extra context (Android segment, +2pp conversion target, holiday-peak deadline); engineering v1 reused, not re-run; review-business v2 resolves the gaps against the supplied case; readiness needs_work. Deterministic assertion: selected reviewer routing exactly matches this turn."
+    },
+    {
+      "turn_number": 3,
+      "outcome": "finalize",
+      "state_after": "completed",
+      "delegation": null,
+      "produced_artifacts": [
+        {
+          "type": "finalized-review",
+          "version": 1
+        },
+        {
+          "type": "report-md",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "PO acceptance passes the finalization gate; finalized-review with po_accepted=true."
+    }
+  ],
+  "expected_findings": {
+    "review-business": {
+      "max_severity": "major",
+      "required": [
+        {
+          "key": "B-1",
+          "min_severity": "major",
+          "topic": "no measurable success criterion",
+          "appears_in_version": 1,
+          "resolved_at_turn": 2
+        },
+        {
+          "key": "B-2",
+          "min_severity": "major",
+          "topic": "justification by competitor parity rather than own demand data",
+          "appears_in_version": 1,
+          "resolved_at_turn": 2
+        },
+        {
+          "key": "B-3",
+          "min_severity": "minor",
+          "topic": "no target segment named",
+          "appears_in_version": 1,
+          "resolved_at_turn": 2
+        }
+      ]
+    },
+    "review-engineering": {
+      "max_severity": "info",
+      "required": []
+    }
+  },
+  "expected_conflicts": {
+    "at_turn_1": [],
+    "later": []
+  },
+  "expected_final": {
+    "state": "completed",
+    "final_turn_number": 3,
+    "facilitator_turn_count": 2,
+    "po_accepted": true,
+    "remaining_open_issues_empty": true,
+    "reports": [
+      "md"
+    ]
+  },
+  "invariance": {
+    "applies_across_templates": true,
+    "allowed_deviation": "formatting may add info-level reviewer notes only"
+  }
+}

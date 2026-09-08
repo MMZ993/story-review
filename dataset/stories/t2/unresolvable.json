@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "case_id": "t2/unresolvable",
+  "story_id": "story-13",
   "template": "t2",
   "scenario": "unresolvable",
   "ado_source_id": 26,

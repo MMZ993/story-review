@@ -1,0 +1,91 @@
+{
+  "scenario": "clean",
+  "schema_version": 1,
+  "requested_formats": [
+    "md",
+    "pdf"
+  ],
+  "po_script": [
+    {
+      "po_accepted": true
+    }
+  ],
+  "expected_turns": [
+    {
+      "turn_number": 1,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "invoke": "none",
+        "reuse_previous": false,
+        "extra_context_expected": false,
+        "open_issues_empty": true
+      },
+      "produced_artifacts": [
+        {
+          "type": "review-business",
+          "version": 1
+        },
+        {
+          "type": "review-engineering",
+          "version": 1
+        },
+        {
+          "type": "synthesis",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "Opening turn by rule: parallel reviews fan out, synthesis v1 presented; both perspectives positive; no conflicts; readiness 'ready'; PO asked to accept."
+    },
+    {
+      "turn_number": 2,
+      "outcome": "finalize",
+      "state_after": "completed",
+      "delegation": null,
+      "produced_artifacts": [
+        {
+          "type": "finalized-review",
+          "version": 1
+        },
+        {
+          "type": "report-md",
+          "version": 1
+        },
+        {
+          "type": "report-pdf",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "PO acceptance passes the finalization gate (no open issues, invoke none, no new synthesis this turn); finalized-review saved with po_accepted=true; reports rendered."
+    }
+  ],
+  "expected_findings": {
+    "review-business": {
+      "max_severity": "info",
+      "required": []
+    },
+    "review-engineering": {
+      "max_severity": "info",
+      "required": []
+    }
+  },
+  "expected_conflicts": {
+    "at_turn_1": [],
+    "later": []
+  },
+  "expected_final": {
+    "state": "completed",
+    "final_turn_number": 2,
+    "facilitator_turn_count": 1,
+    "po_accepted": true,
+    "remaining_open_issues_empty": true,
+    "reports": [
+      "md",
+      "pdf"
+    ]
+  },
+  "invariance": {
+    "applies_across_templates": true,
+    "allowed_deviation": "formatting may add info-level reviewer notes only"
+  }
+}

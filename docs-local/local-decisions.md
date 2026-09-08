@@ -172,6 +172,38 @@ Owner-approved with the first export run (`dataset/tools/export_ado.py`):
   missing/duplicate story, or area-path/provenance mismatch, and asserts
   the expected counts (42 stories + 3 context items).
 
+### D9 amendment 2 — story ids and expected-file conventions (2026-09-08, session 15)
+
+Owner-approved with the expected-file authoring (Runbook 09 increment 3):
+
+- **`story_id` scheme**: schemas.md defines `StoryId` as `story-NN`; the
+  matrix is numbered template-major: `t1/clean`=story-01 …
+  `t1/hidden-conflict`=story-07, `t2/clean`=story-08 …
+  `t6/hidden-conflict`=story-42. The field is backfilled into every story
+  envelope (additive; `export_ado.py` to emit it on future re-exports).
+- **Expected files are scenario-canonical** (collapsing the first
+  per-template authoring, same session, owner decision): one file
+  `dataset/expected/<scenario>.json` per scenario; the loader expands each
+  to the 6 per-template test cases, deriving `case_id`/`story_id`/`template`
+  from the story envelopes. Format invariance is thus enforced
+  structurally — no duplicated copies to keep in sync. Cases needing
+  template-specific expectations (e.g. stress duplicates) get their own
+  expected file. This refines `docs/quality/mock-data.md`'s
+  "`dataset/expected/<case>.json`" wording: the per-case contract still
+  exists, materialized at load time.
+- **Findings are semantic stubs**: runtime finding IDs (B-n/E-n/C-n) are
+  reviewer-assigned and cannot be pinned in the dataset; expected files
+  carry per-perspective stubs (`key`, `min_severity`, `topic`,
+  `appears_in_version`, `resolved_at_turn`) plus severity ceilings. The
+  Phase 9 runner asserts ID patterns/prefixes deterministically and stub
+  presence via the judge.
+- **`expected_turns` includes turn 1** (the opening facilitator turn), one
+  entry per dialogue turn; `facilitator_turn_count` in `expected_final`
+  follows the schemas.md rule that PO acceptance does not invoke the
+  facilitator.
+- Conflicting scenario closing variant: **variant 1** (2-turn
+  conversational finalize) recorded in the expected file.
+
 ## Differences from `docs/` (summary)
 
 | Topic | `docs/` (company) | Home phase |

@@ -1,0 +1,97 @@
+{
+  "scenario": "hidden-conflict",
+  "schema_version": 1,
+  "requested_formats": [
+    "md"
+  ],
+  "po_script": [
+    {
+      "message": "Correction: capture stays immediate — the order pipeline does not reserve. Refund fees are accepted; cap it at one edit per order and make total-increasing edits re-authorize the card instead of assuming the free-reservation model."
+    }
+  ],
+  "expected_turns": [
+    {
+      "turn_number": 1,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "invoke": "none",
+        "reuse_previous": false,
+        "extra_context_expected": false,
+        "open_issues_empty": false
+      },
+      "produced_artifacts": [
+        {
+          "type": "review-business",
+          "version": 1
+        },
+        {
+          "type": "review-engineering",
+          "version": 1
+        },
+        {
+          "type": "synthesis",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "Opening turn: BOTH reviews positive (at most info-level notes) with ZERO per-perspective findings — the scenario's defining property. Synthesis flags C-1 (needs_po_clarification): the business justification (free reservation release) and the engineering approval (immediate capture, refund API) rest on contradictory payment-capture models; PO asked which model holds."
+    },
+    {
+      "turn_number": 2,
+      "outcome": "finalize",
+      "state_after": "completed",
+      "delegation": {
+        "invoke": "none",
+        "reuse_previous": false,
+        "extra_context_expected": false,
+        "open_issues_empty": true
+      },
+      "produced_artifacts": [
+        {
+          "type": "finalized-review",
+          "version": 1
+        },
+        {
+          "type": "report-md",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "No delegation — resolution recorded against existing artifacts (business justification corrected: refund fees accepted; engineering scope adjusted conversationally: re-authorization for total-increasing edits); gate passes; po_accepted=false (normal readiness path)."
+    }
+  ],
+  "expected_findings": {
+    "review-business": {
+      "max_severity": "info",
+      "required": []
+    },
+    "review-engineering": {
+      "max_severity": "info",
+      "required": []
+    }
+  },
+  "expected_conflicts": {
+    "at_turn_1": [
+      {
+        "key": "C-1",
+        "kind": "needs_po_clarification",
+        "topic": "contradictory payment-capture models: business assumes reservation-only, engineering assumes immediate capture",
+        "resolved_at_turn": 2
+      }
+    ],
+    "later": []
+  },
+  "expected_final": {
+    "state": "completed",
+    "final_turn_number": 2,
+    "facilitator_turn_count": 2,
+    "po_accepted": false,
+    "remaining_open_issues_empty": true,
+    "reports": [
+      "md"
+    ]
+  },
+  "invariance": {
+    "applies_across_templates": true,
+    "allowed_deviation": "formatting may add info-level reviewer notes only; renderers must not 'fix' the contradictory hooks (must-not-add in canonical facts)"
+  }
+}
