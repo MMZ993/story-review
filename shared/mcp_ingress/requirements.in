@@ -1,0 +1,4 @@
+# Shared ID-token ingress middleware inputs for the mcp_ingress package.
+# Lock is compiled with: uv pip compile requirements.in -o requirements.lock
+google-auth>=2.40
+requests>=2.32  # google.auth.transport.requests import used by the verifier

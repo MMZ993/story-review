@@ -9,6 +9,7 @@ dependencies = [
     "review-schemas",
     "dataset-loader",
     "ado-wire",
+    "mcp-ingress",
 ]
 
 [tool.hatch.build.targets.wheel]

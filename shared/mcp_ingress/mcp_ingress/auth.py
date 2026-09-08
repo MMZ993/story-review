@@ -1,7 +1,8 @@
 """ID-token ingress middleware and caller-principal plumbing.
 
-Adapted from the Runbook-06 spike pattern (proven on Cloud Run): a pure
-ASGI middleware verifies the bearer Google ID token against the configured
+Extracted verbatim from the story/artifact server copies (identical modulo
+logger/contextvar names — diff-verified before the move). A pure ASGI
+middleware verifies the bearer Google ID token against the configured
 audience (the service URL) and exposes the verified caller through a
 contextvar visible to MCP tool handlers running in the same request.
 
@@ -10,8 +11,9 @@ Fail-closed rules:
 - every path except `/healthz` requires a verified token;
 - with auth enabled, a missing audience is a 503 (the window between the
   first and second Terraform apply must never serve traffic unverified);
-- auth is disabled **only** in the local compose profile
-  (`STORY_AUTH_DISABLED=1`), never in the production shape.
+- auth is disabled only via the per-server env switch in the **local
+  compose profile**, never in the production shape (each server's `app.py`
+  decides; this package reads no environment).
 """
 
 from __future__ import annotations
@@ -21,14 +23,14 @@ import json
 import logging
 from collections.abc import Callable
 
-logger = logging.getLogger("story_mcp.auth")
+logger = logging.getLogger("mcp_ingress.auth")
 
 PUBLIC_PATHS = frozenset({"/healthz"})
 
 Verifier = Callable[[str, str], dict]
 
 _principal: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "story_verified_principal", default=None
+    "verified_principal", default=None
 )
 
 

@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 from starlette.responses import JSONResponse
 
-from artifact_mcp.auth import IdTokenAuthMiddleware, Verifier, google_token_verifier
+from mcp_ingress.auth import IdTokenAuthMiddleware, Verifier, google_token_verifier
 from artifact_mcp.server import ArtifactServer, CallerRoles
 from artifact_mcp.storage import GcsArtifactService
 

@@ -10,6 +10,7 @@ COPY mcp_servers/artifact/requirements.lock /tmp/artifact-requirements.lock
 RUN pip install --no-cache-dir -r /tmp/artifact-requirements.lock
 
 COPY shared/review_schemas/review_schemas /app/shared/review_schemas
+COPY shared/mcp_ingress/mcp_ingress /app/shared/mcp_ingress
 COPY mcp_servers/artifact/artifact_mcp /app/artifact_mcp
 ENV PYTHONPATH=/app:/app/shared
 

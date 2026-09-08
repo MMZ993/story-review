@@ -313,3 +313,98 @@ Gotchas learned:
   version assignment assumes orchestration is the serialized writer per
   run; auth middleware remains a story-server copy (extraction candidate
   if the report server needs a third copy — increment 3 decision).
+
+## Increment 3 — report MCP server + mcp_ingress extraction (local, fake GCS; no cost)
+
+Executed 2026-09-10 (session 22). No environment commands — code + tests +
+local Docker builds/smokes only:
+
+```
+make mcp-report-test    # 34 passed (7 render + 9 storage + 18 server/ingress)
+make mcp-ingress-test   # 7 passed
+make mcp-story-test     # 67 passed   make mcp-artifact-test  # 32 passed
+make review-schemas-test  # 154       make dataset-test       # 36
+make ado-wire-test        # 7
+docker build -f mcp_servers/report/Dockerfile .    # OK (also story + artifact rebuilt)
+# container smoke: /healthz 200; missing REPORT_BUCKET aborts loudly;
+# real render_report round trip over HTTP vs fake GCS (pdf created=True,
+# retry created=False); anonymous-credentials fix required (see gotchas)
+```
+
+Owner decisions (settled in chat before code, per the increment-3 plan):
+
+- **PDF library: fpdf2** (pure Python, ~2 MB image delta, deterministic
+  bytes; weasyprint rejected — pango/cairo bloat + determinism risk).
+  Markdown side rendered directly from the block structure (no
+  markdown-it-py dependency needed).
+- **Auth middleware extracted now**: `shared/mcp_ingress/` (package
+  `mcp-ingress` 0.1.0) — the story/artifact copies were diff-verified
+  identical modulo logger/contextvar names, deleted, and both servers +
+  Dockerfiles + Makefile rewired. New `make mcp-ingress-test` (7 tests).
+- **Report storage**: own `ReportStore` module on the SAME bucket as the
+  artifact server, disjoint prefixes — reads `runs/<run>/artifacts/<id>.json`
+  (artifact layout), writes `runs/<run>/reports/<id>.<ext>` +
+  `<id>.json` + idempotency key `runs/<run>/report-idem/<format>`. No
+  MCP-over-HTTP hop to the artifact server (report types are outside
+  `SaveArtifactType` anyway).
+
+Changes (test-first; red confirmed `ModuleNotFoundError: report_mcp`):
+
+- `mcp_servers/report/` (uv package `report-mcp` 0.1.0):
+  - `render.py` — `FinalizedReview` → block list → deterministic MD / PDF
+    (fpdf2, pinned `CreationDate` 2000-01-01, no /ID trailer; PDF bytes
+    latin-1 via built-in fonts — non-latin text degrades vs MD,
+    documented). Byte-identical double renders pinned by test.
+  - `storage.py` — claim-before-write idempotency per (run, format);
+    key payload pins the finalized-review artifact id + checksum → same
+    reference retry returns existing (`created=false`), different
+    reference raises `IdempotencyConflict` (→ `IDEMPOTENCY_KEY_REUSED`);
+    orphan-key crash window retried by rewriting the record; content/
+    meta two-write crash window handled by checksum-verified tolerance of
+    the already-written content object; caller-reference checksum checked
+    against the stored record (mismatch → `VALIDATION_ERROR`);
+    version scan scoped to the report type.
+  - `server.py` — `render_report` (orchestration-only allowlist, absent
+    principal fails closed), unknown-field rejection via raw call
+    arguments, dispatch skeleton identical to the artifact server.
+  - `errors.py` — `ARTIFACT_NOT_FOUND` / `IDEMPOTENCY_KEY_REUSED` /
+    `RENDER_FAILED` (fpdf2 `FPDFException`) non-retryable;
+    `PreconditionFailed` → retryable `UPSTREAM_UNAVAILABLE`; internal
+    errors non-retryable.
+  - `app.py`/`main.py` — `REPORT_*` env (bucket validated at build), /healthz
+    public, `mcp_ingress` middleware in the production shape.
+  - Dockerfile (root context, `report_mcp` + `review_schemas` +
+    `mcp_ingress` code-only, dataset-absence guard).
+  - `make mcp-report-test` (fake-gcs-server :9024, readiness-checked).
+
+**Independent read-only review** (subagent): first pass **Needs fixes** —
+1 Important, 5 Minor; all fixed same session + follow-up review
+**Ready to proceed**:
+
+- Important: `_write_report` two-write crash window made the retry path
+  permanently stuck (content-object generation-0 precondition fails on
+  every retry) — now tolerated when the existing bytes' sha256 matches
+  the reference checksum; regression test seeds idem key + content blob
+  without meta.
+- Minors fixed: `_next_version` scoped per report type; stored-record
+  checksum comparison against the caller's reference; fpdf2 determinism
+  comment corrected (falsy `file_id()`, /Producer version, latin-1
+  divergence); stored-bytes checksum assertion in the save test.
+
+Gotchas learned (session 22):
+
+- **ADC inside containers**: `storage.Client()` demands ADC even with an
+  endpoint override — the report server now uses `AnonymousCredentials`
+  when `REPORT_GCS_ENDPOINT` is set (fake-GCS profile only). **The story
+  and artifact servers have the same latent gap** (their session-20/21
+  container smokes were healthz-only, which is why it never surfaced);
+  must be fixed for the compose increment 4 — same one-line change.
+- **fake-gcs-server loopback binding**: `-p 127.0.0.1:9025:4443` is NOT
+  reachable from other containers via `172.17.0.1`; publish on 0.0.0.0
+  (`-p 9025:4443`) for cross-container smokes.
+- fpdf2 `file_id` is a *method* (overridable), not a settable attribute —
+  assigning a string breaks serialization with a confusing TypeError.
+- report `requirements.in` cannot name local packages (`review-schemas`,
+  `mcp-ingress`) — uv pip compile fails; they ride along via
+  `--with-editable` in tests and COPY in Dockerfiles (artifact-server
+  convention).
