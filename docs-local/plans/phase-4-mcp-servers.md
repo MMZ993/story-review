@@ -48,9 +48,10 @@ SQL).
      parent Feature/Epic → `epic_context`,
      roadmap context from the epic envelope in `dataset/stories/context/`.
    - Where preparation runs: image build time (baked `StoryDetail` JSON) vs
-     server startup (in-memory). Working assumption: startup, reading
-     `/app/dataset/stories/` — keeps images dataset-agnostic and reuses the
-     loader's envelope models.
+     server startup (in-memory). Working assumption: startup — keeps images
+     dataset-agnostic and reuses the loader's envelope models. (Resolved
+     session 19: startup in memory, reading from a directory or GCS location
+     per D10; superseded the `/app/dataset/stories/` baked-copy idea.)
    - `context_stories`: `relation` lives in ADO relations (`Hierarchy-Forward`
      / `System.LinkTypes.Related` etc.); with extension-2 mock data deferred,
      only the mapping for `linked_stories` refs is codified; the runtime path
@@ -69,9 +70,12 @@ amendment 4, as the owner prefers).
 - `shared/review_schemas`: `StoryComment` + `ContextStory` models on
   `StoryDetail` (test-first), package version bump — code catching up to
   schemas.md.
-- `mcp_servers/story/` — server, preparation step, Dockerfile (copies
-  `dataset/stories/` only, never `dataset/expected/` or dataset root),
-  requirements.in/lock, tests.
+- `mcp_servers/story/` — server, dual-source preparation (mock dataset +
+  live Azure DevOps), Dockerfile (dataset-agnostic — no `dataset/` content;
+  mock data via GCS fetch or local dir at startup), requirements.in/lock,
+  tests.
+- `make dataset-push` — publish `dataset/stories/` to
+  `gs://$PROJECT_ID-story-dataset/` (stories + context envelopes only).
 - `mcp_servers/artifact/` — GCS-backed artifact store, Dockerfile, tests.
 - `mcp_servers/report/` — deterministic MD/PDF renderer, Dockerfile, tests.
 - `deploy/docker-compose.yml` (`local` profile) + `deploy/env/.env.example`;
@@ -96,10 +100,18 @@ green (147 → more).
 
 ### 1. Story MCP server (local)
 
-- Preparation module: envelope (loader's `StoryEnvelope`) → `StoryDetail`,
-  per the increment-0 mapping table; unit tests against all 45 real story
-  files (byte-stable output asserted per file — a golden snapshot committed
-  once, owner-reviewed).
+Dual source behind one preparation pipeline (D10, owner-approved session 19;
+`docs/design/mcp-servers.md` "Dual data source"):
+
+- Source abstraction: `mock` (dataset envelopes from a configurable location —
+  local directory for compose/tests, `gs://` URI for Cloud Run) and `azure`
+  (live REST: WIQL + `workitems/{id}?$expand=all` + comments API, PAT auth).
+  Id spaces: `story-NN` vs `ado-N`; cross-source lookups → `STORY_NOT_FOUND`.
+  `STORY_SOURCE` deployment default; optional per-call `source` override
+  (orchestration only, transparent to agents). Evaluation always `mock`.
+- Preparation module: work item → `StoryDetail` (one pipeline, both sources);
+  unit tests against all 45 real story files (golden snapshots committed once,
+  owner-reviewed).
 - Server: FastMCP/`mcp` SDK Streamable HTTP, stateless; tools
   `list_stories` / `get_story` with the shared input/output models;
   `list_stories` excludes context-only stories; every failure returns
@@ -107,11 +119,13 @@ green (147 → more).
 - Ingress: ID-token middleware pattern from the spike; **disabled only in
   the local profile** (compose env), fail-closed in production shape.
 - Contract tests: tool-level against the ASGI app (TestClient + MCP client
-  SDK), incl. unknown-field rejection, error taxonomy, caller allowlist
-  (orchestration/facilitator principals; story server has no
-  orchestration-only tools but the principal plumbing is proven here).
+  SDK), incl. unknown-field rejection, error taxonomy, source selection and
+  id-space separation, caller allowlist plumbing.
 - Dockerfile per repository-layout.md (root context, copies
-  `mcp_servers/story`, `shared/review_schemas`, `dataset/stories/` only).
+  `mcp_servers/story` + `shared/review_schemas` only; no dataset).
+- `make dataset-push` target (upload script, stories/context only);
+  bucket bootstrap deferred to increment 5 (infra write, Terraform
+  plan-before-apply) — local tests use the directory location.
 
 ### 2. Artifact MCP server (local, fake GCS)
 
@@ -142,7 +156,8 @@ green (147 → more).
 
 - `deploy/docker-compose.yml` `local` profile: three MCP services +
   fake-gcs-server with pre-created buckets; SA ingress checks off via env;
-  story image mounts/copies `dataset/stories/`.
+  story server `mock` source pointed at a mounted `dataset/stories`
+  directory (D10).
 - Real Makefile `compose-up`/`compose-down`.
 - Contract tests run against the **running compose services** over HTTP
   (direct `mcp` SDK client, as orchestration will): full tool matrix, error
@@ -153,7 +168,10 @@ green (147 → more).
 
 - `deploy/cloud-run/<service>/deploy.sh` + `.env.example` per the spike's
   proven pattern; service-account-only ingress; GCS buckets for artifacts
-  (bootstrap additions if needed — Terraform, plan-before-apply).
+  and the story dataset (bootstrap additions if needed — Terraform,
+  plan-before-apply; `make dataset-push` publishes the mock stories);
+  Azure PAT secret for the story server's `azure` source (Secret Manager,
+  owner-created).
 - Makefile `mcp-story-deploy` / `mcp-artifact-deploy` / `mcp-report-deploy`
   and matching smoke targets (authenticated `list_stories`, artifact
   save/get roundtrip, MD render) — smoke from local machine with ADC +
@@ -195,9 +213,10 @@ Cloud Run via a Makefile target and answers a smoke call.
   server code; golden snapshots make later drift loud.
 - **PDF stack weight/determinism**: library choice isolated to increment 3;
   determinism asserted by test.
-- **Dataset leakage into images**: `.dockerignore` plus a build-time check
-  that `dataset/expected` is absent from the image (test in increment 1,
-  reused for all three).
+- **Dataset leakage into runtime**: `dataset/expected` is never uploaded to
+  the dataset bucket and never enters an image (no image copies `dataset/`;
+  build-time check that `dataset/expected` and `dataset/stories` are absent
+  from the story image, reused for all three).
 - **Cost**: Cloud Run min 0; smoke tests then idle — no long-running
   resources; GCS near-empty buckets.
 
