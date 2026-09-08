@@ -56,14 +56,19 @@ Exit criteria: model/validator unit tests pass; package installable from
 
 Cost: none.
 
-## Phase 3 — Mock dataset — in progress (2026-09-07; plan `docs-local/plans/phase-3-mock-dataset.md`; ADO env Runbook 08, dataset work Runbook 09)
+## Phase 3 — Mock dataset — done (2026-09-07/09; Runbook 08 + 09; completion review session 16, dataset 28 / schemas 147 passed)
 
-Scope: `dataset/stories/` + `dataset/expected/` — all six scenario types
+Scope: `dataset/stories/` + `dataset/expected/` — seven scenario types
 (clean, business-weak, engineering-weak, conflicting, partial-resolution,
-unresolvable) with expected-file contracts per quality/mock-data.md.
+unresolvable, hidden-conflict) across templates T1–T6, with scenario-canonical
+expected-file contracts per quality/mock-data.md (D9 amendment 2).
 
 Exit criteria: expected files validate against the Phase 2 schemas; stories load
-through a trivial harness.
+through a trivial harness. Met: `make dataset-test` 28 passed;
+`make review-schemas-test` 147 passed; independent read-only completion review
+(session 16): Ready to close — 0 Critical/Important, 3 Minor doc-drift findings
+all fixed (docs expected-file contract realigned; story-templates matrix
+corrected to seven scenarios; canonical-facts T5 cross-reference added).
 
 Cost: none.
 
