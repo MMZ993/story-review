@@ -5,7 +5,7 @@ PROJECT_ID ?= $(shell sed -nE 's/^export PROJECT_ID="?([^"]+)"?.*/\1/p' infra/en
 REGION     ?= europe-west4
 SMOKE_MODEL ?= gemini-2.5-flash
 
-.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-story-test dataset-push compose-up compose-down terraform-plan terraform-apply db-pause db-resume db-status
+.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-story-test mcp-artifact-test dataset-push compose-up compose-down terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -61,6 +61,19 @@ mcp-story-test: ## Phase 4: story MCP preparation + contract tests
 		--with-requirements requirements.lock --with-editable . \
 		--with ../../shared/review_schemas --with ../../dataset/loader \
 		--with ../../shared/ado_wire \
+		python -m pytest tests -q
+
+mcp-artifact-test: ## Phase 4: artifact MCP storage + contract tests (fake GCS in Docker)
+	container=$$(docker run -d --rm -p 127.0.0.1:9023:4443 fsouza/fake-gcs-server:latest -scheme http); \
+	trap 'docker rm -f $$container >/dev/null 2>&1' EXIT; \
+	for i in $$(seq 1 20); do \
+		curl -sf http://127.0.0.1:9023/storage/v1/b >/dev/null && break; sleep 0.5; \
+	done; \
+	curl -sf http://127.0.0.1:9023/storage/v1/b >/dev/null || { echo "fake-gcs-server not ready" >&2; exit 1; }; \
+	cd mcp_servers/artifact && \
+	ARTIFACT_TEST_GCS_ENDPOINT=http://127.0.0.1:9023 \
+	uv run --no-project --with-requirements tests/requirements.lock \
+		--with-editable . --with-editable ../../shared/review_schemas \
 		python -m pytest tests -q
 
 compose-up: ## Local development stack (Phase 4+)

@@ -52,6 +52,15 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 
 Append entries: date, phase, what was proven, artifact path / correlation ID.
 
+- 2026-09-10 — Phase 4 — increment 2: artifact MCP server
+  (`mcp_servers/artifact`, `artifact-mcp` 0.1.0) — `GcsArtifactService`
+  against fake-gcs-server (same code path as real GCS), tools
+  save/get/list with lineage scoping, claim-before-write idempotency,
+  versioning + `is_latest`, per-tool allowlists (facilitator read-only);
+  `make mcp-artifact-test` 32 green; all suites green; container healthz
+  smoke OK; independent review findings fixed. Evidence:
+  `runbooks/10-mcp-servers.md` §2.
+
 - 2026-09-09 — Phase 4 — increment 1 part 1: dual-source story-server design
   (D10, docs commits cherry-picked to `docs/initial-frozen`),
   `shared/review_schemas` 0.4.0 (`StorySource`, widened `StoryId`, `source`

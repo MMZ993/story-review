@@ -1,0 +1,8 @@
+# Phase 4 artifact MCP server. Pinned-compatible with the story server's
+# stack (Runbook 10); compiled to requirements.lock with uv pip compile.
+pydantic>=2.13
+mcp[cli]==2.1.1
+google-auth>=2.40
+requests>=2.32  # google.auth.transport.requests import used by the token verifier
+google-cloud-storage>=2.14
+uvicorn>=0.31
