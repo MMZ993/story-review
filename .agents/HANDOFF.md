@@ -356,12 +356,11 @@ cross-checks, test-first red/green, review findings fixed).
   session 15; also recorded in the extensions plan).
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
-- Git: `main` is **6 ahead of origin** after session 18 (docs correction
-  `9950ae9`, implementation `20ccd90`, plus four prior commits); the owner
-  must push it. `docs/initial-frozen` is **1 ahead of origin** with the
-  cherry-picked docs correction `5307b70`; the owner must push it too. The
-  sole accepted prior divergence remains the `docs/index.md` docs-local
-  pointer from `c5dc040`.
+- Git: an external push updated `origin/main` during session wrap-up. Local
+  `main` still has its wrap-up handoff commit(s) to push, and
+  `docs/initial-frozen` has the cherry-picked docs correction `5307b70` to
+  push; check `git status -sb` before pushing. The sole accepted prior
+  divergence remains the `docs/index.md` docs-local pointer from `c5dc040`.
   Session-16 cherry-picks: `dfbde69`, `7b9975d`, `a787dbe` (hidden-conflict
   row rode along — correct content-wise). Old history note:
   `docs/initial-frozen` = `d5cb413`; superseded hashes `a519899`,
