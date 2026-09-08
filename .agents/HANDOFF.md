@@ -328,6 +328,14 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
+0. **Frozen-branch reconciliation check** (next session, owner-approved):
+    older `docs/` commits from sessions 12–15 (e.g. the hidden-conflict
+    row) were never cherry-picked to `docs/initial-frozen` — the two files
+    spot-checked in session 16 are in sync, but run a one-time full-tree
+    diff (`git diff docs/initial-frozen main -- docs/`) and cherry-pick or
+    reconcile any stragglers before relying on the frozen branch as the
+    design-evolution record. Also confirm the owner pushed
+    `docs/initial-frozen`.
 1. **Phase 4 (MCP servers + compose)**: story MCP serves verbatim from
    `dataset/stories/` (D9) — now 45 stories incl. comments; hosted demo
    uploads the JSON files to the Google-hosted mock endpoint; expected
@@ -347,14 +355,13 @@ cross-checks, test-first red/green, review findings fixed).
   session 15; also recorded in the extensions plan).
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
-- Git: session 16 commits (all local until the owner pushes):
-  `5e35128` docs expected-file contract, `05e0dd9` dataset doc fixes,
-  `22ad0be` phase-3 close-out, `52534ef` docs comments+context contract,
-  `0612a47` envelope/loader extension fields, `bef7fe0` comments export,
-  `223d062` D9 amendment 3, `a7337ee` preview api fix, `847dd33` spike
-  evidence, `87f9ccc` comment stories, `9b430ce` docs scenario rows.
-  docs/-only (cherry-pick candidates for `docs/initial-frozen`):
-  `5e35128`, `52534ef`, `9b430ce`. Old history note:
+- Git: main is PUSHED (owner, incl. all session-16 commits).
+  `docs/initial-frozen` cherry-picks done (owner-requested, session 16):
+  `dfbde69` expected-file contract, `7b9975d` comments+context contract,
+  `a787dbe` comment scenarios (conflict resolved: the hidden-conflict row
+  from session 14 had never been cherry-picked and rode along — correct
+  content-wise). Branch is 3 ahead of its origin — **owner still needs to
+  `git push origin docs/initial-frozen`**. Old history note:
   `docs/initial-frozen` = `d5cb413`; superseded hashes `a519899`,
   `bcd1c1b`, `dadd2e1`, `9482e6a`, `649f7c4` were from the rewrite era.
   Check `git status -sb` before assuming the remote is current — tracking
