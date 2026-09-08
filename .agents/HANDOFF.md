@@ -1,10 +1,10 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-08 (session 15: Runbook 09 increment 3 DONE —
-  expected files (7 scenario-canonical, collapsed from per-template) +
-  story-id backfill + D9 amendment 2; Runbook 08 REST-equivalence
-  verification (PAT path proven); next in-session: increment 4 loader).
+Last updated: 2026-09-08 (session 15: Runbook 09 COMPLETE — expected files
+  (7 scenario-canonical), story-id backfill, loader harness (make dataset-test,
+  28 tests) + REST export path; Runbook 08 REST/PAT verification; independent
+  review Ready-to-proceed, 8 Minor fixed; phase-completion review pending).
 
 ## Where we are
 
@@ -22,27 +22,43 @@ Last updated: 2026-09-08 (session 15: Runbook 09 increment 3 DONE —
 
 ## Previous Session Summary
 
-Session 15 (2026-09-08, in progress) — Runbook 09 **increment 3 DONE**:
-expected files authored from `dataset/manual-plans/`, first as 42
-per-template files, then **collapsed (owner decision) to 7 scenario-canonical
-files** `dataset/expected/<scenario>.json` — the loader expands each to the
-6 per-template test cases (format invariance enforced structurally; D9
+Session 15 (2026-09-08) — Runbook 09 **increments 3 + 4 DONE — runbook
+COMPLETE** (phase-completion review pending). Increment 3: expected files
+authored from `dataset/manual-plans/`, first as 42 per-template files, then
+**collapsed (owner decision) to 7 scenario-canonical files**
+`dataset/expected/<scenario>.json` — the loader expands each to the 6
+per-template test cases (format invariance enforced structurally; D9
 amendment 2). Owner-approved decisions recorded: `story_id` = `story-01`…
-`story-42` template-major (backfilled into all 42 story envelopes);
+`story-42` template-major (emitted by export_ado.py; envelopes carry it);
 `expected_findings` = semantic stubs (runtime finding IDs not pinned);
 `expected_turns` includes turn 1; conflicting closing = variant 1
 (2-turn conversational finalize). `facilitator_turn_count` excludes PO
 acceptance turns per schemas.md (clean=1 … unresolvable=10/park).
-Unresolvable turns 2–9 deliberately routing-unpinned. Structural checks on
-all cases PASS. Also **Runbook 08 REST-equivalence increment** (owner-driven):
-az CLI auth does NOT transfer to REST with an MSA login (AADSTS500011) —
-external auth path is a **PAT** (owner-created, Work Items: Read, in
-gitignored `ado.env` as `ADO_PAT`, revoke after increment 4);
-`GET workitems/{id}?$expand=all` is byte-equivalent to the az export;
-`workitemsbatch` ($expand=Relations) interchangeable (drops only internal
-fields); `workitems?ids=` returns fields at 7.1 but no relations. Decision:
-export can move to REST — folded into increment 4 alongside `story_id`
-emission in `export_ado.py`.
+Unresolvable turns 2–9 deliberately routing-unpinned. Increment 4
+(test-first, 23 red tests → 28 green): `dataset/loader/` uv package
+(`dataset-loader`) — strict `StoryEnvelope` + `ExpectedCase` models
+(vocabulary reused from `shared/review_schemas`), scenario→case expansion
+(42 cases), dataset invariants; `make dataset-test` (28 passed) +
+`make review-schemas-test` still green (147). `export_ado.py` now fetches
+via **REST with `$ADO_PAT`** when set (WIQL + `workitems/{id}?$expand=all`;
+az CLI fallback) — verified by a full REST re-export: all 45 files
+content-identical to the az export. Data fix caught by tests: `C-r1`→`C-1`
+in unresolvable.json. Owner decisions: story files keep stable key order
+(envelope field order documented, work_item keys sorted — re-export of
+unchanged data diffs only exported_at; the exported_at-only re-export was
+reverted to keep the commit clean). Independent read-only review of
+increment 4: **Ready to proceed**, 0 Critical/Important, 8 Minor — all
+fixed same session (env guards, URLError catch, po_accepted-requires-
+finalized + reports==requested_formats validators, plain-loop expansion,
+narrowed pytest.raises, top-level test imports, 5 extra negative tests).
+Also **Runbook 08 REST-equivalence increment** (owner-driven): az CLI auth
+does NOT transfer to REST with an MSA login (AADSTS500011) — external auth
+path is a **PAT** (owner-created `rest-verify`, Work Items: Read, in
+gitignored `ado.env` as `ADO_PAT`; retained for re-exports — owner may
+revoke/rotate, export falls back to az); single-GET `$expand=all` is
+byte-equivalent to the az export; `workitemsbatch` interchangeable
+(drops only internal fields); `workitems?ids=` returns fields at 7.1 but
+no relations.
 
 Session 14 (2026-09-07/08) — Phase 2 accepted; Phase 3 opened; ADO sample env;
 template matrix (local-only; Cloud SQL stayed STOPPED). Owner ran the Phase 2
