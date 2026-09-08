@@ -10,7 +10,7 @@ client — deterministic, no LLM).
 
 ## Story server
 
-Serves the mock backlog (data store). Read-only; no agent state involved. Designated as
+Serves the backlog (data store). Read-only; no agent state involved. Designated as
 the simple MCP server fulfilling the technical requirement.
 
 | Tool | Input | Output | Authorized callers |
@@ -18,8 +18,38 @@ the simple MCP server fulfilling the technical requirement.
 | `list_stories` | `ListStoriesInput` | `ListStoriesOutput` | orchestration, facilitator |
 | `get_story` | `GetStoryInput` | `StoryDetail` | orchestration, facilitator |
 
-- Backed by the mock dataset (see `../quality/mock-data.md`); expected outcomes are
-  **not** exposed through this server.
+### Dual data source
+
+One preparation pipeline (ADO work item → `StoryDetail`), two interchangeable
+sources selected per deployment:
+
+- **`mock`** (default for local compose and evaluation): the frozen dataset
+  export — verbatim ADO work-item JSON — published as files to GCS
+  (`gs://$PROJECT_ID-story-dataset/`, pushed via `make dataset-push`; expected
+  files are never uploaded). The server fetches the bucket at startup and runs
+  the preparation pipeline in memory; the image stays dataset-agnostic.
+- **`azure`** (production path): live Azure DevOps REST — WIQL for
+  `list_stories`, `workitems/{id}?$expand=all` plus the comments API for
+  `get_story`. Auth is a PAT held in Secret Manager (never in git or env
+  files); egress to `dev.azure.com`.
+
+Selection rules:
+
+- Deployment default via the `STORY_SOURCE` env (`azure` in production Cloud
+  Run, `mock` in the local compose profile).
+- Per-call override via the optional `source` field — orchestration only; the
+  field is transparent to agents. A call never mixes sources, and a story run
+  is pinned to one source by the deployment it executes in.
+- Id spaces never mix: `story-NN` (mock dataset) vs `ado-N` (live work item);
+  cross-source lookups return `STORY_NOT_FOUND`.
+- **Evaluation and regression runs always use `mock`**: live Azure content
+  drift would invalidate the dataset's expected outcomes. `azure` is the
+  production/demo path only.
+
+Contract rules (both sources):
+
+- Expected outcomes are **not** exposed through this server in either source
+  (mock dataset scenario metadata is never mapped; Azure has no such field).
 - `get_story` returns the full `StoryDetail`, including `comments` and
   `context_stories` when the story has them (both default empty — dataset
   stories without them are unaffected). No truncation or summarization in v1;
@@ -28,7 +58,8 @@ the simple MCP server fulfilling the technical requirement.
   (referenced solely as `context_stories` of a main story) do not appear in
   the list; they are reachable only through `get_story` of the main story
   (or directly by id).
-- No writes; versioned with the dataset.
+- No writes; the mock source is versioned with the dataset, the azure source
+  with the ADO backlog.
 
 ## Artifact server
 

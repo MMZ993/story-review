@@ -31,8 +31,10 @@
   story/artifact MCP servers. Details are in
   [repository-layout.md](repository-layout.md).
 - Cloud Run scripts build from repository root (`-f mcp_servers/<service>/Dockerfile .`)
-  so service images can copy the shared package. The story image copies only
-  `dataset/stories`; expected outcomes never enter a service image.
+  so service images can copy the shared package. No image copies dataset content:
+  the story server fetches the mock dataset from GCS at startup (or reads
+  Azure DevOps via `STORY_SOURCE=azure`); expected outcomes never enter
+  a service image or the dataset bucket.
 - `deploy/cloud-sql/run-migrations.sh` applies ordered migrations before an application
   deploy that requires them.
 - FastAPI is reachable via service-account ingress, or via an authenticated demo route

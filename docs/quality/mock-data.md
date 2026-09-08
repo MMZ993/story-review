@@ -79,5 +79,12 @@ with the dataset.
 - Expected outputs live with the dataset, never in agent prompts or code.
 - Story MCP server returns stories and backlog data in **JSON format** (strict schema,
   Pydantic-validated).
+- The mock dataset is published to GCS (`gs://$PROJECT_ID-story-dataset/`,
+  stories + context envelopes only, never `dataset/expected/`) via
+  `make dataset-push`; the story MCP server fetches it there at startup when
+  running the `mock` source (see
+  [../design/mcp-servers.md](../design/mcp-servers.md)).
 - Dataset versioned in git; test results tied to dataset version.
 - Same stories used in the live demo — what evaluators see is what the tests verify.
+- Evaluation and regression runs always use the `mock` source; the `azure`
+  source is the production/demo path.

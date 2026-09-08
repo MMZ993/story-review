@@ -32,10 +32,17 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
 
+StorySource = Literal["azure", "mock"]
+
 StoryId = Annotated[
     str,
-    StringConstraints(pattern=r"^story-[0-9]{2}$", min_length=8, max_length=8),
+    StringConstraints(
+        pattern=r"^(story|ado)-[0-9]{1,8}$", min_length=5, max_length=12
+    ),
 ]
+# `story-NN` ids come from the frozen mock dataset; `ado-N` ids are live
+# Azure DevOps work items (story MCP server source selection). The two
+# id spaces never mix within a call or a story run.
 RunId = Annotated[
     str,
     StringConstraints(
@@ -942,9 +949,17 @@ validated at ingress. Artifact operations are lineage-scoped: references are sup
 orchestration for the caller's own story run, the server validates the
 reference-to-run relationship, and reads never cross story runs.
 
+The story server tools carry an optional `source` (`azure` | `mock`, default
+`None`). `None` means "use the deployment default" (`STORY_SOURCE` env); an
+explicit value is set by orchestration only — the field is transparent to
+agents, whose schemas never mention it. A call never mixes sources; a story
+run is pinned to one source by the deployment it executes in (evaluation and
+regression runs always use `mock`; `azure` is the production/demo path).
+
 ```python
 class ListStoriesInput(StrictModel):
     filter: ShortText | None = None
+    source: StorySource | None = None
 
 
 class ListStoriesOutput(StrictModel):
@@ -953,6 +968,7 @@ class ListStoriesOutput(StrictModel):
 
 class GetStoryInput(StrictModel):
     story_id: StoryId
+    source: StorySource | None = None
 
 
 class SaveArtifactInput(StrictModel):
