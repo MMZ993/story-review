@@ -442,3 +442,55 @@ relation (type + target id) equality verified for single + batch.
 - Follow-up folded into Runbook 09 increment 4: optionally switch
   `dataset/tools/export_ado.py` to fetch via REST with `$ADO_PAT`
   (mirrors the production fetch path), alongside the `story_id` emission.
+
+## Comments API spike (2026-09-09, session 16)
+
+Purpose: exercise the comments export path (dataset extensions plan,
+extension 1) against a temporary work item before authoring any real
+comment stories.
+
+### Commands executed (agent-run, owner-approved)
+
+```bash
+# tmp story in the ROOT area (t1's area — template derives from area;
+# leading-backslash area paths are rejected: TF401347, use "$ADO_PROJECT")
+az boards work-item create --title "TMP comment-export spike (delete after)" \
+  --type "User Story" --area "$ADO_PROJECT" --iteration "$ADO_PROJECT" \
+  --project "$ADO_PROJECT" --org "https://dev.azure.com/$ADO_ORG" \
+  --description "..."        # -> id 56
+
+# comments: no az boards command exists; REST POST (api-version 7.1-preview.4!)
+# PAT must be scoped Work Items: Read & Write (Read-only -> HTTP 401)
+python3  # urllib POST {text} -> comment ids 499406..499408
+
+# export probe (reuses export_ado.fetch_comments + sanitizers; the full
+# export would abort on the provenance guard for the tmp id — by design)
+python3 -c "import export_ado as e; e.fetch_comments('$ADO_PROJECT', 56)"
+```
+
+### Findings
+
+| Aspect | Result |
+|---|---|
+| Comments API version | **preview-only**: `7.1` is rejected (VssInvalidPreviewVersionException); must be `7.1-preview.4` |
+| PAT scope | Read-only PAT → **401** on POST; owner widened `rest-verify` to Read & Write for the spike (may be reverted) |
+| az CLI fallback | `az rest` cannot authenticate with the MSA login (**AADSTS500011**, as before) — comments export **requires the REST mode**; `export_ado.fetch_comments` aborts loudly in az mode |
+| Response shape | per comment: `id`, `workItemId`, `version`, `text`, `format: "html"` (but `renderedText` empty for plain-posted text — `text` is the canonical content), `mentions: []`, `createdBy`/`modifiedBy`, `createdDate`/`modifiedDate`, `url` |
+| Ordering | API returns **newest first**; `fetch_comments` sorts chronologically ascending |
+| Sanitization | existing passes apply cleanly: identities anonymized (`Story Author`), comment `url` rewritten to `$ADO_ORG`/`<project-id>`, no `_links` in comments payloads |
+| No-comments story | returns `comments: []` → envelope omits the key entirely (42 pre-extension files stay byte-stable) |
+| Loader validation | exported comments validate against `WorkItemComment` (strict model, non-empty `text`) |
+
+### Decisions recorded
+
+- Persona scheme (owner): single anonymized **"comment author"** — there is
+  only one real user; the Phase 4 story MCP will likely **drop comment
+  authors entirely** (revisit `StoryComment.author` at Phase 4 against the
+  design).
+- Comment case stories (C-1–C-3) and linked-story mock data are **deferred**
+  (owner); this spike validated the transport/schema only.
+
+### Teardown
+
+- Tmp story **id 56** (3 comments) — owner to delete, or keep until the
+  extension-1 authoring session.
