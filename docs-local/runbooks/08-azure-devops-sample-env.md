@@ -384,3 +384,61 @@ Learned (dataset authoring, 2026-09-07):
       ids (T3/T4 retro-added, T6 added).
 - [ ] Reproducible query saved.
 - [ ] JSON export produced and shape recorded.
+
+## Increment: REST API equivalence verification (2026-09-08, session 15)
+
+Motivation (owner): a real Google→Azure connection cannot use the az CLI —
+it will call the REST API. Verify the REST endpoints return shapes
+interchangeable with the az-based export (`dataset/stories/`), and settle
+the external-service auth path. All commands read-only (tier 1),
+owner-approved, run against the free org.
+
+### Auth findings
+
+- `az rest` against `dev.azure.com` returns a sign-in HTML page (default
+  resource is ARM), and `az rest --resource 499b84ac-…` (DevOps resource)
+  fails with `AADSTS500011` — the az login is a personal **MSA** account and
+  the ARM client cannot mint DevOps-resource tokens in the MSA tenant.
+  `az boards` works only because the extension uses its own MSAL flow.
+  **Conclusion: the az CLI auth path does not transfer to a plain REST
+  client; the external-service auth path is a PAT** (or Entra service
+  principal in a corporate tenant).
+- Owner created a PAT (`rest-verify`, scope **Work Items: Read** only,
+  30-day expiry) in the browser and added it to gitignored
+  `infra/envs/ado.env` as `ADO_PAT`. Never enters git/logs; revoke/delete
+  after the REST export switch (increment 4) or at latest on expiry.
+
+### Commands (evidence: /tmp comparison run 2026-09-08)
+
+```bash
+set -a; source infra/envs/ado.env; set +a
+AUTH="Authorization: Basic $(printf ":%s" "$ADO_PAT" | base64 -w0)"
+B="https://dev.azure.com/$ADO_ORG"
+curl -s -H "$AUTH" "$B/$ADO_PROJECT/_apis/wit/workitems/5?\$expand=all&api-version=7.1"
+curl -s -H "$AUTH" "$B/_apis/wit/workitems?ids=5,10,14&api-version=7.1"
+curl -s -H "$AUTH" -H "Content-Type: application/json" \
+  -d '{"ids":[5,10,14],"$expand":"Relations"}' \
+  "$B/$ADO_PROJECT/_apis/wit/workitemsbatch?api-version=7.1"
+```
+
+### Results (compared against `dataset/stories/t1/{clean,business-weak,engineering-weak}.json`)
+
+| Endpoint | Fields | Relations | Verdict |
+|---|---|---|---|
+| `GET workitems/{id}?$expand=all` | identical set + values | identical | **byte-equivalent to the az export** (modulo D9 sanitization: identities, `_links`, URL placeholders) — the full-fidelity shape |
+| `POST workitemsbatch` `$expand=Relations` | all content fields identical (Title/Description/AC/Tags/AreaPath/IterationPath/State…); omits ~14 internal/system fields (`System.Rev`, `System.AreaId`, `System.Watermark`, `System.Parent`, `WEF_*` markers, …) | identical | **interchangeable for review content**; the bulk production path |
+| `GET workitems?ids=` | DOES return fields at api-version 7.1 (docs' "references only" note does not hold empirically); adds a `multilineFieldsFormat` quirk | **none** — no relations without `$expand` | not sufficient alone (no parent links → no epic/feature context) |
+
+Content-field equality verified for all three probed ids across single/batch;
+relation (type + target id) equality verified for single + batch.
+
+### Decision
+
+- The REST path can replace the az CLI for fetching with **no dataset
+  changes**: single-GET `$expand=all` reproduces the exact export shape;
+  `workitemsbatch` reproduces it minus internal fields the dataset does not
+  semantically need (System.Parent is recoverable from the Hierarchy-Reverse
+  relation).
+- Follow-up folded into Runbook 09 increment 4: optionally switch
+  `dataset/tools/export_ado.py` to fetch via REST with `$ADO_PAT`
+  (mirrors the production fetch path), alongside the `story_id` emission.
