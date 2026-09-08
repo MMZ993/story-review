@@ -36,8 +36,9 @@ Changes (test-first):
   match).
 
 Evidence: `make review-schemas-test` **151 passed** (147 + 4 new behavior
-tests: defaults, valid nested payload, strict-field rejection, relation
-literal, cap 50/5 overflow); `make dataset-test` **36 passed**.
+tests plus extended default assertions in the existing summary/detail test:
+valid nested payload, strict-field rejection, relation literal, cap 50/5
+overflow); `make dataset-test` **36 passed**.
 
 Gotchas learned:
 

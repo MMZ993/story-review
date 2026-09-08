@@ -72,7 +72,7 @@ corrected to seven scenarios; canonical-facts T5 cross-reference added).
 
 Cost: none.
 
-## Phase 4 — MCP servers — planned
+## Phase 4 — MCP servers — in progress (session 17: plan + increment 0 done; plan in plans/phase-4-mcp-servers.md)
 
 Scope: story → artifact → report (increasing complexity), each with Dockerfile,
 deploy script, and contract tests; local compose service definitions. Story image

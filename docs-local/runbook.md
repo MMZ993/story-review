@@ -52,6 +52,12 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 
 Append entries: date, phase, what was proven, artifact path / correlation ID.
 
+- 2026-09-09 — Phase 4 — increment 0: shared schema caught up to schemas.md
+  (`StoryComment`/`ContextStory` on `StoryDetail`, package 0.2.0);
+  story-serving decisions recorded (D9 amendment 4); review-schemas suite
+  151 green, dataset suite 36 green. Evidence:
+  `runbooks/10-mcp-servers.md` §0.
+
 - 2026-09-05 — Phase 0 — Terraform API-enablement bootstrap applied and verified:
   ten expected services enabled; Terraform state lists ten managed
   `google_project_service` resources. Evidence:
