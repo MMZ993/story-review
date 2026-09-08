@@ -100,3 +100,31 @@ Gotchas learned:
   export must update that test in the same change.
 - (Carried from increment 0, now superseded by D10) `StoryId` pattern was
   `story-NN` two digits only; now `story-[0-9]{2}|ado-[0-9]{1,8}`.
+
+### Increment 1 (part 1b) — ADO wire models extracted to `shared/ado_wire` (local, no cost)
+
+D9 amendment 6. Split extraction (implementation subagent, owner-reviewed
+diff): `WorkItem`/`WorkItemComment` moved verbatim from
+`dataset_loader.envelope` to new shared package `shared/ado_wire` (pydantic
+only); `StoryEnvelope` + dataset aliases stay in the loader, which
+re-exports the moved models. Existing test files byte-identical; new tests
+in `shared/ado_wire/tests/` (7). Motivation: the story server (and future
+live `azure` source) imports wire shapes without a loader dependency for
+them; Docker context shrinks accordingly (still needs `dataset/loader` for
+`StoryEnvelope` on the mock path).
+
+```
+make ado-wire-test       # 7 passed (red first: ModuleNotFoundError ado_wire)
+make dataset-test        # 36 passed (untouched)
+make mcp-story-test      # 21 passed
+make review-schemas-test # 154 passed (untouched)
+```
+
+Gotchas learned:
+
+- A stale uv-cached `dataset-loader` wheel served an old `envelope.py`
+  during the refactor — `uv cache clean` resolves it (hit once during
+  implementation, verified after).
+- Subagent-assessed first (cheap-model read-only pass) that the move could
+  keep all three existing test dirs byte-identical — held true; only
+  packaging/imports changed.

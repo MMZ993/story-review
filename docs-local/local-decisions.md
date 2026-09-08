@@ -315,3 +315,22 @@ Owner decisions:
 - **Evaluation guard**: evaluation and regression runs always use `mock`;
   `azure` is production/demo only (content drift would invalidate
   `dataset/expected/`).
+
+### D9 amendment 6 — ADO wire models extracted to `shared/ado_wire` (2026-09-10, session 20)
+
+Owner-approved refactor, ahead of the story-server implementation: the pure
+Azure DevOps wire models (`WorkItem`, `WorkItemComment`) moved verbatim from
+`dataset_loader.envelope` into a new shared package `shared/ado_wire`
+(dep: pydantic only), so the story-MCP preparation pipeline and the future
+live `azure` source import the wire shapes without depending on the dataset
+loader. `StoryEnvelope` and the dataset-specific aliases (`Template`,
+`Scenario`, `CaseId`, `T1_ONLY_SCENARIOS`) stay in `dataset_loader` — the
+envelope is the frozen-dataset export wrapper, not ADO wire format.
+`dataset_loader.envelope` re-exports the two moved models, so all existing
+test files (dataset, story, review-schemas) stayed byte-identical; new
+behavior tests live in `shared/ado_wire/tests/` (Makefile `ado-wire-test`).
+Consequence: story-server images ship the small `ado_wire` code package but
+no longer need the loader for wire models (`prepare.py` still imports
+`StoryEnvelope` from `dataset_loader` for the mock path); the D10
+images-carry-no-dataset-content rule is unchanged and enforced by the
+build-time check.

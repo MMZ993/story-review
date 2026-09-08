@@ -17,6 +17,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
+from ado_wire import WorkItem, WorkItemComment  # noqa: F401  (re-export)
 from review_schemas import StoryId
 
 Template = Annotated[str, StringConstraints(pattern=r"^t[1-6]$")]
@@ -32,44 +33,6 @@ Scenario = Annotated[
 CaseId = Annotated[
     str, StringConstraints(pattern=r"^t[1-6]/[a-z][a-z0-9-]*$")
 ]
-
-
-class WorkItemComment(BaseModel):
-    """Verbatim ADO comments-API comment (sanitized at export).
-
-    Minimal validation — the ``text`` must exist. Mapping to the design's
-    ``StoryComment`` (author/text/created_at) is the Phase 4 story-MCP
-    preparation step, not the loader's (D9: export stays verbatim).
-    """
-
-    model_config = ConfigDict(extra="allow", strict=False)
-
-    text: str = Field(min_length=1)
-
-# Minimal ADO work-item shape: the fields the review pipeline consumes.
-_REQUIRED_WORK_ITEM_FIELDS = (
-    "System.Title",
-    "System.WorkItemType",
-    "System.AreaPath",
-    "System.State",
-)
-
-
-
-class WorkItem(BaseModel):
-    """Verbatim `az boards work-item show --expand all` / REST work item."""
-
-    model_config = ConfigDict(extra="allow", strict=False)
-
-    id: int
-    fields: dict[str, object]
-
-    def missing_required_fields(self) -> tuple[str, ...]:
-        return tuple(
-            name
-            for name in _REQUIRED_WORK_ITEM_FIELDS
-            if self.fields.get(name) in (None, "")
-        )
 
 
 # T1-only comment scenarios (D9 amendment 3): valid scenario slugs that

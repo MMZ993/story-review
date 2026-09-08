@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.13",
     "review-schemas",
+    "ado-wire",
 ]
 
 [tool.hatch.build.targets.wheel]

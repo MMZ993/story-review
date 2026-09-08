@@ -33,7 +33,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from dataset_loader.envelope import StoryEnvelope, WorkItem, WorkItemComment
+from ado_wire import WorkItem, WorkItemComment
+from dataset_loader.envelope import StoryEnvelope
 from review_schemas.review import ContextStory, StoryComment, StoryDetail, StorySummary
 
 from story_mcp.flatten import html_to_blocks, html_to_text
