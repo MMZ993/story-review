@@ -5,7 +5,7 @@ PROJECT_ID ?= $(shell sed -nE 's/^export PROJECT_ID="?([^"]+)"?.*/\1/p' infra/en
 REGION     ?= europe-west4
 SMOKE_MODEL ?= gemini-2.5-flash
 
-.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-story-test mcp-artifact-test dataset-push compose-up compose-down terraform-plan terraform-apply db-pause db-resume db-status
+.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-ingress-test mcp-story-test mcp-artifact-test mcp-report-test dataset-push compose-up compose-down terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -43,6 +43,12 @@ ado-wire-test: ## Shared ADO wire-model tests (WorkItem / WorkItemComment)
 		--with-requirements requirements.lock --with-editable . \
 		python -m pytest tests -q
 
+mcp-ingress-test: ## Shared ID-token ingress middleware tests (mcp_ingress)
+	cd shared/mcp_ingress && \
+		uv run --no-project --with-requirements tests/requirements.lock \
+		--with-requirements requirements.lock --with-editable . \
+		python -m pytest tests -q
+
 dataset-test: ## Phase 3: mock-dataset loader/validation tests (stories + expected)
 	cd dataset/loader && \
 		uv run --no-project --with-requirements tests/requirements.lock \
@@ -60,7 +66,7 @@ mcp-story-test: ## Phase 4: story MCP preparation + contract tests
 		uv run --no-project --with-requirements tests/requirements.lock \
 		--with-requirements requirements.lock --with-editable . \
 		--with ../../shared/review_schemas --with ../../dataset/loader \
-		--with ../../shared/ado_wire \
+		--with ../../shared/ado_wire --with ../../shared/mcp_ingress \
 		python -m pytest tests -q
 
 mcp-artifact-test: ## Phase 4: artifact MCP storage + contract tests (fake GCS in Docker)
@@ -74,6 +80,21 @@ mcp-artifact-test: ## Phase 4: artifact MCP storage + contract tests (fake GCS i
 	ARTIFACT_TEST_GCS_ENDPOINT=http://127.0.0.1:9023 \
 	uv run --no-project --with-requirements tests/requirements.lock \
 		--with-editable . --with-editable ../../shared/review_schemas \
+		--with-editable ../../shared/mcp_ingress \
+		python -m pytest tests -q
+
+mcp-report-test: ## Phase 4: report MCP render + contract tests (fake GCS in Docker)
+	container=$$(docker run -d --rm -p 127.0.0.1:9024:4443 fsouza/fake-gcs-server:latest -scheme http); \
+	trap 'docker rm -f $$container >/dev/null 2>&1' EXIT; \
+	for i in $$(seq 1 20); do \
+		curl -sf http://127.0.0.1:9024/storage/v1/b >/dev/null && break; sleep 0.5; \
+	done; \
+	curl -sf http://127.0.0.1:9024/storage/v1/b >/dev/null || { echo "fake-gcs-server not ready" >&2; exit 1; }; \
+	cd mcp_servers/report && \
+	REPORT_TEST_GCS_ENDPOINT=http://127.0.0.1:9024 \
+	uv run --no-project --with-requirements tests/requirements.lock \
+		--with-editable . --with-editable ../../shared/review_schemas \
+		--with-editable ../../shared/mcp_ingress \
 		python -m pytest tests -q
 
 compose-up: ## Local development stack (Phase 4+)

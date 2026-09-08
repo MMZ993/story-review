@@ -52,6 +52,21 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 
 Append entries: date, phase, what was proven, artifact path / correlation ID.
 
+- 2026-09-10 — Phase 4 — increment 3: report MCP server
+  (`mcp_servers/report`, `report-mcp` 0.1.0) — deterministic MD/PDF
+  rendering (fpdf2, owner decision) of the run's finalized-review artifact,
+  single orchestration-only `render_report` tool, claim-before-write
+  idempotency per (run, format) on the shared bucket with disjoint
+  prefixes; shared ingress middleware extracted to `shared/mcp_ingress`
+  (`mcp-ingress` 0.1.0) with story/artifact refactored onto it
+  (owner decision — third-copy rule). `make mcp-report-test` 34 green,
+  `make mcp-ingress-test` 7 green, all other suites green; Docker build +
+  container render_report round trip over HTTP vs fake GCS passed
+  (incl. anonymous-credentials fix for ADC-less containers — story/
+  artifact have the same latent gap, compose increment must fix it);
+  independent review first pass Needs fixes (1 Important) → fixed →
+  follow-up Ready to proceed. Evidence: `runbooks/10-mcp-servers.md` §3.
+
 - 2026-09-10 — Phase 4 — increment 2: artifact MCP server
   (`mcp_servers/artifact`, `artifact-mcp` 0.1.0) — `GcsArtifactService`
   against fake-gcs-server (same code path as real GCS), tools

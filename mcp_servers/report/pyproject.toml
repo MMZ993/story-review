@@ -1,21 +1,20 @@
 [project]
-name = "artifact-mcp"
+name = "report-mcp"
 version = "0.1.0"
-description = "Phase 4 artifact MCP server: GCS-backed artifact store (lineage-scoped, idempotent, immutable) + save/get/list tools."
+description = "Phase 4 report MCP server: deterministic MD/PDF rendering of a run's finalized review (render_report, orchestration-only)."
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.13",
     "mcp[cli]>=2.1",
     "review-schemas",
-    "google-auth>=2.40",
-    "requests>=2.32",
-    "google-cloud-storage>=2.14",
     "mcp-ingress",
+    "google-cloud-storage>=2.14",
+    "fpdf2>=2.8",
     "uvicorn>=0.31",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["artifact_mcp"]
+packages = ["report_mcp"]
 
 [build-system]
 requires = ["hatchling"]

@@ -14,3 +14,7 @@ build/
 
 # scratch
 trash/
+
+# python caches
+__pycache__/
+.pytest_cache/

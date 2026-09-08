@@ -1,8 +1,8 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-10 (session 21 — Phase 4 increment 2: artifact MCP
-  server, artifact-mcp 0.1.0; suites 154/7/36/67/32 green).
+Last updated: 2026-09-10 (session 22 — Phase 4 increment 3: report MCP
+  server + mcp_ingress extraction; suites 154/7/36/67/32/7/34 green).
 
 ## Where we are
 
@@ -21,6 +21,39 @@ Last updated: 2026-09-10 (session 21 — Phase 4 increment 2: artifact MCP
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 22 (2026-09-10) — **Phase 4 increment 3 COMPLETE** (detail in
+  Runbook 10 §3):
+- **Owner decisions** (settled in chat, pre-code): PDF library = **fpdf2**
+  (determinism + image size); auth middleware **extracted now** into
+  `shared/mcp_ingress/` (package `mcp-ingress` 0.1.0 — story/artifact
+  `auth.py` copies were diff-identical, deleted, servers/Dockerfiles/
+  Makefile rewired; new `make mcp-ingress-test`); report server uses its
+  **own storage module on the same artifact bucket** with disjoint
+  prefixes (no MCP-over-HTTP hop).
+- **Report MCP server** `mcp_servers/report/` (uv package `report-mcp`
+  0.1.0): `render.py` (FinalizedReview → blocks → deterministic MD/PDF;
+  pinned CreationDate, no /ID trailer, latin-1 PDF divergence documented),
+  `storage.py` (reads `runs/<run>/artifacts/<id>.json`, writes
+  `runs/<run>/reports/…`; claim-before-write idempotency per (run, format),
+  key payload pins finalized-review id+checksum → different reference =
+  `IDEMPOTENCY_KEY_REUSED`; orphan-key and content/meta two-write crash
+  windows both recoverable; caller checksum verified against stored
+  record), `server.py` (single orchestration-only `render_report`),
+  `errors.py` (RENDER_FAILED for fpdf2 errors; internal errors
+  non-retryable), `app.py`/`main.py` (`REPORT_*` env, bucket validated at
+  build, `AnonymousCredentials` when `REPORT_GCS_ENDPOINT` set).
+- Dockerfile + `make mcp-report-test` (fake-gcs :9024). Container smokes
+  passed incl. a real render_report PDF round trip over HTTP with
+  idempotent retry.
+- **Increment-3 review**: first pass Needs fixes (1 Important:
+  `_write_report` two-write crash window made retries permanently stuck) —
+  fixed with checksum-verified tolerance + orphan regression test; 5
+  Minors fixed; follow-up review **Ready to proceed**.
+- **Gotchas recorded**: story/artifact servers share the ADC-in-container
+  gap (healthz-only smokes hid it) — MUST be fixed in compose increment 4
+  (same one-line `AnonymousCredentials` change); fake-gcs must publish on
+  0.0.0.0 for cross-container access.
 
 Session 21 (2026-09-10) — **Phase 4 increment 2 COMPLETE** (detail in
   Runbook 10 §2):
@@ -332,6 +365,20 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 22:
+- Test-first (red confirmed: `ModuleNotFoundError: report_mcp`;
+  mcp_ingress middleware tests written with the package).
+- Suites at close: `mcp-report-test` **34** (7 render + 9 storage + 18
+  server/ingress), `mcp-ingress-test` **7**, `review-schemas-test` **154**,
+  `ado-wire-test` **7**, `dataset-test` **36**, `mcp-story-test` **67**,
+  `mcp-artifact-test` **32**. `git diff --check` clean; Docker builds OK
+  (report + rebuilt story/artifact with mcp_ingress); report container
+  smoke: healthz + render_report PDF round trip + retry idempotency +
+  missing-bucket abort, all over real HTTP against fake GCS.
+- Increment-3 review (report server + extraction): first pass Needs fixes
+  (1 Important, 5 Minor) → all fixed → follow-up **Ready to proceed**.
+  Findings detail in Runbook 10 §3.
+
 Session 21:
 - Test-first per module (red confirmed: `ModuleNotFoundError: artifact_mcp`
   for storage tests, `artifact_mcp.app` for server tests).
@@ -464,16 +511,15 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Phase 4 increment 3 — report MCP server** (plan
-   `docs-local/plans/phase-4-mcp-servers.md`): `render_report` reads the
-   same-run `finalized-review` artifact, renders MD + PDF deterministically
-   (PDF library decision here — image size/determinism), idempotent per
-   (story_run_id, format), saves `report-<format>` artifacts; contract
-   tests incl. byte-identical double renders, wrong-reference/cross-run
-   rejections. Reuse session-21 patterns; decide whether the auth
-   middleware copy gets extracted (third copy would force it).
-2. Increment 4: compose + cross-service contract tests (exit gate #1).
-3. Increment 5: Cloud Run deploys + smoke, story-dataset bucket bootstrap
+1. **Phase 4 increment 4 — compose + cross-service contract tests** (plan
+   `docs-local/plans/phase-4-mcp-servers.md`; exit gate #1):
+   `deploy/docker-compose.yml` `local` profile (story + artifact + report
+   + fake-gcs-server with pre-created buckets), real `compose-up`/
+   `compose-down`, contract tests against the running services over HTTP,
+   idempotency across a container restart. **Fix the ADC gap in story +
+   artifact servers first** (`AnonymousCredentials` when an endpoint
+   override is set — Runbook 10 §3 gotcha).
+2. Increment 5: Cloud Run deploys + smoke, story-dataset bucket bootstrap
    (Terraform, plan-before-apply), PAT secret (owner-created), `make
    dataset-push` against the real bucket.
 
@@ -485,11 +531,12 @@ cross-checks, test-first red/green, review findings fixed).
   session 15; also recorded in the extensions plan).
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
-- Git: **owner push pending from session 20** — local `main` +3 (`ad841b3`
-  docs amend, `b2124be` story server, `b938c3a` runbook) plus the wrap-up
-  commit, and `docs/initial-frozen` +1 (`2a29f71`). Session-21 artifact-
-  server work is uncommitted (owner decides commit granularity; likely
-  one increment-2 commit). Check `git status -sb` before assuming the
+- Git: session-21 artifact work WAS committed by the owner (`52e6668`,
+  after the stale note below was written). Session-22 increment-3 work
+  (report server, mcp_ingress, refactors, runbook/handoff) is uncommitted
+  — suggested granularity: one increment-3 commit. An untracked
+  `docs-local/plans/future-extensions.md` predates this session (not
+  authored here; owner decides its fate). Check `git status -sb` before assuming the
   remote is current.
   Session-16 cherry-picks: `dfbde69`, `7b9975d`, `a787dbe` (hidden-conflict
   row rode along — correct content-wise). Old history note:

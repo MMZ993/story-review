@@ -29,7 +29,7 @@ from urllib.parse import urlparse
 
 from starlette.responses import JSONResponse
 
-from story_mcp.auth import IdTokenAuthMiddleware, Verifier, google_token_verifier
+from mcp_ingress.auth import IdTokenAuthMiddleware, Verifier, google_token_verifier
 from story_mcp.backlog import BacklogLike
 from story_mcp.mock_source import MockBacklogSource
 from story_mcp.server import StoryServer

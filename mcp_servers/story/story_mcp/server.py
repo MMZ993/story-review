@@ -26,7 +26,7 @@ from mcp.types import CallToolResult, TextContent
 from review_schemas.mcp import GetStoryInput, ListStoriesInput, ListStoriesOutput
 from review_schemas.review import StoryDetail
 
-from story_mcp.auth import current_principal
+from mcp_ingress.auth import current_principal
 from story_mcp.backlog import BacklogLike, resolve_source
 from story_mcp.errors import (
     SourceNotConfigured,

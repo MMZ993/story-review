@@ -22,7 +22,7 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
 from artifact_mcp.app import build_app
-from artifact_mcp.auth import _principal
+from mcp_ingress.auth import _principal
 from artifact_mcp.server import CallerRoles
 
 from tests.conftest import run_id, story_detail

@@ -14,6 +14,7 @@ COPY mcp_servers/story/requirements.lock /tmp/story-requirements.lock
 RUN pip install --no-cache-dir -r /tmp/story-requirements.lock
 
 COPY shared/review_schemas/review_schemas /app/shared/review_schemas
+COPY shared/mcp_ingress/mcp_ingress /app/shared/mcp_ingress
 COPY shared/ado_wire/ado_wire /app/shared/ado_wire
 COPY dataset/loader/dataset_loader /app/dataset/dataset_loader
 COPY mcp_servers/story/story_mcp /app/story_mcp

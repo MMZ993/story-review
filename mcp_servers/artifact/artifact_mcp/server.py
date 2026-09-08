@@ -28,7 +28,7 @@ from review_schemas.mcp import (
     SaveArtifactOutput,
 )
 
-from artifact_mcp.auth import current_principal
+from mcp_ingress.auth import current_principal
 from artifact_mcp.errors import (
     correlation_id_from_header,
     error_for,
