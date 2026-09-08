@@ -22,7 +22,10 @@ python3 dataset/tools/export_ado.py
 
 ```text
 dataset/
-├── tools/export_ado.py      # ADO → dataset/stories/ export (below)
+├── tools/export_ado.py      # ADO → dataset/stories/ export (below; REST
+│                         #   via $ADO_PAT when set, az CLI fallback)
+├── loader/                  # load/validate harness (Runbook 09 incr. 4;
+│                         #   make dataset-test; test tooling, not runtime)
 ├── canonical-facts.md       # per-scenario facts; renderer input for T2–T4, T6
 ├── t5-enabler-spec.md       # authoring input for the T5 enabler column
 ├── story-templates.md       # template/matrix design (T1–T6)

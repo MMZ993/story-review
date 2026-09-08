@@ -1,0 +1,16 @@
+[project]
+name = "dataset-loader"
+version = "0.1.0"
+description = "Trivial load/validate harness for the Phase 3 mock dataset (stories + expected contracts)."
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.13",
+    "review-schemas",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["dataset_loader"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
