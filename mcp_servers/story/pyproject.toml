@@ -1,10 +1,11 @@
 [project]
 name = "story-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Phase 4 story MCP server: dual-source preparation (mock dataset / live Azure DevOps) + list_stories/get_story tools."
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.13",
+    "mcp[cli]>=2.1",
     "review-schemas",
     "dataset-loader",
     "ado-wire",
