@@ -53,8 +53,15 @@ parks the session instead of evaluating readiness.
 
 - **Role**: story clarity, user value, business justification; epic/roadmap alignment;
   business-view gaps in acceptance criteria.
-- **Input**: story artifact + optional previous review + optional PO extra context
+- **Input**: story artifact (including comments and context stories when
+  present — see below) + optional previous review + optional PO extra context
   (assembled by orchestration; see session semantics below).
+  - **Comments** are semantic review input: comment content can resolve or
+    create findings — treat it as part of the story's context, citing it in
+    finding text where it matters.
+  - **Context stories** are framed as *related items — the story under review
+    is the main one; do not review the linked items*. They are reference
+    material for spotting context missing from the main story.
 - **Output**: structured review (Pydantic-validated) persisted as artifact by
   orchestration (direct MCP call — the reviewer itself has no tools and does not write
   artifacts).
@@ -96,7 +103,10 @@ parks the session instead of evaluating readiness.
   events.
 - **Reviewers and Synthesis**: always a **fresh single-turn run** — no session state
   carried between invocations. The input is fully assembled by orchestration:
-  1. story artifact (persisted once by FastAPI at story selection),
+  1. story artifact (persisted once by FastAPI at story selection) — including
+     comments and context stories when the story has them; the facilitator
+     sees the same extensions through its `get_story` tool. Synthesis is
+     unchanged (it consumes review artifacts only),
   2. optionally the previous review result (for consecutive reviews),
   3. optionally new information provided by the PO during the dialogue.
 - All sessions (including single-turn reviewer runs) are **kept and logged** for audit
