@@ -29,13 +29,18 @@ real backlog's shape.
 | Unresolvable story | hits loop safety cap — facilitator parks the story |
 | Hidden-conflict story | both reviews individually positive, but their justifications rest on contradictory assumptions — synthesis flags the cross-perspective conflict, PO resolves via dialogue |
 
-## Expected-file contract (`dataset/expected/<case>.json`)
+## Expected-file contract (`dataset/expected/<scenario>.json`)
 
-Each case file is the versioned dialogue script and expected-transition specification
-that drives integration tests and the deterministic assertions in
+Each scenario has **one canonical expected file** (not one per case). The
+dataset loader (`dataset/loader/`) expands each scenario file to the
+per-template test cases of that scenario — format invariance across templates
+is thereby enforced structurally, and `story_id` lives on the expanded case,
+not in the file. Each file is the versioned dialogue script and
+expected-transition specification that drives integration tests and the
+deterministic assertions in
 [evaluation-tests.md](evaluation-tests.md). It contains:
 
-- `story_id` and dataset schema version;
+- `scenario` and dataset schema version;
 - `po_script`: an ordered list of PO turns — each turn is exactly one of
   `message` (Text) or `po_accepted: true`, mirroring the `TurnRequest` contract
   (`schemas.md`: exactly one of message or acceptance, never both);
@@ -44,10 +49,15 @@ that drives integration tests and the deterministic assertions in
   `outcome` (`continue` / `park` / `finalize`), expected session `state`, the
   perspective(s) of any artifacts produced that turn, and expected
   `turn_number`;
-- `expected_findings`: required business/engineering finding IDs and conflict
-  references (per the deterministic-assertions checks);
-- `expected_final`: final session state, `finalized-review` contents
-  (acceptance flag, remaining issues), and requested report formats.
+- `expected_findings`: per-perspective **semantic stubs** (`max_severity`,
+  `required` finding keys with `min_severity`/topic/turn placement) — runtime
+  finding IDs are never pinned;
+- `expected_conflicts`: required conflict references per turn;
+- `expected_final`: final session state, `final_turn_number`,
+  `facilitator_turn_count`, `finalized-review` contents (acceptance flag,
+  remaining issues), and requested report formats;
+- `invariance`: whether the expectation applies across all templates of the
+  scenario and the allowed deviation (e.g. info-level formatting notes only).
 
 The PO script is executed verbatim by the test runner; nothing in it is generated
 or adaptive. A mismatch between any expected turn and the observed turn fails the
