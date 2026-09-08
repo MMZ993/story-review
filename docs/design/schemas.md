@@ -212,7 +212,6 @@ class StorySummary(StrictModel):
     story_id: StoryId
     title: ShortText
     status: ShortText
-    quality_class: ShortText
 
 
 class StoryComment(StrictModel):
@@ -274,6 +273,10 @@ class ReviewReport(StrictModel):
             raise ValueError("finding ID prefix does not match review perspective")
         return self
 ```
+
+`StorySummary` and `StoryDetail` contain only story content and stable identity
+available to a runtime caller. Dataset-only scenario and expected-result metadata is
+never part of these public contracts.
 
 Story-detail extensions (additive, both default empty — stories without them
 are unaffected):
