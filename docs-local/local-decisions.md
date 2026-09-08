@@ -243,3 +243,24 @@ session 16, commit `52534ef`); plan
   Comments export evidence: Runbook 08 comments-API spike (preview-only
   `7.1-preview.4`; az fallback not viable with MSA login; comments key
   omitted when empty).
+
+### D9 amendment 4 — Phase 4 story-serving decisions (2026-09-09, session 17)
+
+Owner decisions at Phase 4 increment 0 (plan
+`docs-local/plans/phase-4-mcp-servers.md`):
+
+- **`StoryComment.author` is kept** (resolves the amendment-3 "likely drop"
+  note): the preparation step maps the single anonymized "comment author"
+  persona; no `docs/` change.
+- **Preparation runs at server startup, in memory**: the story MCP reads
+  `/app/dataset/stories/` envelopes, flattens HTML rich-text fields to the
+  design `Text` projection, and maps ADO fields to `StoryDetail` per the
+  mapping table (title/status ← System fields; `quality_class` from
+  area/tags; epic/roadmap context from the parent envelopes in
+  `dataset/stories/context/`). Images stay dataset-agnostic; a committed
+  golden snapshot pins the preparation output per story file. The export
+  files remain verbatim (D9 principle unchanged).
+- PDF rendering library choice is deferred to Phase 4 increment 3.
+- `shared/review_schemas` 0.2.0: `StoryComment` + `ContextStory` added to
+  `StoryDetail` per schemas.md (code catching up to the session-16 design
+  change); test-first, suite 151 green.

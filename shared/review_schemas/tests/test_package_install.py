@@ -28,7 +28,8 @@ EXPECTED_EXPORTS = [
     # errors
     "ErrorBody", "ErrorCode", "ErrorEnvelope", "ToolError",
     # review
-    "Finding", "ReviewReport", "StoryDetail", "StorySummary",
+    "ContextStory", "Finding", "ReviewReport", "StoryComment", "StoryDetail",
+    "StorySummary",
     # synthesis
     "ArtifactReference", "ConflictItem", "SynthesisReport",
     # facilitator
@@ -91,7 +92,7 @@ class TestPackageInstall:
                     (
                         "import review_schemas as r\n"
                         "from importlib.metadata import version\n"
-                        "assert version('review-schemas') == '0.1.0'\n"
+                        "assert version('review-schemas') == '0.2.0'\n"
                         f"assert list(r.__all__) == {EXPECTED_EXPORTS!r}\n"
                         "import pathlib\n"
                         "assert 'site-packages' in pathlib.Path(r.__file__).parts\n"
