@@ -9,7 +9,11 @@ Local-only: no GCP, no runtime concerns here.
 Source of truth is the free Azure DevOps org/project `$ADO_ORG` /
 `$ADO_PROJECT` (values in gitignored `infra/envs/ado.env`; see Runbook 08).
 The matrix: 7 scenarios × 6 templates (T1–T6) = 42 stories, ADO ids 5–55,
-plus epic id 2 and features ids 3–4 as hierarchy context.
+plus 3 t1-only comment scenarios (D9 amendment 3): `comments-benign`
+(ADO id 57, story-43), `comments-clarify-business` (58, story-44),
+`comments-complete-engineering` (59, story-45) — authored per
+`comments-stories-spec.md`; plus epic id 2 and features ids 3–4 as
+hierarchy context.
 
 Reproduce the export:
 

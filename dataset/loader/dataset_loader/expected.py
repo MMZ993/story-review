@@ -32,6 +32,8 @@ ScenarioKey = Annotated[
     StringConstraints(
         pattern=r"^(clean|business-weak|engineering-weak|conflicting"
         r"|partial-resolution|unresolvable|hidden-conflict)$"
+        r"|^(comments-benign|comments-clarify-business"
+        r"|comments-complete-engineering)$"
     ),
 ]
 FindingKey = Annotated[str, StringConstraints(pattern=r"^[BE]-[1-9][0-9]*$")]

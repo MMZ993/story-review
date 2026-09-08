@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "case_id": "t1/comments-complete-engineering",
+  "story_id": "story-45",
+  "template": "t1",
+  "scenario": "comments-complete-engineering",
+  "ado_source_id": 59,
+  "exported_at": "2026-09-08T14:10:59+00:00",
+  "work_item": {
+    "commentVersionRef": {
+      "commentId": 499442,
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/59/comments/499442/versions/1",
+      "version": 1
+    },
+    "fields": {
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-08T14:05:02.047Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 11,
+      "System.AreaLevel1": "story-review",
+      "System.AreaPath": "story-review",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-08T14:05:20.713Z",
+      "System.BoardColumn": "New",
+      "System.BoardColumnDone": false,
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-08T14:05:20.713Z",
+      "System.CommentCount": 3,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-08T14:05:02.047Z",
+      "System.Description": "<p><b>Context:</b> The warehouse fulfillment service consumes order events via a webhook; when it is down, deliveries fail and orders sit unfulfilled until manual replay (ops ran 14 manual replays last quarter, ~3h each). Webhook payloads are already idempotent on the consumer side (event-id deduplication verified by the platform team). </p><p><b>Scope:</b> This story adds automatic redelivery for failed webhook deliveries. Out of scope: webhook payload changes, new consumer endpoints. </p>",
+      "System.History": "DLQ threshold: move to dead-letter after attempt 5; dashboard: new 'webhook redeliveries' counter on the existing integrations board.",
+      "System.Id": 59,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "story-review",
+      "System.Parent": 4,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 5,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "reliability; webhooks",
+      "System.TeamProject": "story-review",
+      "System.Title": "Automatic retry for failed fulfillment-webhook deliveries",
+      "System.Watermark": 138,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": true
+    },
+    "id": 59,
+    "multilineFieldsFormat": {
+      "System.Description": "html",
+      "System.History": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/4"
+      }
+    ],
+    "rev": 5,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/59"
+  },
+  "comments": [
+    {
+      "mentions": [],
+      "workItemId": 59,
+      "id": 499440,
+      "version": 1,
+      "text": "Retry policy agreed with the platform team: 5 attempts, exponential backoff 1/5/15/60/300s, total window under 7 minutes.",
+      "createdBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "createdDate": "2026-09-08T14:05:19.9Z",
+      "modifiedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "modifiedDate": "2026-09-08T14:05:19.9Z",
+      "format": "html",
+      "renderedText": "",
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/59/comments/499440"
+    },
+    {
+      "mentions": [],
+      "workItemId": 59,
+      "id": 499441,
+      "version": 1,
+      "text": "Idempotency: redeliveries reuse the same delivery id; the consumer's event-id dedup makes replays safe (already verified).",
+      "createdBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "createdDate": "2026-09-08T14:05:20.31Z",
+      "modifiedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "modifiedDate": "2026-09-08T14:05:20.31Z",
+      "format": "html",
+      "renderedText": "",
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/59/comments/499441"
+    },
+    {
+      "mentions": [],
+      "workItemId": 59,
+      "id": 499442,
+      "version": 1,
+      "text": "DLQ threshold: move to dead-letter after attempt 5; dashboard: new 'webhook redeliveries' counter on the existing integrations board.",
+      "createdBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "createdDate": "2026-09-08T14:05:20.713Z",
+      "modifiedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "modifiedDate": "2026-09-08T14:05:20.713Z",
+      "format": "html",
+      "renderedText": "",
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/59/comments/499442"
+    }
+  ]
+}

@@ -36,24 +36,41 @@ SCENARIOS = {
     "unresolvable",
     "hidden-conflict",
 }
+# t1-only comment scenarios (D9 amendment 3): continue the story-id
+# sequence after the 42-story core grid, and appear ONLY in t1.
+T1_ONLY_SCENARIOS = {
+    "comments-benign",
+    "comments-clarify-business",
+    "comments-complete-engineering",
+}
 TEMPLATES = {f"t{i}" for i in range(1, 7)}
 
 
 # ---------------------------------------------------------------- stories
 
 
-def test_loads_all_42_stories_with_unique_sequential_story_ids():
+def test_loads_all_45_stories_with_unique_sequential_story_ids():
     stories = load_all_stories(STORIES)
-    assert len(stories) == 42
+    assert len(stories) == 45
     ids = [s.story_id for s in stories]
-    assert len(set(ids)) == 42
-    assert set(ids) == {f"story-{n:02d}" for n in range(1, 43)}
+    assert len(set(ids)) == 45
+    assert set(ids) == {f"story-{n:02d}" for n in range(1, 46)}
 
 
-def test_matrix_is_six_templates_times_seven_scenarios():
+def test_matrix_is_core_grid_plus_t1_only_comment_scenarios():
     stories = load_all_stories(STORIES)
     cells = {(s.template, s.scenario) for s in stories}
-    assert cells == {(t, sc) for t in TEMPLATES for sc in SCENARIOS}
+    assert cells == {(t, sc) for t in TEMPLATES for sc in SCENARIOS} | {
+        ("t1", sc) for sc in T1_ONLY_SCENARIOS
+    }
+
+
+def test_t1_only_scenario_outside_t1_is_rejected():
+    env = _envelope_fixture()
+    env.update(case_id="t2/comments-benign", template="t2",
+               scenario="comments-benign", story_id="story-08")
+    with pytest.raises(ValidationError):
+        StoryEnvelope.model_validate(env)
 
 
 def test_case_id_matches_template_and_scenario():
@@ -63,16 +80,16 @@ def test_case_id_matches_template_and_scenario():
 
 def test_every_story_file_on_disk_has_a_valid_envelope():
     files = sorted(p for p in STORIES.glob("t?/*.json"))
-    assert len(files) == 42
+    assert len(files) == 45
     load_all_stories(STORIES)  # raises on any invalid envelope
 
 
 # --------------------------------------------------------------- expected
 
 
-def test_loads_seven_scenario_canonical_expected_files():
+def test_loads_ten_scenario_canonical_expected_files():
     expected = load_expected(EXPECTED)
-    assert set(expected) == SCENARIOS
+    assert set(expected) == SCENARIOS | T1_ONLY_SCENARIOS
 
 
 def test_expected_scenario_matches_filename():
@@ -101,22 +118,25 @@ def test_park_scenario_pins_the_loop_cap():
 # ------------------------------------------------------- case expansion
 
 
-def test_expansion_yields_42_cases_pairing_story_and_expected():
+def test_expansion_yields_45_cases_pairing_story_and_expected():
     cases = expand_cases(load_all_stories(STORIES), load_expected(EXPECTED))
-    assert len(cases) == 42
+    assert len(cases) == 45
     for case in cases:
         assert case.story.case_id == case.case_id
         assert case.expected.scenario == case.story.scenario
 
 
-def test_every_expected_scenario_covers_all_six_templates():
+def test_core_scenarios_cover_all_six_templates_t1_only_just_t1():
     cases = expand_cases(load_all_stories(STORIES), load_expected(EXPECTED))
     per_scenario = {}
     for case in cases:
         per_scenario.setdefault(case.expected.scenario, set()).add(
             case.story.template
         )
-    assert all(templates == TEMPLATES for templates in per_scenario.values())
+    for scenario in SCENARIOS:
+        assert per_scenario[scenario] == TEMPLATES, scenario
+    for scenario in T1_ONLY_SCENARIOS:
+        assert per_scenario[scenario] == {"t1"}, scenario
 
 
 # ------------------------------------------------------- negative cases

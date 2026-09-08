@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "case_id": "t1/comments-clarify-business",
+  "story_id": "story-44",
+  "template": "t1",
+  "scenario": "comments-clarify-business",
+  "ado_source_id": 58,
+  "exported_at": "2026-09-08T14:10:59+00:00",
+  "work_item": {
+    "commentVersionRef": {
+      "commentId": 499439,
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/58/comments/499439/versions/1",
+      "version": 1
+    },
+    "fields": {
+      "Microsoft.VSTS.Common.Priority": 2,
+      "Microsoft.VSTS.Common.StateChangeDate": "2026-09-08T14:05:01.163Z",
+      "Microsoft.VSTS.Common.ValueArea": "Business",
+      "System.AreaId": 11,
+      "System.AreaLevel1": "story-review",
+      "System.AreaPath": "story-review",
+      "System.AuthorizedAs": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.AuthorizedDate": "2026-09-08T14:05:19.49Z",
+      "System.BoardColumn": "New",
+      "System.BoardColumnDone": false,
+      "System.ChangedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.ChangedDate": "2026-09-08T14:05:19.49Z",
+      "System.CommentCount": 3,
+      "System.CreatedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "System.CreatedDate": "2026-09-08T14:05:01.163Z",
+      "System.Description": "<p><b>Context:</b> Customers with a gift-card balance cannot combine it with a card payment at checkout; they ask support to burn the card in a separate transaction. The checkout payment-list flow is the existing integration point. </p><p><b>Scope:</b> This story allows paying with one gift card plus one card in a single order. Out of scope: multiple gift cards, native apps. </p>",
+      "System.History": "Success criterion: cut the partial-balance checkout abandonment (18% baseline) by half within two quarters of release.",
+      "System.Id": 58,
+      "System.IterationId": 6,
+      "System.IterationLevel1": "story-review",
+      "System.IterationPath": "story-review",
+      "System.NodeName": "story-review",
+      "System.Parent": 3,
+      "System.PersonId": 23602939,
+      "System.Reason": "New",
+      "System.Rev": 4,
+      "System.RevisedDate": "9999-01-01T00:00:00Z",
+      "System.State": "New",
+      "System.Tags": "checkout; gift-card; payments",
+      "System.TeamProject": "story-review",
+      "System.Title": "Split payment: gift card + card at checkout",
+      "System.Watermark": 135,
+      "System.WorkItemType": "User Story",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
+      "WEF_E56347085E6B44E8A7D74A8E3F18D281_System.ExtensionMarker": true
+    },
+    "id": 58,
+    "multilineFieldsFormat": {
+      "System.Description": "html",
+      "System.History": "html"
+    },
+    "relations": [
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Parent"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/3"
+      }
+    ],
+    "rev": 4,
+    "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/58"
+  },
+  "comments": [
+    {
+      "mentions": [],
+      "workItemId": 58,
+      "id": 499436,
+      "version": 1,
+      "text": "Note from discovery: 18% of gift-card holders abandoned checkout last quarter with a partial-balance card in cart (analytics funnel report); support logged 210 such contacts this year.",
+      "createdBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "createdDate": "2026-09-08T14:05:18.61Z",
+      "modifiedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "modifiedDate": "2026-09-08T14:05:18.61Z",
+      "format": "html",
+      "renderedText": "",
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/58/comments/499436"
+    },
+    {
+      "mentions": [],
+      "workItemId": 58,
+      "id": 499437,
+      "version": 1,
+      "text": "Priority rationale: gift-card sales grew 40% YoY; retention team flagged combined-payment as the top driver of gift-card complaints in Q3.",
+      "createdBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "createdDate": "2026-09-08T14:05:19.09Z",
+      "modifiedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "modifiedDate": "2026-09-08T14:05:19.09Z",
+      "format": "html",
+      "renderedText": "",
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/58/comments/499437"
+    },
+    {
+      "mentions": [],
+      "workItemId": 58,
+      "id": 499439,
+      "version": 1,
+      "text": "Success criterion: cut the partial-balance checkout abandonment (18% baseline) by half within two quarters of release.",
+      "createdBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "createdDate": "2026-09-08T14:05:19.49Z",
+      "modifiedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "modifiedDate": "2026-09-08T14:05:19.49Z",
+      "format": "html",
+      "renderedText": "",
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/58/comments/499439"
+    }
+  ]
+}
