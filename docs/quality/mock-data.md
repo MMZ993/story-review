@@ -27,6 +27,15 @@ real backlog's shape.
 | Conflicting story | business and engineering findings contradict — synthesis flags conflicts, PO resolves via dialogue |
 | Partial-resolution story | PO clarification resolves one side only — re-review of one perspective, new conflict on the other side emerges |
 | Unresolvable story | hits loop safety cap — facilitator parks the story |
+| Hidden-conflict story | both reviews individually positive, but their justifications rest on contradictory assumptions — synthesis flags the cross-perspective conflict, PO resolves via dialogue |
+| Comments-benign story | clean story plus a benign resolved comment thread — comments must not create findings; arc identical to clean (comment-invariance) |
+| Comments-clarify-business story | description ambiguous for both perspectives; comments resolve the business side only — business review positive via comments, engineering findings drive an engineering-weak arc |
+| Comments-complete-engineering story | engineering-thin description; comments carry the missing engineering policy — both reviews positive (comment-completion) |
+
+The three comment scenarios are **t1-only** content variants (dataset
+extension, not part of the cross-template matrix): each has exactly one
+story, in T1, and its own scenario-canonical expected file with
+`applies_across_templates: false`.
 
 ## Expected-file contract (`dataset/expected/<scenario>.json`)
 
