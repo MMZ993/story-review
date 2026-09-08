@@ -212,3 +212,28 @@ Owner-approved with the expected-file authoring (Runbook 09 increment 3):
 | CI/CD | 8 Azure unit pipelines + evaluation | local scripts + runbook; pipelines at promotion |
 | Pipeline auth | SA key in Azure secrets (WIF at production) | ADC / `gcloud auth application-default login` |
 | Retention/housekeeping | project lifetime, no cleanup | manual pruning per D5 |
+
+### D9 amendment 3 — comments and linked context stories (2026-09-09, session 16)
+
+Design basis: `docs/design/schemas.md` StoryComment/ContextStory (owner-approved
+session 16, commit `52534ef`); plan
+`docs-local/plans/dataset-extensions-comments-linked-stories.md`.
+
+- **Comments** on a story are stored in the envelope as verbatim (sanitized)
+  ADO comments-API objects under `comments` (minimally validated: non-empty
+  `text`; list cap 50, matching the design). Mapping to the design's
+  `StoryComment {author, text, created_at}` is the **Phase 4 story-MCP
+  preparation step**, not the loader's — the export stays verbatim (D9
+  principle). Comments are **semantic review input** (the D9 metadata
+  classification item, now resolved: they are input, not display).
+- **Linked context stories**: envelope gains `linked_stories: [case_id...]` —
+  references, never embedded content; each target must be an existing story
+  file in the dataset (cross-file invariant enforced by the loader); no
+  self-references, no duplicates, max 5 (all matching the design caps).
+  `relation` (related/depends) lives in the ADO work-item relations of the
+  verbatim export; the MCP maps it to `ContextStory.relation`.
+- Context-only stories (referenced but not test cases) are **deferred** with
+  the extension-2 mock data: their file placement and loader treatment
+  (context/ widening vs template folders, expected-file absence) will be
+  decided at authoring; the envelope/validator structure above already
+  supports them.
