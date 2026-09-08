@@ -6,8 +6,9 @@ no Cloud SQL (the instance stays STOPPED throughout). Prerequisites (az CLI,
 ADO sample org/project, backlog authoring, export) are codified in
 Runbook 08.
 
-Status: IN PROGRESS (opened 2026-09-07; increments 0–3 done — matrix
-authored in Runbook 08; increments 1 + 3 done 2026-09-08; next: increment 4).
+Status: COMPLETE (opened 2026-09-07; increments 0–4 done 2026-09-08 —
+matrix authored in Runbook 08; export + expected files + loader done;
+make dataset-test green; phase-completion review pending).
 
 ## Scope
 
@@ -32,7 +33,7 @@ authored in Runbook 08; increments 1 + 3 done 2026-09-08; next: increment 4).
 | 1 | Format ground truth, conventions, D9 decision, README | DONE (2026-09-08) |
 | 2 | Story authoring (six scenarios) | DONE (Runbook 08, matrix T1–T6) |
 | 3 | Expected-file authoring | DONE (2026-09-08) |
-| 4 | Loader harness + validation tests (test-first), Make target | pending |
+| 4 | Loader harness + validation tests (test-first), Make target | DONE (2026-09-08) |
 
 ## Evidence
 
@@ -120,3 +121,40 @@ authored in Runbook 08; increments 1 + 3 done 2026-09-08; next: increment 4).
       turn numbering contiguous from 1, state matches outcome, reports only
       on finalize turns — all PASS. export_ado.py does not yet emit
       `story_id` on re-export — fold into increment 4.
+- [x] Increment 4 — loader harness + REST export (2026-09-08, session 15,
+      test-first): `dataset/loader/` uv package (`dataset-loader`) with
+      strict models `StoryEnvelope` (envelope + minimal work-item field
+      presence) and `ExpectedCase` (the full expected-file contract,
+      vocabulary reused from `shared/review_schemas`: TurnOutcome,
+      SessionState, ArtifactType, Format, StoryId) + loaders and the
+      scenario→case expansion (42 cases) with invariants (unique sequential
+      story-01…42, full 6×7 matrix, 1:1 scenario pairing, case-id/component
+      match). 23 behavior tests (positive on the real dataset + negative
+      fixtures) — written first, confirmed red, then implemented.
+      `make dataset-test` added (mirrors `review-schemas-test`; both green:
+      23 + 147). Data fix found by the tests: unresolvable conflict key
+      `C-r1` violated the schemas.md `C-n` pattern — renamed to `C-1`
+      (kind "recurring", deterministically_pinned false).
+      `export_ado.py` now emits `story_id` (deterministic template-major
+      numbering, loud abort on unregistered scenarios) and fetches via
+      **REST with `$ADO_PAT` when set** (az CLI fallback otherwise) —
+      WIQL via POST `_apis/wit/wiql`, items via GET `workitems/{id}?
+      $expand=all` (the verified full-fidelity shape). Gotchas: `_rest`
+      must join query params with `&` when the path already carries `?`
+      (HTTP 400 'all?api-version' not valid for WorkItemExpand); context
+      items carry no story_id. Re-export run via REST: all 45 files
+      **content-identical** to the az export (programmatic semantic diff:
+      only key order + exported_at differ), identifier check clean, loader
+      green against the re-export. uv gotcha: `--with-editable
+      shared/review_schemas` installs dist-info only (no .pth) from
+      outside its directory — use `--with <path>` (regular build) instead.
+      PAT lifecycle: `rest-verify` PAT retained for future re-exports;
+      owner may revoke/rotate (export falls back to az CLI without it).
+- [x] Independent read-only review of increment 4 (session 15, subagent,
+      read-only): verdict **Ready to proceed** — no Critical/Important
+      findings, 8 Minor (env guards in export_ado main, URLError catch,
+      clearer story_id_for index + abort messages, po_accepted-requires-
+      finalized validator, completed-reports == requested_formats
+      cross-check, plain loop in expand_cases, narrowed pytest.raises,
+      top-level test imports + 5 additional negative tests). All 8 fixed
+      in the same session; suites re-run green (28 dataset + 147 schemas).
