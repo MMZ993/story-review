@@ -62,7 +62,7 @@ class TestQueryAndPathModels:
 
     def test_story_summary_list(self):
         response = ListStoriesResponse.model_validate(
-            {"stories": [{"story_id": STORY_ID, "title": "t", "status": "s", "quality_class": "q"}]}
+            {"stories": [{"story_id": STORY_ID, "title": "t", "status": "s"}]}
         )
         assert isinstance(response.stories[0], StorySummary)
 

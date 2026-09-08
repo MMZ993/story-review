@@ -45,7 +45,7 @@ SQL).
      flatten (tags stripped, entity-decoded, block tags → newlines); the
      design's `Text` fields are plain text.
    - Mapping table: `System.Title`→`title`, `System.State`→`status`,
-     area/tag-based `quality_class`, parent Feature/Epic → `epic_context`,
+     parent Feature/Epic → `epic_context`,
      roadmap context from the epic envelope in `dataset/stories/context/`.
    - Where preparation runs: image build time (baked `StoryDetail` JSON) vs
      server startup (in-memory). Working assumption: startup, reading
@@ -190,7 +190,7 @@ Cloud Run via a Makefile target and answers a smoke call.
 - **Scope creep into orchestration**: the direct MCP client used in compose
   contract tests is a test fixture only; the real wrapper (timeouts/retries
   per observability.md) is Phase 6.
-- **Preparation ambiguity** (HTML flattening, quality_class derivation):
+- **Preparation ambiguity** (HTML flattening and parent-context derivation):
   settled with the owner in increment 0 and captured as a decision before
   server code; golden snapshots make later drift loud.
 - **PDF stack weight/determinism**: library choice isolated to increment 3;
