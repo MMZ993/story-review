@@ -66,7 +66,28 @@ def load_all_stories(stories_dir: Path) -> list[StoryEnvelope]:
             raise DatasetError(
                 f"{story.case_id}: work item missing required fields {missing}"
             )
+
+    _validate_linked_stories(stories)
     return stories
+
+
+def _validate_linked_stories(stories: list[StoryEnvelope]) -> None:
+    """Every linked_stories reference must point at a dataset story file.
+
+    Also rejects self-references — a story cannot be its own context.
+    """
+
+    known_case_ids = {s.case_id for s in stories}
+    for story in stories:
+        if story.case_id in story.linked_stories:
+            raise DatasetError(
+                f"{story.case_id}: linked_stories references itself"
+            )
+        unknown = set(story.linked_stories) - known_case_ids
+        if unknown:
+            raise DatasetError(
+                f"{story.case_id}: unknown linked story {sorted(unknown)}"
+            )
 
 
 def load_expected(expected_dir: Path) -> dict[str, ExpectedCase]:

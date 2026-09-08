@@ -70,6 +70,16 @@ dataset/
 
 - ADO ids are authoring-time references only (`ado_source_id` provenance);
   the stable dataset key is the case id.
+- Extension envelope fields (D9 amendment 3, both optional/default empty —
+  additive; pre-extension files unaffected):
+  - `comments`: verbatim sanitized ADO comments-API objects (non-empty
+    `text`; cap 50). Semantic review input — comment content can resolve or
+    create findings. The design-level `StoryComment`
+    (author/text/created_at) mapping happens in the Phase 4 story MCP.
+  - `linked_stories`: case-id references to other story files (max 5,
+    unique, no self-reference, must resolve — enforced by the loader).
+    Linked stories are context/reference material for the main story's
+    review, never reviewed themselves.
 - Export sanitization (identifier hygiene): `_links` keys dropped; URL
   strings rewritten to `$ADO_ORG` / `<project-id>` placeholders. Everything
   else verbatim, HTML fields included — fidelity/trimming is a separate
