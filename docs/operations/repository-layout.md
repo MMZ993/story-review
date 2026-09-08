@@ -90,7 +90,12 @@ registry publishing is deferred.
 Cloud Run Docker builds use the repository root as context:
 `docker build -f mcp_servers/<service>/Dockerfile .` (and equivalently for
 orchestration). Dockerfiles copy only their service source plus
-`shared/review_schemas`; no Dockerfile copies any part of `dataset/`. The story
+`shared/review_schemas`, `shared/ado_wire`, and — for the story server only —
+the `dataset/loader` **code** (the export-envelope parser the mock source
+reuses; D9 verbatim-export principle). No Dockerfile copies any part of
+`dataset/` other than that loader package, and no dataset *content*
+(`dataset/stories`, `dataset/expected`) ever enters an image — each
+Dockerfile enforces this with a build-time check. The story
 server is dataset-agnostic: at startup it fetches the frozen mock dataset from
 GCS (`gs://$PROJECT_ID-story-dataset/`, published via `make dataset-push` —
 see [../quality/mock-data.md](../quality/mock-data.md)) or reads live Azure
