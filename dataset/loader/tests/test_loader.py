@@ -258,3 +258,77 @@ def test_acceptance_on_non_finalized_case_is_rejected():
     case["expected_final"]["po_accepted"] = True
     with pytest.raises(ValidationError, match="finalize-path"):
         ExpectedCase.model_validate(case)
+
+
+# ------------------------------------------- extension envelope fields
+
+
+def test_envelope_accepts_comments_and_linked_stories():
+    env = _envelope_fixture()
+    env["comments"] = [
+        {
+            "text": "Which PSP is in scope?",
+            "createdDate": "2026-09-07T10:00:00.000Z",
+            "createdBy": {"displayName": "PO"},
+        }
+    ]
+    env["linked_stories"] = ["t2/clean"]
+    parsed = StoryEnvelope.model_validate(env)
+    assert parsed.comments[0].text == "Which PSP is in scope?"
+    assert parsed.linked_stories == ["t2/clean"]
+
+
+def test_extension_fields_default_to_empty():
+    parsed = StoryEnvelope.model_validate(_envelope_fixture())
+    assert parsed.comments == []
+    assert parsed.linked_stories == []
+
+
+def test_comment_without_text_is_rejected():
+    env = _envelope_fixture()
+    env["comments"] = [{"createdDate": "2026-09-07T10:00:00.000Z"}]
+    with pytest.raises(ValidationError):
+        StoryEnvelope.model_validate(env)
+
+
+def test_linked_stories_over_five_are_rejected():
+    env = _envelope_fixture()
+    env["linked_stories"] = [f"t1/clean-{n}" for n in range(6)]
+    with pytest.raises(ValidationError):
+        StoryEnvelope.model_validate(env)
+
+
+def test_linked_stories_duplicates_are_rejected():
+    env = _envelope_fixture()
+    env["linked_stories"] = ["t2/clean", "t2/clean"]
+    with pytest.raises(ValidationError):
+        StoryEnvelope.model_validate(env)
+
+
+def test_self_referencing_linked_story_is_rejected(tmp_path):
+    env = _envelope_fixture()
+    env["linked_stories"] = [env["case_id"]]
+    _copy_dataset(tmp_path, [env])
+    with pytest.raises(DatasetError, match="itself"):
+        load_all_stories(tmp_path / "stories")
+
+
+def test_linked_story_without_target_file_is_rejected(tmp_path):
+    env = _envelope_fixture()
+    env["linked_stories"] = ["t1/does-not-exist"]
+    _copy_dataset(tmp_path, [env])
+    with pytest.raises(DatasetError, match="unknown linked story"):
+        load_all_stories(tmp_path / "stories")
+
+
+def _copy_dataset(tmp_path: Path, modified: list[dict]) -> None:
+    """Copy the real stories tree into tmp_path, applying envelope edits."""
+    stories = tmp_path / "stories"
+    edited = {(e["case_id"]): e for e in modified}
+    for path in sorted(STORIES.glob("t?/*.json")):
+        env = json.loads(path.read_text())
+        env = edited.pop(env["case_id"], env)
+        dest = stories / path.parent.name / path.name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(env))
+    assert not edited, "fixture edits reference unknown case ids"
