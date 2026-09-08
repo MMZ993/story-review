@@ -12,7 +12,14 @@ from typing import Annotated, Literal
 
 from pydantic import Field, StringConstraints, model_validator
 
-from review_schemas.base import Perspective, ShortText, StoryId, StrictModel, Text
+from review_schemas.base import (
+    Perspective,
+    ShortText,
+    StoryId,
+    StrictModel,
+    Text,
+    UtcDatetime,
+)
 
 
 class StorySummary(StrictModel):
@@ -24,6 +31,27 @@ class StorySummary(StrictModel):
     quality_class: ShortText
 
 
+class StoryComment(StrictModel):
+    """One backlog discussion comment attached to a story; semantic review
+    input (anonymized author persona)."""
+
+    author: ShortText
+    text: Text
+    created_at: UtcDatetime
+
+
+class ContextStory(StrictModel):
+    """A linked related/depends story surfaced as separate context; never
+    merged into the main story's own content."""
+
+    story_id: StoryId
+    title: ShortText
+    relation: Literal["related", "depends"]
+    description: Text
+    acceptance_criteria: list[Text] = Field(default_factory=list, max_length=100)
+    comments: list[StoryComment] = Field(default_factory=list, max_length=50)
+
+
 class StoryDetail(StorySummary):
     """Full dataset story payload used as review input."""
 
@@ -31,6 +59,8 @@ class StoryDetail(StorySummary):
     acceptance_criteria: list[Text] = Field(default_factory=list, max_length=100)
     epic_context: Text
     roadmap_context: Text
+    comments: list[StoryComment] = Field(default_factory=list, max_length=50)
+    context_stories: list[ContextStory] = Field(default_factory=list, max_length=5)
 
 
 class Finding(StrictModel):

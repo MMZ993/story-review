@@ -19,7 +19,14 @@ from review_schemas.facilitator import (
     ResolutionItem,
 )
 from review_schemas.judge import JudgeDimensionScore, JudgeIssue, JudgeResult
-from review_schemas.review import Finding, ReviewReport, StoryDetail, StorySummary
+from review_schemas.review import (
+    ContextStory,
+    Finding,
+    ReviewReport,
+    StoryComment,
+    StoryDetail,
+    StorySummary,
+)
 from review_schemas.synthesis import (
     ArtifactRecord,
     ArtifactReference,
@@ -59,6 +66,88 @@ class TestStoryModels:
             }
         )
         assert detail.acceptance_criteria == []
+        assert detail.comments == []
+        assert detail.context_stories == []
+
+    def test_detail_accepts_comments_and_context_stories(self):
+        comment = {
+            "author": "Story Author",
+            "text": "clarifies the retry cap",
+            "created_at": FIXED_TS,
+        }
+        context = {
+            "story_id": "story-08",
+            "title": "Retry queue design",
+            "relation": "depends",
+            "description": "engineering design the retry depends on",
+            "acceptance_criteria": ["queue drains within 5 min"],
+            "comments": [comment],
+        }
+        detail = StoryDetail.model_validate(
+            {
+                "story_id": STORY_ID,
+                "title": "t",
+                "status": "s",
+                "quality_class": "q",
+                "description": "d",
+                "epic_context": "e",
+                "roadmap_context": "r",
+                "comments": [comment],
+                "context_stories": [context],
+            }
+        )
+        assert detail.comments[0] == StoryComment.model_validate(comment)
+        assert detail.context_stories[0].relation == "depends"
+
+    def test_comment_requires_exact_fields(self):
+        for payload in (
+            {"text": "t", "created_at": FIXED_TS},  # missing author
+            {"author": "a", "created_at": FIXED_TS},  # missing text
+            {"author": "a", "text": "t"},  # missing created_at
+            {"author": "a", "text": "t", "created_at": FIXED_TS, "bogus": 1},
+        ):
+            with pytest.raises(ValidationError):
+                StoryComment.model_validate(payload)
+
+    def test_context_story_relation_is_constrained(self):
+        def context(relation):
+            return {
+                "story_id": "story-08",
+                "title": "t",
+                "relation": relation,
+                "description": "d",
+            }
+
+        assert ContextStory.model_validate(context("related")).relation == "related"
+        with pytest.raises(ValidationError):
+            ContextStory.model_validate(context("blocks"))
+        with pytest.raises(ValidationError):
+            ContextStory.model_validate(context("related") | {"bogus": 1})
+
+    def test_list_caps_comments_50_and_context_5(self):
+        base = {
+            "story_id": STORY_ID,
+            "title": "t",
+            "status": "s",
+            "quality_class": "q",
+            "description": "d",
+            "epic_context": "e",
+            "roadmap_context": "r",
+        }
+        comment = {"author": "a", "text": "t", "created_at": FIXED_TS}
+        context = {
+            "story_id": "story-08",
+            "title": "t",
+            "relation": "related",
+            "description": "d",
+        }
+        assert StoryDetail.model_validate(
+            base | {"comments": [comment] * 50, "context_stories": [context] * 5}
+        )
+        with pytest.raises(ValidationError):
+            StoryDetail.model_validate(base | {"comments": [comment] * 51})
+        with pytest.raises(ValidationError):
+            StoryDetail.model_validate(base | {"context_stories": [context] * 6})
 
     def test_detail_rejects_extra_fields(self):
         payload = {

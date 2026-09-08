@@ -36,8 +36,10 @@ from review_schemas.errors import (
     ToolError,
 )
 from review_schemas.review import (
+    ContextStory,
     Finding,
     ReviewReport,
+    StoryComment,
     StoryDetail,
     StorySummary,
 )
@@ -130,8 +132,10 @@ __all__ = [
     "ErrorEnvelope",
     "ToolError",
     # review
+    "ContextStory",
     "Finding",
     "ReviewReport",
+    "StoryComment",
     "StoryDetail",
     "StorySummary",
     # synthesis (ArtifactRecord intentionally internal)
