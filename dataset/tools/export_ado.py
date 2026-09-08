@@ -82,12 +82,12 @@ def _ado_cli(*args: str) -> dict:
     return json.loads(r.stdout)
 
 
-def _rest(method: str, path: str, body: dict | None = None) -> dict:
-    """One Azure DevOps REST call with PAT basic auth (api-version 7.1)."""
+def _rest(method: str, path: str, body: dict | None = None, api_version: str = "7.1") -> dict:
+    """One Azure DevOps REST call with PAT basic auth."""
     org = os.environ["ADO_ORG"]
     token = base64.b64encode(f":{os.environ['ADO_PAT']}".encode()).decode()  # guarded by main()
     url = f"https://dev.azure.com/{org}/{path}"
-    url += "&api-version=7.1" if "?" in path else "?api-version=7.1"
+    url += f"&api-version={api_version}" if "?" in path else f"?api-version={api_version}"
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method=method, headers={
         "Authorization": f"Basic {token}",
@@ -134,32 +134,33 @@ def fetch_comments(project: str, wid: int) -> list[dict]:
     """Fetch a work item's comments, sanitized like the work item itself.
 
     Comments are NOT part of the work-item payload — they need the comments
-    API (GET workItems/{id}/comments, Runbook 08 equivalence family). The
-    az boards CLI has no comments command, so az mode falls back to
-    `az rest` with the ADO resource id.
+    API (GET workItems/{id}/comments, Runbook 08 equivalence family; the
+    endpoint is preview-only: api-version 7.1-preview.4). The az boards CLI
+    has no comments command, and `az rest` cannot authenticate with an MSA
+    login (AADSTS500011, Runbook 08) — so comments-bearing exports REQUIRE
+    the REST mode (ADO_PAT set); az mode aborts loudly if a story turns out
+    to have comments.
 
-    Returns [] when the item has no comments (the envelope then omits the
-    comments key entirely — pre-extension story files stay byte-stable).
+    Returns the comments in chronological order (the API returns newest
+    first); [] when the item has none (the envelope then omits the comments
+    key entirely — pre-extension story files stay byte-stable).
     """
-    org = os.environ["ADO_ORG"]
-    path = f"{project}/_apis/wit/workItems/{wid}/comments"
-    if use_rest():
-        raw = _rest("GET", path)
-    else:
-        url = f"https://dev.azure.com/{org}/{path}?api-version=7.1"
-        r = subprocess.run(
-            ["az", "rest", "--resource", "499b84ac-1321-427f-aa17-268ca6f8bd6d",
-             "--url", url, "--output", "json"],
-            capture_output=True, text=True,
+    if not use_rest():
+        sys.exit(
+            f"id {wid}: comments require the REST mode (set ADO_PAT; the az "
+            "fallback cannot call the comments API — Runbook 08)"
         )
-        if r.returncode != 0:
-            sys.exit(f"az rest (comments, id {wid}) failed:\n{r.stderr}")
-        raw = json.loads(r.stdout)
+    raw = _rest(
+        "GET",
+        f"{project}/_apis/wit/workItems/{wid}/comments",
+        api_version="7.1-preview.4",
+    )
+    org = os.environ["ADO_ORG"]
     comments = [
         anonymize_identities(sanitize_urls(strip_links(c), org))
         for c in raw.get("comments", [])
     ]
-    return comments
+    return sorted(comments, key=lambda c: c["createdDate"])
 
 
 def anonymize_identities(obj):
