@@ -32,10 +32,11 @@ real agents, real prompts, real MCP servers — no mocks of the agents themselve
 ## Deterministic assertions
 
 The runner evaluates deterministic requirements before invoking a judge. Each case
-specifies its required assertions in `dataset/expected/<case>.json`. Applicable failures
+specifies its required assertions in `dataset/expected/<scenario>.json`. Applicable failures
 fail the case immediately:
 
-- expected business/engineering finding IDs and required conflict references exist;
+- expected business/engineering finding keys and required conflict references exist;
+  (semantic stubs per `mock-data.md` — runtime finding IDs are never pinned);
 - initial reviewer spans overlap within the request/turn trace (parallel fan-out from
   orchestration);
 - every delegated reviewer/synthesis call has FastAPI orchestration as caller;
@@ -77,7 +78,7 @@ Stability policy: the pipeline gate runs the **required smoke set** — the dete
 structural assertions (schemas, call order, parallel overlap, lineage, persistence, loop
 cap, deployment IDs, artifact/report state, MCP tool-call evidence) plus one end-to-end
 happy-path judged case. The full required set runs on demand and before the demo.
-Content assertions are set-based (required finding IDs present, not ordered); routing
+Content assertions are set-based (required finding keys present, not ordered); routing
 assertions remain exact because routing is a discrete decision. A case that fails solely
 due to demonstrated model-service instability (quota/5xx evidence in the trace) permits
 one documented rerun with raw outputs of both attempts retained as artifacts — never a
