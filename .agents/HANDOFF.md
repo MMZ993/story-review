@@ -192,6 +192,18 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 15:
+- `make dataset-test`: **28 passed** (23 written red-first + 5 added after
+  review); `make review-schemas-test`: **147 passed** (untouched).
+- REST re-export verified content-identical to the az export across all 45
+  files (programmatic semantic diff); exported_at-only changes reverted
+  before commit per owner decision; identifier checks clean.
+- Independent read-only subagent review of increment 4: **Ready to
+  proceed**, 0 Critical/Important, 8 Minor — all fixed and re-verified
+  same session (evidence in Runbook 09).
+- Phase-completion review of the dataset as a whole: NOT yet run (next
+  session) — Phase 3 not yet declared closed in development-plan.md.
+
 Session 14:
 - T5 and T6 drafts: independent read-only subagent reviews — T6 7/7 PASS;
   T5 all substantive checks PASS (sole flag: the self-check authoring
@@ -225,16 +237,14 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Remaining Tasks
 
-- **Phase 3 continuation (Runbook 09, next session):** increments 0–2 DONE
-  (matrix authored + exported); next is increment 3 — expected files
-  transcribed from `dataset/manual-plans/` into
-  `dataset/expected/<template>/<scenario>.json` (7 scenarios × 6 templates,
-  vocabulary per docs/design/schemas.md, deterministic assertions per
-  docs/quality/evaluation-tests.md) — then increment 4 (loader harness,
-  test-first, `make dataset-test`). Deferred D9 items still open:
-  fidelity/trimming (separate preparation step against the verbatim
-  export) and metadata semantic/display classification (expected-file
-  design time).
+- **Phase 3 close-out:** Runbook 09 is COMPLETE (increments 0–4). The
+  plan's phase-completion gate — an independent read-only review of the
+  dataset + expected files as a whole (contract boundary, like Phase 2's
+  post-review) — is still pending; run it next session, then mark Phase 3
+  done in `docs-local/development-plan.md`. Deferred D9 items still open:
+  fidelity/trimming (decide at Phase 4 against the verbatim export) and
+  metadata semantic/display classification (now forced by the comments
+  extension).
 - ~~Owner teardown of the redaction pass~~ DONE (2026-09-07, owner):
   `~/projects/capstone-project-filter2` removed; `/tmp/project-id-replace.txt`
   left in place deliberately (tmp clears itself).
@@ -250,19 +260,21 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. Next: Runbook 09 increment 3 (expected files transcribed from
-   `dataset/manual-plans/` into `dataset/expected/<template>/<scenario>.json`)
-   and increment 4 (loader harness, test-first, `make dataset-test`).
-   Export/increment 1 done this session; matrix COMPLETE (ids 5–55).
-2. Extension session (owner-raised, end of session 14): comments-as-review-
-   input (3 new stories: clean+benign comments, ambiguous+one-sided-comment
-   coverage, description-covers-one-side+comments-cover-other) and linked
-   context stories (main + 0..X linked; structure codified now, mock data
-   deferred). Full evaluation + plan:
+1. Phase 3 completion review (independent, read-only, dataset + expected
+   files vs `docs/quality/mock-data.md` + `evaluation-tests.md` + schemas
+   vocabulary), then close Phase 3 in the development plan.
+2. Extension session (owner-raised, session 14): comments-as-review-input
+   (3 new stories) and linked context stories (structure codified now,
+   mock data deferred). Full evaluation + plan:
    `docs-local/plans/dataset-extensions-comments-linked-stories.md` —
    docs-first: `docs/` design changes (StoryDetail.comments,
    context_stories; agents/api-contract/mcp-servers) need owner approval;
-   both extensions additive/backwards-compatible with the 42 cases.
+   both extensions additive/backwards-compatible with the 42 cases. Note:
+   new expected files slot into the scenario-canonical scheme (own file per
+   new scenario/content variant; loader registers new SLUGS).
+3. Phase 4 (MCP servers + compose): story MCP serves verbatim from
+   `dataset/stories/` (D9); hosted demo uploads the 45 JSON files to the
+   Google-hosted mock endpoint; expected files stay out of runtime images.
 
 ## Important Notes
 
