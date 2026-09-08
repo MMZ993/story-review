@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "case_id": "t6/partial-resolution",
+  "story_id": "story-40",
   "template": "t6",
   "scenario": "partial-resolution",
   "ado_source_id": 53,

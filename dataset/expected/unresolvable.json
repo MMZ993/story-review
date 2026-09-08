@@ -1,0 +1,219 @@
+{
+  "scenario": "unresolvable",
+  "schema_version": 1,
+  "requested_formats": [
+    "md"
+  ],
+  "po_script": [
+    {
+      "message": "European markets, yes — the big ones first, then the rest."
+    },
+    {
+      "message": "Languages: whatever sales needs for those markets, we'll see per market."
+    },
+    {
+      "message": "Currencies: display in local currency where customers expect it; finance will work out the pricing later."
+    },
+    {
+      "message": "Local payment methods: whatever the PSP supports, check with them."
+    },
+    {
+      "message": "Support: they'll have to cope, sales promised the markets."
+    },
+    {
+      "message": "Let's start with Germany and France as a pilot, but keep the others in scope."
+    },
+    {
+      "message": "Germany and France first, everything else stays in the story."
+    },
+    {
+      "message": "The markets stay open-ended — this is a roadmap story, the team should build for all of them."
+    },
+    {
+      "message": "Keep going, we'll clarify as you build."
+    }
+  ],
+  "expected_turns": [
+    {
+      "turn_number": 1,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "invoke": "none",
+        "reuse_previous": false,
+        "extra_context_expected": false,
+        "open_issues_empty": false
+      },
+      "produced_artifacts": [
+        {
+          "type": "review-business",
+          "version": 1
+        },
+        {
+          "type": "review-engineering",
+          "version": 1
+        },
+        {
+          "type": "synthesis",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "Opening turn: both perspectives raise gaps (business: no prioritization, no value metric, conflicting stakeholder demands; engineering: currencies/FX, localization, local methods, PSP support all undefined); synthesis flags multiple questions/conflicts; PO asked."
+    },
+    {
+      "turn_number": 2,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "open_issues_empty": false
+      },
+      "semantic_notes": "PO answer 1 (markets). Answer resolves one thread but opens new ones (which markets exactly?). Facilitator may delegate a perspective or continue dialogue — routing NOT deterministically pinned for turns 2-9; open_issues must stay nonempty; readiness needs_work."
+    },
+    {
+      "turn_number": 3,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "open_issues_empty": false
+      },
+      "semantic_notes": "PO answer 2 (languages). New open questions (who translates?). open_issues nonempty."
+    },
+    {
+      "turn_number": 4,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "open_issues_empty": false
+      },
+      "semantic_notes": "PO answer 3 (currencies). New open questions (who owns FX pricing?). open_issues nonempty."
+    },
+    {
+      "turn_number": 5,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "open_issues_empty": false
+      },
+      "semantic_notes": "PO answer 4 (local methods). New open questions (which PSP methods where?). open_issues nonempty."
+    },
+    {
+      "turn_number": 6,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "open_issues_empty": false
+      },
+      "semantic_notes": "PO answer 5 (support). Still non-convergent. open_issues nonempty."
+    },
+    {
+      "turn_number": 7,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "open_issues_empty": false
+      },
+      "semantic_notes": "PO answer 6 (pilot). Pilot answer CONTRADICTS the turn-2 open-ended scope — new conflict erupts. open_issues nonempty."
+    },
+    {
+      "turn_number": 8,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "open_issues_empty": false
+      },
+      "semantic_notes": "PO answer 7 (pilot first, rest stays) — re-widens the scope conflict. open_issues nonempty."
+    },
+    {
+      "turn_number": 9,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "open_issues_empty": false
+      },
+      "semantic_notes": "PO answer 8 (open-ended confirmed). Root cause (undefined scope, no owner) now explicit; facilitator states the story cannot reach readiness in dialogue. open_issues nonempty."
+    },
+    {
+      "turn_number": 10,
+      "outcome": "park",
+      "state_after": "parked",
+      "delegation": {
+        "open_issues_empty": false
+      },
+      "semantic_notes": "PO answer 9 ('keep going'). LOOP SAFETY CAP REACHED (facilitator_turn_count = 10): facilitator parks instead of evaluating readiness; remaining open issues recorded; no report rendered."
+    }
+  ],
+  "expected_findings": {
+    "review-business": {
+      "max_severity": "major",
+      "required": [
+        {
+          "key": "B-1",
+          "min_severity": "major",
+          "topic": "no market prioritization / no measurable value",
+          "appears_in_version": 1,
+          "resolved_at_turn": null
+        },
+        {
+          "key": "B-2",
+          "min_severity": "major",
+          "topic": "conflicting stakeholder demands with no owner",
+          "appears_in_version": 1,
+          "resolved_at_turn": null
+        }
+      ]
+    },
+    "review-engineering": {
+      "max_severity": "major",
+      "required": [
+        {
+          "key": "E-1",
+          "min_severity": "major",
+          "topic": "currencies/FX undefined",
+          "appears_in_version": 1,
+          "resolved_at_turn": null
+        },
+        {
+          "key": "E-2",
+          "min_severity": "major",
+          "topic": "localization and local payment methods unspecified",
+          "appears_in_version": 1,
+          "resolved_at_turn": null
+        },
+        {
+          "key": "E-3",
+          "min_severity": "minor",
+          "topic": "AC untestable as written",
+          "appears_in_version": 1,
+          "resolved_at_turn": null
+        }
+      ]
+    }
+  },
+  "expected_conflicts": {
+    "at_turn_1": [],
+    "later": [
+      {
+        "key": "C-r1",
+        "kind": "recurring",
+        "topic": "pilot-scope (turn 7) vs open-ended-scope (turn 2) — canonical re-eruption, re-widened at turn 8",
+        "first_seen_turn": 7,
+        "resolved_at_turn": null,
+        "deterministically_pinned": false
+      }
+    ],
+    "note": "Synthesis conflicts on turns 1-6 are semantic-only (multiple open questions); open_issues nonempty on every non-final turn is the deterministic invariant."
+  },
+  "expected_final": {
+    "state": "parked",
+    "final_turn_number": 10,
+    "facilitator_turn_count": 10,
+    "finalized": false,
+    "po_accepted": false,
+    "remaining_open_issues_empty": false,
+    "reports": []
+  },
+  "invariance": {
+    "applies_across_templates": true,
+    "allowed_deviation": "the number of dialogue turns before the cap may vary by one; the park outcome and parked final state are invariant; formatting may add info-level reviewer notes only"
+  }
+}

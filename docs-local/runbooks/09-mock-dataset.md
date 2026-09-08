@@ -6,8 +6,8 @@ no Cloud SQL (the instance stays STOPPED throughout). Prerequisites (az CLI,
 ADO sample org/project, backlog authoring, export) are codified in
 Runbook 08.
 
-Status: IN PROGRESS (opened 2026-09-07; increments 0–2 done — matrix
-authored in Runbook 08; increment 1 done 2026-09-08; next: increment 3).
+Status: IN PROGRESS (opened 2026-09-07; increments 0–3 done — matrix
+authored in Runbook 08; increments 1 + 3 done 2026-09-08; next: increment 4).
 
 ## Scope
 
@@ -31,7 +31,7 @@ authored in Runbook 08; increment 1 done 2026-09-08; next: increment 3).
 | 0 | ADO sample environment, backlog authoring, export | Runbook 08 |
 | 1 | Format ground truth, conventions, D9 decision, README | DONE (2026-09-08) |
 | 2 | Story authoring (six scenarios) | DONE (Runbook 08, matrix T1–T6) |
-| 3 | Expected-file authoring | pending |
+| 3 | Expected-file authoring | DONE (2026-09-08) |
 | 4 | Loader harness + validation tests (test-first), Make target | pending |
 
 ## Evidence
@@ -85,3 +85,38 @@ authored in Runbook 08; increment 1 done 2026-09-08; next: increment 3).
       capture statements.
       Gotcha: WIQL `az boards query --wiql` rows return the id as the sole
       value per row object.
+- [x] Increment 3 — expected files (2026-09-08, session 15, owner-approved
+      shape + four decisions): expected contracts transcribed from the
+      manual plans using schemas.md vocabulary. Owner-approved decisions:
+      (1) `story_id` assigned `story-01`…`story-42` template-major
+      (t1/clean=01 … t6/hidden-conflict=42), backfilled into all 42 story
+      envelopes (additive field; recorded as a D9 amendment);
+      (2) `expected_findings` are semantic stubs (`key`, `min_severity`,
+      `topic`, `appears_in_version`, `resolved_at_turn`) — runtime finding
+      IDs are reviewer-assigned and not pinned; deterministic asserts cover
+      ID patterns/prefixes + severity ceilings, stub presence is
+      judge-matched; (3) `expected_turns` includes turn 1 (opening
+      facilitator turn) — one entry per dialogue turn; (4) conflicting
+      closing = variant 1 (2-turn conversational finalize, no delegation).
+      First authored as 42 per-template files, then COLLAPSED (same session,
+      owner decision) to **7 scenario-canonical files**
+      `dataset/expected/<scenario>.json` — the loader (increment 4) expands
+      each to the 6 per-template test cases, deriving per-case
+      case_id/story_id/template from the story envelopes; format invariance
+      is now enforced structurally (D9 amendment 2). The per-template
+      copies were moved to `trash/expected-per-template/` (never committed).
+      Shape: deterministic fields (delegation invoke/reuse_previous/
+      open_issues_empty, outcome, state_after, produced_artifact type+version,
+      po_script exactly-one-of, expected_final incl. facilitator_turn_count)
+      + semantic fields (`semantic_notes`, finding/conflict stubs).
+      `facilitator_turn_count` follows the schemas.md rule that PO acceptance
+      does not invoke the facilitator (clean=1, business/engineering-weak=2,
+      partial-resolution=3, unresolvable=10). Unresolvable: turns 2–9 have
+      routing/artifact versions deliberately unpinned (facilitator may
+      delegate or continue); deterministic invariants are outcome=continue,
+      open_issues never empty, park at facilitator turn 10, no reports.
+      Post-authoring checks (run on the 42-file form, results identical by
+      construction after the collapse): 42 cases, po_script exactly-one-of,
+      turn numbering contiguous from 1, state matches outcome, reports only
+      on finalize turns — all PASS. export_ado.py does not yet emit
+      `story_id` on re-export — fold into increment 4.

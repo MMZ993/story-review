@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "case_id": "t2/business-weak",
+  "story_id": "story-09",
   "template": "t2",
   "scenario": "business-weak",
   "ado_source_id": 22,

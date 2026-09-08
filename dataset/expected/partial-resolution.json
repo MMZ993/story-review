@@ -1,0 +1,173 @@
+{
+  "scenario": "partial-resolution",
+  "schema_version": 1,
+  "requested_formats": [
+    "md",
+    "pdf"
+  ],
+  "po_script": [
+    {
+      "message": "Yes — store a token from our PSP, never the raw card number. Success = checkout under 30 seconds for returning customers."
+    },
+    {
+      "message": "Add the 30-second criterion to the story's acceptance criteria. Also we keep cards 24 months max, noted in the consent text — that covers the retention gap."
+    }
+  ],
+  "expected_turns": [
+    {
+      "turn_number": 1,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "invoke": "none",
+        "reuse_previous": false,
+        "extra_context_expected": false,
+        "open_issues_empty": false
+      },
+      "produced_artifacts": [
+        {
+          "type": "review-business",
+          "version": 1
+        },
+        {
+          "type": "review-engineering",
+          "version": 1
+        },
+        {
+          "type": "synthesis",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "Opening turn: synthesis v1 presented, C-1 flagged, PO asked whether tokenization is an acceptable meaning of 'save'. Mirrors docs/design/example-interaction.md story-04."
+    },
+    {
+      "turn_number": 2,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "invoke": "engineering",
+        "reuse_previous": false,
+        "extra_context_expected": true,
+        "open_issues_empty": false
+      },
+      "produced_artifacts": [
+        {
+          "type": "review-engineering",
+          "version": 2
+        },
+        {
+          "type": "synthesis",
+          "version": 2
+        }
+      ],
+      "semantic_notes": "Engineering-only delegation (PO confirmed PSP tokenization; define vault integration + expired-token behavior; metric: returning checkout < 30s); business v1 reused; open_issues=['C-1']. Synthesis v2: C-1 resolved, NEW conflict C-2 (B-2 'not measurable' vs the PO's 30s metric not yet in the story). Re-review synthesis must use the latest artifact per perspective."
+    },
+    {
+      "turn_number": 3,
+      "outcome": "finalize",
+      "state_after": "completed",
+      "delegation": {
+        "invoke": "none",
+        "reuse_previous": false,
+        "extra_context_expected": false,
+        "open_issues_empty": true
+      },
+      "produced_artifacts": [
+        {
+          "type": "finalized-review",
+          "version": 1
+        },
+        {
+          "type": "report-md",
+          "version": 1
+        },
+        {
+          "type": "report-pdf",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "No delegation — both remaining items resolved conversationally; resolutions recorded (C-2, B-1, B-2, E-1, E-2 -> resolved); gate passes (no open issues, invoke none, no synthesis this turn); po_accepted=false (normal readiness path)."
+    }
+  ],
+  "expected_findings": {
+    "review-business": {
+      "max_severity": "major",
+      "required": [
+        {
+          "key": "B-1",
+          "min_severity": "major",
+          "topic": "consent/retention policy missing",
+          "appears_in_version": 1,
+          "resolved_at_turn": 3
+        },
+        {
+          "key": "B-2",
+          "min_severity": "minor",
+          "topic": "success metric missing / 'faster' unmeasurable",
+          "appears_in_version": 1,
+          "resolved_at_turn": 3
+        }
+      ]
+    },
+    "review-engineering": {
+      "max_severity": "blocker",
+      "required": [
+        {
+          "key": "E-1",
+          "min_severity": "blocker",
+          "topic": "PCI-DSS scope — raw storage prohibited, tokenized vault required",
+          "appears_in_version": 1,
+          "resolved_at_turn": 2
+        },
+        {
+          "key": "E-2",
+          "min_severity": "minor",
+          "topic": "expired/removed saved-card behavior missing",
+          "appears_in_version": 1,
+          "resolved_at_turn": 2
+        },
+        {
+          "key": "E-3",
+          "min_severity": "minor",
+          "topic": "expired token falls back to normal checkout (answers E-2 in re-review)",
+          "appears_in_version": 2,
+          "resolved_at_turn": null
+        }
+      ]
+    }
+  },
+  "expected_conflicts": {
+    "at_turn_1": [
+      {
+        "key": "C-1",
+        "kind": "needs_po_clarification",
+        "topic": "business assumes storing for convenience vs engineering: raw storage prohibited",
+        "resolved_at_turn": 2
+      }
+    ],
+    "later": [
+      {
+        "key": "C-2",
+        "kind": "needs_po_clarification",
+        "topic": "story text lacks the PO's now-stated 30s metric",
+        "first_seen_turn": 2,
+        "resolved_at_turn": 3
+      }
+    ]
+  },
+  "expected_final": {
+    "state": "completed",
+    "final_turn_number": 3,
+    "facilitator_turn_count": 3,
+    "po_accepted": false,
+    "remaining_open_issues_empty": true,
+    "reports": [
+      "md",
+      "pdf"
+    ]
+  },
+  "invariance": {
+    "applies_across_templates": true,
+    "allowed_deviation": "formatting may add info-level reviewer notes only"
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "scenario": "engineering-weak",
+  "schema_version": 1,
+  "requested_formats": [
+    "md"
+  ],
+  "po_script": [
+    {
+      "message": "Retry policy from the payments team: max 3 attempts with exponential backoff (1s, 5s, 25s), every attempt carries the same PSP idempotency key per order, and the cart is held for 5 minutes from the first failure. Retries stop on success or decline as written."
+    },
+    {
+      "po_accepted": true
+    }
+  ],
+  "expected_turns": [
+    {
+      "turn_number": 1,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "invoke": "none",
+        "reuse_previous": false,
+        "extra_context_expected": false,
+        "open_issues_empty": false
+      },
+      "produced_artifacts": [
+        {
+          "type": "review-business",
+          "version": 1
+        },
+        {
+          "type": "review-engineering",
+          "version": 1
+        },
+        {
+          "type": "synthesis",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "Opening turn: engineering findings presented (retry policy unspecified, idempotency missing, order-hold behavior undefined), business positive; no conflicts; PO asked for the retry policy."
+    },
+    {
+      "turn_number": 2,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "invoke": "engineering",
+        "reuse_previous": false,
+        "extra_context_expected": true,
+        "open_issues_empty": false
+      },
+      "produced_artifacts": [
+        {
+          "type": "review-engineering",
+          "version": 2
+        },
+        {
+          "type": "synthesis",
+          "version": 2
+        }
+      ],
+      "semantic_notes": "Engineering-only delegation with the PO-supplied retry policy as extra context (max 3 attempts, backoff 1s/5s/25s, PSP idempotency key per order, 5-minute cart hold); business v1 reused; review-engineering v2 resolves the gaps against the policy; readiness needs_work. Deterministic assertion: selected reviewer routing exactly matches this turn."
+    },
+    {
+      "turn_number": 3,
+      "outcome": "finalize",
+      "state_after": "completed",
+      "delegation": null,
+      "produced_artifacts": [
+        {
+          "type": "finalized-review",
+          "version": 1
+        },
+        {
+          "type": "report-md",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "PO acceptance passes the finalization gate; finalized-review with po_accepted=true."
+    }
+  ],
+  "expected_findings": {
+    "review-business": {
+      "max_severity": "info",
+      "required": []
+    },
+    "review-engineering": {
+      "max_severity": "major",
+      "required": [
+        {
+          "key": "E-1",
+          "min_severity": "major",
+          "topic": "retry policy unspecified — attempts/backoff/window missing",
+          "appears_in_version": 1,
+          "resolved_at_turn": 2
+        },
+        {
+          "key": "E-2",
+          "min_severity": "major",
+          "topic": "no idempotency guarantee for retried charges",
+          "appears_in_version": 1,
+          "resolved_at_turn": 2
+        },
+        {
+          "key": "E-3",
+          "min_severity": "minor",
+          "topic": "cart/order hold during retries undefined",
+          "appears_in_version": 1,
+          "resolved_at_turn": 2
+        }
+      ]
+    }
+  },
+  "expected_conflicts": {
+    "at_turn_1": [],
+    "later": []
+  },
+  "expected_final": {
+    "state": "completed",
+    "final_turn_number": 3,
+    "facilitator_turn_count": 2,
+    "po_accepted": true,
+    "remaining_open_issues_empty": true,
+    "reports": [
+      "md"
+    ]
+  },
+  "invariance": {
+    "applies_across_templates": true,
+    "allowed_deviation": "formatting may add info-level reviewer notes only"
+  }
+}

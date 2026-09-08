@@ -32,6 +32,10 @@ dataset/
 │   ├── context/             # epic + features — hierarchy context, not test cases
 │   └── t1..t6/<scenario>.json
 └── expected/                # expected-file contracts (Runbook 09 increment 3)
+    └── <scenario>.json        # 7 canonical scenario files — one per manual plan;
+                               # the loader expands each to 6 per-template test
+                               # cases (per-case story_id/case_id from the
+                               # story envelopes)
 ```
 
 ## Conventions (D9 + session-14 amendment, `docs-local/local-decisions.md`)
@@ -39,15 +43,20 @@ dataset/
 - **Test case = one story in one template**: case id `<template>/<scenario>`
   (e.g. `t3/conflicting`). A stress duplicate of the same content becomes
   `<scenario>-2.json` — a separate test case by construction.
-- **Format invariance**: every template variant of a scenario must pass the
-  same scenario manual plan (`manual-plans/<scenario>.md`) unchanged —
-  same steps, same expected arc.
+- **Expected files are scenario-canonical** (owner decision, session 15,
+  collapsing the first per-template authoring): `dataset/expected/
+  <scenario>.json` — 7 files, one per manual plan. Format invariance is
+  enforced structurally: the loader expands each scenario file to the 6
+  per-template test cases, deriving `case_id`/`story_id`/`template` from the
+  story envelopes (D9 amendment 2). A future case needing template-specific
+  expectations (e.g. a stress duplicate) gets its own expected file.
 - Each story file = envelope + verbatim ADO work-item JSON under `work_item`:
 
 ```json
 {
   "schema_version": 1,
   "case_id": "t3/conflicting",
+  "story_id": "story-22",
   "template": "t3",
   "scenario": "conflicting",
   "ado_source_id": 31,

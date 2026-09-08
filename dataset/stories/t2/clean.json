@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "case_id": "t2/clean",
+  "story_id": "story-08",
   "template": "t2",
   "scenario": "clean",
   "ado_source_id": 21,

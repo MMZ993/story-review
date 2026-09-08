@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "case_id": "t2/conflicting",
+  "story_id": "story-11",
   "template": "t2",
   "scenario": "conflicting",
   "ado_source_id": 24,

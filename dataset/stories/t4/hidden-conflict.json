@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "case_id": "t4/hidden-conflict",
+  "story_id": "story-28",
   "template": "t4",
   "scenario": "hidden-conflict",
   "ado_source_id": 41,

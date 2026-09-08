@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "case_id": "t3/engineering-weak",
+  "story_id": "story-17",
   "template": "t3",
   "scenario": "engineering-weak",
   "ado_source_id": 30,

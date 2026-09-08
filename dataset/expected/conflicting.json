@@ -1,0 +1,113 @@
+{
+  "scenario": "conflicting",
+  "schema_version": 1,
+  "requested_formats": [
+    "md"
+  ],
+  "po_script": [
+    {
+      "message": "Keep the pre-selection, and keep the single 'Pay' button as the explicit action: the customer always confirms the order with the pre-selected method visibly shown, and can change it with one tap. That removes the selection step but never charges without one explicit customer action. Add a criterion: the pre-selected method and total are visible on the Pay button."
+    }
+  ],
+  "expected_turns": [
+    {
+      "turn_number": 1,
+      "outcome": "continue",
+      "state_after": "active",
+      "delegation": {
+        "invoke": "none",
+        "reuse_previous": false,
+        "extra_context_expected": false,
+        "open_issues_empty": false
+      },
+      "produced_artifacts": [
+        {
+          "type": "review-business",
+          "version": 1
+        },
+        {
+          "type": "review-engineering",
+          "version": 1
+        },
+        {
+          "type": "synthesis",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "Opening turn: both major findings presented; synthesis flags C-1 (needs_po_clarification) — business demands an explicit selection step vs engineering requires its removal; PO asked to decide."
+    },
+    {
+      "turn_number": 2,
+      "outcome": "finalize",
+      "state_after": "completed",
+      "delegation": {
+        "invoke": "none",
+        "reuse_previous": false,
+        "extra_context_expected": false,
+        "open_issues_empty": true
+      },
+      "produced_artifacts": [
+        {
+          "type": "finalized-review",
+          "version": 1
+        },
+        {
+          "type": "report-md",
+          "version": 1
+        }
+      ],
+      "semantic_notes": "NO delegation — conversational resolution only: the confirm-order action the redesign already includes satisfies the business demand. Resolutions recorded (C-1, B-1, E-1 -> resolved); finalization gate passes with po_accepted=false (normal readiness path). Chosen closing variant: 2-turn (see manual plan)."
+    }
+  ],
+  "expected_findings": {
+    "review-business": {
+      "max_severity": "major",
+      "required": [
+        {
+          "key": "B-1",
+          "min_severity": "major",
+          "topic": "charging without a separate selection step = accidental purchase / chargeback exposure; explicit confirmation action required",
+          "appears_in_version": 1,
+          "resolved_at_turn": 2
+        }
+      ]
+    },
+    "review-engineering": {
+      "max_severity": "major",
+      "required": [
+        {
+          "key": "E-1",
+          "min_severity": "major",
+          "topic": "retaining the explicit selection step breaks the one-page checkout redesign's step/latency budget",
+          "appears_in_version": 1,
+          "resolved_at_turn": 2
+        }
+      ]
+    }
+  },
+  "expected_conflicts": {
+    "at_turn_1": [
+      {
+        "key": "C-1",
+        "kind": "needs_po_clarification",
+        "topic": "business demands explicit selection step vs engineering requires its removal",
+        "resolved_at_turn": 2
+      }
+    ],
+    "later": []
+  },
+  "expected_final": {
+    "state": "completed",
+    "final_turn_number": 2,
+    "facilitator_turn_count": 2,
+    "po_accepted": false,
+    "remaining_open_issues_empty": true,
+    "reports": [
+      "md"
+    ]
+  },
+  "invariance": {
+    "applies_across_templates": true,
+    "allowed_deviation": "formatting may add info-level reviewer notes only"
+  }
+}
