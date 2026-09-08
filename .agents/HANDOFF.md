@@ -1,16 +1,18 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-09 (session 16: Phase 3 CLOSED — completion review
-  Ready-to-close, 3 Minor doc-drift findings fixed; docs expected-file
-  contract realigned; commit-atomicity rule for docs/ recorded).
+Last updated: 2026-09-09 (session 16 CONTINUED — extension session:
+  docs/ design changes for comments + context stories; dataset structure
+  codified; comments API spike; 3 t1-only comment stories authored end-to-
+  end incl. expected files + manual plans, 45 stories / 36 tests green).
 
 ## Where we are
 
-- Phase: **3 — Mock dataset: COMPLETE** (closed session 16 after the
-  independent completion review; plan at `docs-local/plans/phase-3-mock-dataset.md`,
-  Runbooks 08 + 09 both COMPLETE).
-- Next: extension session (comments + linked stories) before Phase 4.
+- Phase: **3 — Mock dataset: COMPLETE** (closed session 16; dataset
+  extensions session ran same day — see below). Dataset now 45 stories
+  (42 core + 3 t1-only comment scenarios), 10 expected files.
+- Next: Phase 4 (MCP servers + compose); extension 2 (linked context
+  stories) mock data still deferred.
 - Phase 2 COMPLETE and post-reviewed (session 11, owner-run: independent review
   + 41 negative tests added, suite **147 passed**; commit `2d639b3`).
 - Phase 1 complete: end-to-end trace passed under the D8 ingress fallback; all
@@ -22,7 +24,44 @@ Last updated: 2026-09-09 (session 16: Phase 3 CLOSED — completion review
 
 ## Previous Session Summary
 
-Session 16 (2026-09-09) — **Phase 3 CLOSED**. Independent read-only
+Session 16 part 2 (2026-09-09, same day) — **dataset extensions session**
+(comments + linked context stories; plan
+`docs-local/plans/dataset-extensions-comments-linked-stories.md`):
+- `docs/` design changes (owner-approved, docs-only atomic commit
+  `52534ef`): `StoryComment` + `ContextStory` in schemas.md (comments cap
+  50; context_stories cap 5, relation related|depends, own comments;
+  separate list — never merged into the main story); agents.md reviewer
+  input includes both, framing "related items — do not review the linked
+  items"; synthesis unchanged; mcp-servers.md/api-contract.md get_story
+  notes.
+- Dataset structure codified (test-first, D9 amendment 3): envelope
+  `comments` (verbatim sanitized, non-empty text) + `linked_stories`
+  (case-id refs, max 5, unique, loader-enforced resolution + no
+  self-reference); README + local-decisions updated.
+- **Comments API spike** (Runbook 08): comments endpoint is preview-only
+  (`7.1-preview.4`); PAT needs Read&Write (owner widened `rest-verify`, PAT
+  stays); `az rest` cannot auth with MSA login — comments export requires
+  REST mode (loud abort otherwise); API returns newest-first (export sorts
+  chronological); no-comments stories omit the key (42 files byte-stable).
+  Owner decisions: single anonymized "comment author" persona; MCP will
+  likely drop comment authors (revisit StoryComment.author at Phase 4);
+  tmp spike story deleted by owner.
+- **3 comment stories authored end-to-end** (owner-approved, spec
+  `dataset/comments-stories-spec.md` — independently reviewed pre-authoring:
+  2 Important tooling defects caught and fixed — story-id renumbering,
+  silent provenance-heading mismatch): ADO ids 57/58/59 (story-43/44/45,
+  t1-only branch in story_id_for; core numbering untouched), 3 comments
+  each; expected files comments-benign (clean arc, comment-invariance),
+  comments-clarify-business (engineering-weak arc, business positive via
+  comments), comments-complete-engineering (clean arc via comments);
+  manual plans for all three; re-export verified (45+3, identifier checks
+  clean, exported_at-only diffs reverted); `docs/quality/mock-data.md`
+  scenario rows added (docs-only commit `9b430ce`).
+- Owner scope decisions: comment case stories T1-only; C-2/C-3 arcs per
+  plan; **extension 2 (linked-stories) mock data deferred** — only the
+  data structure is codified.
+
+Session 16 part 1 (2026-09-09) — **Phase 3 CLOSED**. Independent read-only
 subagent completion review of the dataset + expected files (contract
 boundary): verdict **Ready to close** — 0 Critical/Important, 3 Minor
 doc-drift findings, all fixed same session: (1) `docs/quality/mock-data.md`
@@ -214,6 +253,18 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 16:
+- Extension authoring: `make dataset-test` **36 passed** (42→45 counts,
+  matrix core-grid + t1-only, t1-only validator, 4 stale-count tests
+  updated); `make review-schemas-test` **147 passed** (untouched);
+  expected files 10/10 validate; post-export identifier checks clean
+  (before commit); 42 pre-existing story files byte-stable (exported_at
+  diffs reverted).
+- Spec review (pre-authoring, independent read-only): Not-ready → 2
+  Important fixed; spike evidence in Runbook 08.
+- Phase 3 close-out: completion review Ready-to-close, 3 Minor doc-drift
+  fixed; suites 28 + 147 at close time.
+
 Session 15:
 - `make dataset-test`: **28 passed** (23 written red-first + 5 added after
   review); `make review-schemas-test`: **147 passed** (untouched).
@@ -223,8 +274,6 @@ Session 15:
 - Independent read-only subagent review of increment 4: **Ready to
   proceed**, 0 Critical/Important, 8 Minor — all fixed and re-verified
   same session (evidence in Runbook 09).
-- Phase-completion review of the dataset as a whole: NOT yet run (next
-  session) — Phase 3 not yet declared closed in development-plan.md.
 
 Session 14:
 - T5 and T6 drafts: independent read-only subagent reviews — T6 7/7 PASS;
@@ -279,19 +328,16 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. Extension session (owner-raised, session 14): comments-as-review-input
-   (3 new stories) and linked context stories (structure codified now,
-   mock data deferred). Full evaluation + plan:
-   `docs-local/plans/dataset-extensions-comments-linked-stories.md` —
-   docs-first: `docs/` design changes (StoryDetail.comments,
-   context_stories; agents/api-contract/mcp-servers) need owner approval;
-   both extensions additive/backwards-compatible with the 42 cases. Note:
-   new expected files slot into the scenario-canonical scheme (own file per
-   new scenario/content variant; loader registers new SLUGS). Remember the
-   docs/ commit-atomicity rule for the design-change commits.
-2. Phase 4 (MCP servers + compose): story MCP serves verbatim from
-   `dataset/stories/` (D9); hosted demo uploads the 45 JSON files to the
-   Google-hosted mock endpoint; expected files stay out of runtime images.
+1. **Phase 4 (MCP servers + compose)**: story MCP serves verbatim from
+   `dataset/stories/` (D9) — now 45 stories incl. comments; hosted demo
+   uploads the JSON files to the Google-hosted mock endpoint; expected
+   files stay out of runtime images. At Phase 4: revisit
+   `StoryComment.author` (likely dropped at MCP level) and the D9
+   fidelity/trimming decision against the verbatim export.
+2. Extension 2 (linked context stories) mock data — deferred by owner;
+   structure is codified (envelope `linked_stories`, docs ContextStory);
+   authoring later is pure data preparation (context-only story placement
+   decision pending, see the plan's open decisions).
 
 ## Important Notes
 
@@ -301,10 +347,14 @@ cross-checks, test-first red/green, review findings fixed).
   session 15; also recorded in the extensions plan).
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
-- Git: session 14 produced six commits (`a74bcc6`, `1f39e19`, `310765a`,
-  `73bd8a5`, `5b00339`, `07b6d5f`); the first four are pushed by the owner,
-  the last two (`5b00339` export+JSON, `07b6d5f` docs) are local until the
-  owner pushes — remote `main` currently at `73bd8a5`. Old history note:
+- Git: session 16 commits (all local until the owner pushes):
+  `5e35128` docs expected-file contract, `05e0dd9` dataset doc fixes,
+  `22ad0be` phase-3 close-out, `52534ef` docs comments+context contract,
+  `0612a47` envelope/loader extension fields, `bef7fe0` comments export,
+  `223d062` D9 amendment 3, `a7337ee` preview api fix, `847dd33` spike
+  evidence, `87f9ccc` comment stories, `9b430ce` docs scenario rows.
+  docs/-only (cherry-pick candidates for `docs/initial-frozen`):
+  `5e35128`, `52534ef`, `9b430ce`. Old history note:
   `docs/initial-frozen` = `d5cb413`; superseded hashes `a519899`,
   `bcd1c1b`, `dadd2e1`, `9482e6a`, `649f7c4` were from the rewrite era.
   Check `git status -sb` before assuming the remote is current — tracking

@@ -173,3 +173,47 @@ verdict Ready to close Phase 3, 3 Minor doc-drift findings fixed).
       sequence, sanitization clean across all 111 dataset files, expected
       files expand to 42 cases, loader strict + vocabulary-consistent with
       review_schemas; suites 28 + 147 green.
+
+## Extension 1 authoring — comment stories (2026-09-09, session 16)
+
+Spec: `dataset/comments-stories-spec.md` (independent read-only review
+before authoring: verdict Not-ready with 2 Important integration defects —
+story-id math would have renumbered the core grid, provenance headings
+would have been silently ignored; both fixed in the spec, M-1 draft PO
+message added, M-2 deliberate duplication documented).
+
+### Executed (agent-run, owner-approved; ADO env per Runbook 08)
+
+- 3 stories created via `az boards work-item create` (root area = t1,
+  backlog iteration, structured HTML description + GWT acceptance
+  criteria, tags): id 57 comments-benign (parent Feature 4), id 58
+  comments-clarify-business (parent Feature 3), id 59
+  comments-complete-engineering (parent Feature 4); parents linked via
+  `relation add parent`. Gotcha: `--tags` is not a flag — tags go through
+  `--fields 'System.Tags=...'`; area paths for t1 = project root (leading
+  backslash rejected, TF401347).
+- 3 comments per story posted via REST (PAT, api-version 7.1-preview.4):
+  comment ids 499433–499442, chronological order enforced at export.
+- Tmp spike story id 56 deleted by the owner (delete needs `--project`).
+- Re-export via `python3 dataset/tools/export_ado.py`: 45 stories + 3
+  context; each comment story shows "3 comment(s) attached"; the 42
+  pre-existing files diff only in `exported_at` (reverted before commit,
+  session-15 precedent).
+
+### Dataset state after this increment
+
+- 45 story files: core grid (42, ids 5–55, story-01..42) + t1-only
+  comment scenarios (ids 57–59, story-43..45 via the new `story_id_for`
+  t1-only branch — core numbering untouched).
+- 10 scenario-canonical expected files (3 new: comments-benign,
+  comments-clarify-business, comments-complete-engineering; arcs = clean /
+  engineering-weak / clean with comment-semantics notes;
+  `applies_across_templates: false`).
+- 3 new manual plans in `dataset/manual-plans/`.
+- `make dataset-test`: **36 passed** (counts updated 42→45, matrix =
+  core grid + t1-only cells, t1-only-outside-t1 validator);
+  `make review-schemas-test`: **147 passed** (untouched).
+- Post-export identifier checks clean (org name, project GUID, owner
+  email, `_links`) — run BEFORE commit.
+- `docs/quality/mock-data.md` scenario table gained the three comment
+  rows (docs-only commit, cherry-pick rule).
