@@ -130,6 +130,38 @@ def show_item(project: str, wid: int) -> dict:
     return _ado_cli("work-item", "show", "--id", str(wid), "--expand", "all")
 
 
+def fetch_comments(project: str, wid: int) -> list[dict]:
+    """Fetch a work item's comments, sanitized like the work item itself.
+
+    Comments are NOT part of the work-item payload — they need the comments
+    API (GET workItems/{id}/comments, Runbook 08 equivalence family). The
+    az boards CLI has no comments command, so az mode falls back to
+    `az rest` with the ADO resource id.
+
+    Returns [] when the item has no comments (the envelope then omits the
+    comments key entirely — pre-extension story files stay byte-stable).
+    """
+    org = os.environ["ADO_ORG"]
+    path = f"{project}/_apis/wit/workItems/{wid}/comments"
+    if use_rest():
+        raw = _rest("GET", path)
+    else:
+        url = f"https://dev.azure.com/{org}/{path}?api-version=7.1"
+        r = subprocess.run(
+            ["az", "rest", "--resource", "499b84ac-1321-427f-aa17-268ca6f8bd6d",
+             "--url", url, "--output", "json"],
+            capture_output=True, text=True,
+        )
+        if r.returncode != 0:
+            sys.exit(f"az rest (comments, id {wid}) failed:\n{r.stderr}")
+        raw = json.loads(r.stdout)
+    comments = [
+        anonymize_identities(sanitize_urls(strip_links(c), org))
+        for c in raw.get("comments", [])
+    ]
+    return comments
+
+
 def anonymize_identities(obj):
     """Replace author identity fields with placeholders (owner decision:
     personal data must not enter git / the public mirror).
@@ -299,6 +331,12 @@ def main() -> None:
                     "scenario", "ado_source_id", "exported_at", "work_item",
                 )
             }
+            comments = fetch_comments(os.environ["ADO_PROJECT"], wid)
+            if comments:
+                # appended after work_item — keeps the documented key order
+                # and leaves comment-less story files byte-stable
+                envelope["comments"] = comments
+                print(f"  {len(comments)} comment(s) attached")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(envelope, indent=2, ensure_ascii=False) + "\n")
         print(f"{case:32s} ado id {wid}  -> {path.relative_to(REPO)}")
