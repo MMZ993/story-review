@@ -128,3 +128,100 @@ Gotchas learned:
 - Subagent-assessed first (cheap-model read-only pass) that the move could
   keep all three existing test dirs byte-identical — held true; only
   packaging/imports changed.
+
+### Increment 1 (part 2) — story MCP server (local, no cost)
+
+D10 dual-source server implemented (test-first, red at each module):
+
+- `story_mcp/backlog.py` — source-independent core: id-space separation
+  (`story-NN` vs `ado-N`, cross-source → `StoryNotFound`), status filter
+  (case-insensitive substring), `resolve_source` (None = deployment
+  default).
+- `story_mcp/mock_source.py` — mock source from a directory or `gs://`
+  location (GCS client injectable; tests use a fake). Zero-envelope
+  locations and non-directory/gs locations fail loud at construction.
+- `story_mcp/azure_source.py` — live ADO REST (PAT basic auth, WIQL +
+  workitemsbatch + `$expand=all` + comments API), mapped through the same
+  preparation core (`prepare_work_item`, extracted from `prepare_story`
+  behavior-identically — goldens stayed green). Transport failures →
+  `SourceUnavailable` → `UPSTREAM_UNAVAILABLE` (retryable); missing work
+  item → `STORY_NOT_FOUND`. No network in tests (`httpx.MockTransport`
+  recorded-shape fixtures).
+- `story_mcp/server.py` — MCPServer (mcp 2.1.1) tools `list_stories` /
+  `get_story`; flat schemas exactly matching the shared input models;
+  unknown-field rejection by inspecting the raw call arguments
+  (`context.request_context.params` is a Mapping — `.arguments` is a KEY,
+  not an attribute; see gotchas); every failure returns structured
+  `ToolError(ErrorBody)` with `is_error` set; correlation id from
+  `X-Correlation-Id` (UUID-v4 when supplied, else generated).
+- `story_mcp/auth.py` — spike-pattern ID-token middleware (bearer vs
+  audience; `/healthz` public; missing audience + auth on → fail-closed
+  503); `STORY_AUTH_DISABLED=1` is the local-profile off switch.
+  Allowlist `STORY_ALLOWED_CALLERS` (both tools: orchestration +
+  facilitator); UNAUTHENTICATED / FORBIDDEN as ToolError payloads.
+- `story_mcp/app.py` + `main.py` — env-driven ASGI wiring, stateless
+  Streamable HTTP; azure source appears only when its env is complete.
+- `mcp_servers/story/Dockerfile` — root context; copies `story_mcp`,
+  `review_schemas`, `ado_wire`, and `dataset_loader` (code-only) +
+  build-time guard that `dataset/stories`/`dataset/expected` content is
+  absent. **NOTE: this needs a repository-layout.md amendment** — the
+  current text says "no Dockerfile copies any part of `dataset/`"; the
+  mock source reuses the loader's envelope parser (D9 verbatim export
+  principle). Owner decision pending.
+- `dataset/tools/push_dataset.py` + `make dataset-push` — 48 objects
+  (45 stories + 3 context) to `gs://$PROJECT_ID-story-dataset/stories/`;
+  expected files never upload; `--dry-run` verified locally. Bucket
+  bootstrap stays at increment 5.
+
+```
+make mcp-story-test       # 65 passed (red-first per module)
+make ado-wire-test        # 7 passed
+make dataset-test         # 36 passed
+make review-schemas-test  # 154 passed
+docker build -f mcp_servers/story/Dockerfile .   # ok; guard RUN passed
+# container smoke: /healthz ok, tools/list over Streamable HTTP ok,
+# bad STORY_DATASET_LOCATION aborts startup loudly (correct fail-fast)
+```
+
+Gotchas learned:
+
+- mcp 2.1.1: FastMCP is renamed `MCPServer`; client yields a 2-tuple;
+  client result attr is `is_error`, tool attr `input_schema`; the
+  framework strips unknown args before the handler — raw-argument
+  rejection must read `context.request_context.params["arguments"]`.
+- pytest-asyncio + mcp client streams = cancel-scope teardown noise;
+  contract tests use sync tests + `asyncio.run` per scenario (spike's
+  sync pattern) — clean.
+- `streamable_http_client` against a stateless server needs
+  `terminate_on_close=False` (the closing DELETE otherwise hangs/errs).
+- MCP client over ASGI needs `asgi-lifespan` (the session manager's task
+  group only starts via the app lifespan).
+- The Host-header transport-security check needs `http_host` matching
+  the client's base_url in tests (spike hit the same).
+- `ErrorBody.correlation_id` wants a UUID instance, not a string
+  (pydantic `is_instance` validator).
+- Story-mcp version bumped 0.1.0 → 0.2.0 (server added).
+
+**Independent read-only review** (subagent): first pass **Needs fixes** —
+2 Important, 8 Minor. Fixed same session:
+
+- Important: allowlist fail-open on misconfiguration — with auth enabled
+  but `STORY_ALLOWED_CALLERS` unset, any verified principal was served.
+  Now `_resolve_callers` derives the bypass solely from auth-disabled (+
+  no explicit allowlist); auth enabled + empty env = empty set → all calls
+  FORBIDDEN (regression test added).
+- Important: azure 404 vs transient conflated — any `SourceUnavailable`
+  became STORY_NOT_FOUND. `SourceUnavailable` now carries the HTTP status;
+  only 404 maps to STORY_NOT_FOUND (503 regression test added).
+- Minor fixed: dead duplicated block in test_azure_source `_route`;
+  GCS directory-marker blob guard in `_materialize_bucket`; test renamed
+  (`test_story_without_relations_has_no_context_stories`); unexpected
+  tool exceptions now log at warning.
+- Minor accepted as-is: `internal_error` uses UPSTREAM_UNAVAILABLE (no
+  INTERNAL code in the taxonomy); parentless live azure stories raise
+  UPSTREAM_UNAVAILABLE — the backlog invariant (stories always under
+  Feature→Epic) is guaranteed by the authoring conventions (Runbook 08);
+  azure `list_stories` caps at the schema's 50 summaries (demo backlog
+  is 42–45); malformed X-Correlation-Id replaced, not rejected.
+- Repository-layout.md amended for the code-only `dataset/loader` image
+  copy: main `ad841b3`, frozen cherry-pick `2a29f71` (owner decision (a)).
