@@ -52,6 +52,13 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 
 Append entries: date, phase, what was proven, artifact path / correlation ID.
 
+- 2026-09-09 — Phase 4 — increment 1 part 1: dual-source story-server design
+  (D10, docs commits cherry-picked to `docs/initial-frozen`),
+  `shared/review_schemas` 0.4.0 (`StorySource`, widened `StoryId`, `source`
+  fields), `mcp_servers/story` preparation pipeline + 45 owner-reviewed
+  golden snapshots; suites 154 / 21 / 36 green. Evidence:
+  `runbooks/10-mcp-servers.md` §1.
+
 - 2026-09-09 — Phase 4 — increment 0: shared schema caught up to schemas.md
   (`StoryComment`/`ContextStory` on `StoryDetail`, package 0.2.0);
   story-serving decisions recorded (D9 amendment 4); review-schemas suite
