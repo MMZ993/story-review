@@ -14,7 +14,11 @@ paraphrased from another variant. Rules:
   templates that express the story sentence in the title (T3/T4) must still
   carry every title fact inside the body.
 - **provenance**: ADO work-item ids are temporary authoring-time references
-  (local decision D9) — the stable key is the scenario slug.
+  (local decision D9) — the stable key is the scenario slug. T5 enabler
+  counterparts are tracked separately in
+  [`t5-enabler-spec.md`](t5-enabler-spec.md) (T5 is a work-item TYPE variant,
+  excluded from cross-template invariance; its per-scenario ADO ids are
+  42–48).
 
 Scenario → review-arc: see [`manual-plans/`](manual-plans/) — the planted
 gaps below are exactly the seeds each plan's arc requires.
