@@ -1,9 +1,11 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-08 (session 14: T5 + T6 authored — matrix COMPLETE;
-  export done (Runbook 09 increment 1, 45 sanitized JSON files); next:
-  expected files + loader).
+Last updated: 2026-09-08 (session 14 close: T5 + T6 authored — matrix
+  COMPLETE; export done (Runbook 09 increment 1, 45 sanitized JSON files);
+  comments + linked-stories extension planned
+  (docs-local/plans/dataset-extensions-comments-linked-stories.md); next:
+  expected files + loader, then the extension session).
 
 ## Where we are
 
@@ -215,6 +217,15 @@ cross-checks, test-first red/green, review findings fixed).
    `dataset/manual-plans/` into `dataset/expected/<template>/<scenario>.json`)
    and increment 4 (loader harness, test-first, `make dataset-test`).
    Export/increment 1 done this session; matrix COMPLETE (ids 5–55).
+2. Extension session (owner-raised, end of session 14): comments-as-review-
+   input (3 new stories: clean+benign comments, ambiguous+one-sided-comment
+   coverage, description-covers-one-side+comments-cover-other) and linked
+   context stories (main + 0..X linked; structure codified now, mock data
+   deferred). Full evaluation + plan:
+   `docs-local/plans/dataset-extensions-comments-linked-stories.md` —
+   docs-first: `docs/` design changes (StoryDetail.comments,
+   context_stories; agents/api-contract/mcp-servers) need owner approval;
+   both extensions additive/backwards-compatible with the 42 cases.
 
 ## Important Notes
 
