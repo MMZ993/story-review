@@ -5,7 +5,7 @@ PROJECT_ID ?= $(shell sed -nE 's/^export PROJECT_ID="?([^"]+)"?.*/\1/p' infra/en
 REGION     ?= europe-west4
 SMOKE_MODEL ?= gemini-2.5-flash
 
-.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test dataset-test compose-up compose-down terraform-plan terraform-apply db-pause db-resume db-status
+.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test dataset-test mcp-story-test compose-up compose-down terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -42,6 +42,13 @@ dataset-test: ## Phase 3: mock-dataset loader/validation tests (stories + expect
 		uv run --no-project --with-requirements tests/requirements.lock \
 		--with-requirements requirements.lock --with-editable . \
 		--with ../../shared/review_schemas python -m pytest tests -q
+
+mcp-story-test: ## Phase 4: story MCP preparation + contract tests
+	cd mcp_servers/story && \
+		uv run --no-project --with-requirements tests/requirements.lock \
+		--with-requirements requirements.lock --with-editable . \
+		--with ../../shared/review_schemas --with ../../dataset/loader \
+		python -m pytest tests -q
 
 compose-up: ## Local development stack (Phase 4+)
 	@echo "compose-up: stub — defined when MCP services land (Phase 4)"

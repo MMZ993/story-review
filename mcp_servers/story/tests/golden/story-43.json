@@ -1,0 +1,27 @@
+{
+  "story_id": "story-43",
+  "title": "VAT breakdown table in the order confirmation email",
+  "status": "New",
+  "description": "Context: The confirmation email today lists totals only; customers opening expense claims ask support for the VAT split (~30 tickets/month tagged \"vat\"). The order API already returns per-item VAT rates and amounts (GET /orders/{id}), so this is email-template rendering only.\nReason: Recurring, quantified support demand; no backend change needed — order data is complete.\nScope: This story adds the VAT breakdown table to the confirmation email template. Out of scope: invoice PDF (separate story), credit notes.",
+  "acceptance_criteria": [],
+  "epic_context": "Payment Platform Expansion — Checkout Reliability",
+  "roadmap_context": "Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate.",
+  "comments": [
+    {
+      "author": "Story Author",
+      "text": "Question: should the table also appear in the order-history page, or email only?",
+      "created_at": "2026-09-08T14:05:17.217000Z"
+    },
+    {
+      "author": "Story Author",
+      "text": "Answer: email only for now — the order-history page is out of scope (tracked separately).",
+      "created_at": "2026-09-08T14:05:17.727000Z"
+    },
+    {
+      "author": "Story Author",
+      "text": "Note: legal confirmed there is no mandated VAT layout for transactional email; the template team's standard table is fine.",
+      "created_at": "2026-09-08T14:05:18.180000Z"
+    }
+  ],
+  "context_stories": []
+}

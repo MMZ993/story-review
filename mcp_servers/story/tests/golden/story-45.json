@@ -1,0 +1,27 @@
+{
+  "story_id": "story-45",
+  "title": "Automatic retry for failed fulfillment-webhook deliveries",
+  "status": "New",
+  "description": "Context: The warehouse fulfillment service consumes order events via a webhook; when it is down, deliveries fail and orders sit unfulfilled until manual replay (ops ran 14 manual replays last quarter, ~3h each). Webhook payloads are already idempotent on the consumer side (event-id deduplication verified by the platform team).\nScope: This story adds automatic redelivery for failed webhook deliveries. Out of scope: webhook payload changes, new consumer endpoints.",
+  "acceptance_criteria": [],
+  "epic_context": "Payment Platform Expansion — Checkout Reliability",
+  "roadmap_context": "Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate.",
+  "comments": [
+    {
+      "author": "Story Author",
+      "text": "Retry policy agreed with the platform team: 5 attempts, exponential backoff 1/5/15/60/300s, total window under 7 minutes.",
+      "created_at": "2026-09-08T14:05:19.900000Z"
+    },
+    {
+      "author": "Story Author",
+      "text": "Idempotency: redeliveries reuse the same delivery id; the consumer's event-id dedup makes replays safe (already verified).",
+      "created_at": "2026-09-08T14:05:20.310000Z"
+    },
+    {
+      "author": "Story Author",
+      "text": "DLQ threshold: move to dead-letter after attempt 5; dashboard: new 'webhook redeliveries' counter on the existing integrations board.",
+      "created_at": "2026-09-08T14:05:20.713000Z"
+    }
+  ],
+  "context_stories": []
+}

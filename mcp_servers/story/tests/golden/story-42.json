@@ -1,0 +1,11 @@
+{
+  "story_id": "story-42",
+  "title": "30m edit",
+  "status": "New",
+  "description": "## 30m edit\nCustomers cannot modify an order's address, size, or quantity after checkout completes; today the only route is cancel-and-reorder or a support ticket. The order pipeline captures payment immediately at order placement. Support handles ~90 order-change tickets per week, and cancel-and-reorder loses a share of those orders entirely. This is a CX roadmap item under the Q4 goal of cutting avoidable support contacts by 20%. Payment handling carries no cost: the customer's payment is only reserved during the day, so releasing the reservation is free. Cover edits to shipping address and item size/quantity, not changing the payment method, subscription orders, or native apps.\nFor a completed order with an edit requested within 30 minutes, update the order in place with no new order created. If the edit changes the order total, automatically charge or refund the difference. For an edit requested after the 30-minute window, tell the customer to contact support.",
+  "acceptance_criteria": [],
+  "epic_context": "Payment Platform Expansion — Checkout Reliability",
+  "roadmap_context": "Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate.",
+  "comments": [],
+  "context_stories": []
+}

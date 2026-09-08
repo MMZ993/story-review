@@ -1,0 +1,11 @@
+{
+  "story_id": "story-39",
+  "title": "last one",
+  "status": "New",
+  "description": "## last one\nCheckout currently shows every available payment method with no default, so returning customers pick their method again on every order. The one-page checkout redesign under this feature is meant to remove checkout steps. Funnel analytics say returning customers spend a median 11 seconds selecting the method used on their previous order. UX research called method selection the top friction point for returning customers, and marketing asked for a \"one-tap pay\" experience. This is web checkout for signed-in returning customers, not guest checkout, native apps, or new payment methods.\nWhen a returning customer has a previously used method and checkout loads, pre-select the last used method. With that pre-selected method, when the customer confirms the order, charge payment with that method without a separate selection step. If the last used method is no longer available when checkout loads, pre-select nothing and explain why in a message.",
+  "acceptance_criteria": [],
+  "epic_context": "Payment Platform Expansion — Alternative Payment Methods",
+  "roadmap_context": "Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate.",
+  "comments": [],
+  "context_stories": []
+}

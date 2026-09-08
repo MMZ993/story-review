@@ -1,0 +1,17 @@
+[project]
+name = "story-mcp"
+version = "0.1.0"
+description = "Phase 4 story MCP server: dual-source preparation (mock dataset / live Azure DevOps) + list_stories/get_story tools."
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.13",
+    "review-schemas",
+    "dataset-loader",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["story_mcp"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
