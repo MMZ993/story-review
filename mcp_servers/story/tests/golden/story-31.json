@@ -1,0 +1,16 @@
+{
+  "story_id": "story-31",
+  "title": "PSP error retry",
+  "status": "New",
+  "description": "As the payments service, we need automatic retry for PSP errors, so that transient PSP failures stop failing orders outright.\nA temporary PSP outage (timeout, 5xx) fails the order outright today: customer sees an error, cart abandoned, support tickets follow. The order service already distinguishes PSP decline from PSP error, so a legitimate retry is identifiable. Payment errors were 38% of abandoned carts last quarter; the payments team estimates roughly a fifth are transient PSP failures. Support receives ~120 payment-failure tickets/month; halving that saves about 2 agent-days per month.\nScope is automatic retry for PSP errors only. Out of scope are retries for declines, changes to the decline messaging, and native apps.",
+  "acceptance_criteria": [
+    "Payment failed due to PSP error (not decline) → system retries automatically without customer action.",
+    "Retried payment succeeds, or failure is a decline → retries stop immediately.",
+    "Retries exhausted and last attempt fails → customer sees the standard payment-failed page; order remains recoverable from the cart.",
+    "Any retried payment completes (success or final failure) → retry outcome visible in the existing payments dashboard."
+  ],
+  "epic_context": "Payment Platform Expansion — Checkout Reliability",
+  "roadmap_context": "Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate.",
+  "comments": [],
+  "context_stories": []
+}

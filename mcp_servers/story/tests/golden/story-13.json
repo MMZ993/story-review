@@ -1,0 +1,11 @@
+{
+  "story_id": "story-13",
+  "title": "Localize checkout for international customers",
+  "status": "New",
+  "description": "Description: Checkout is English-only, EUR-only, and offers cards and PayPal only, although the shop already ships to several EU markets. Checkout has not followed the international expansion.\nReason: Sales wants five additional markets live this year. Support reports that non-English tickets already take days to resolve. Finance has no position on display currencies and FX pricing. There is no single owner for international checkout.\nImplementation: Scope is not defined: markets, languages, currencies, and local payment methods are all open.\nFor this story: 1. Verify that checkout is usable when an international customer reaches it. 2. Verify that prices displayed in a non-EUR market are correct for that market. 3. Verify that an international order can be fulfilled like a domestic one when it is placed.\n---",
+  "acceptance_criteria": [],
+  "epic_context": "Payment Platform Expansion — Alternative Payment Methods",
+  "roadmap_context": "Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate.",
+  "comments": [],
+  "context_stories": []
+}

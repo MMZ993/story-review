@@ -1,0 +1,15 @@
+{
+  "story_id": "story-33",
+  "title": "Saved payment details",
+  "status": "New",
+  "description": "As the payments team, we need to store payment details for returning customers, so that checkout no longer requires re-entering card data.\nReturning customers re-enter full card details on every order; checkout for returning customers averages 2m40s; no payment data is stored today. The Q4 growth goal is +15% conversion for returning customers. Payment-data entry is the 3rd-highest drop-off point in funnel analytics.\nScope is web checkout, cards via the current PSP. Out of scope are native apps, wallets, and bank transfers.",
+  "acceptance_criteria": [
+    "Returning customer with saved payment details reaches checkout → saved method available for selection without re-entering card details.",
+    "Customer opts to save payment details, payment completes → details stored for future checkouts.",
+    "Saved method used at checkout, payment completes → customer reaches the confirmation page."
+  ],
+  "epic_context": "Payment Platform Expansion — Alternative Payment Methods",
+  "roadmap_context": "Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate.",
+  "comments": [],
+  "context_stories": []
+}

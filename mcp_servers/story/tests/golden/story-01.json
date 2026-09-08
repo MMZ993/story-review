@@ -1,0 +1,16 @@
+{
+  "story_id": "story-01",
+  "title": "Invoice PDF in order confirmation email",
+  "status": "New",
+  "description": "Context: Customers receive a plain-text order confirmation with no price breakdown. The order service already returns complete invoice data (GET /orders/{id}: line items, unit prices, VAT rates, totals).\nReason: B2B customers and expense claims require a formal invoice document. Top request from B2B account managers this quarter; order data is complete, so this is rendering + attachment only.\nScope: This story adds invoice rendering and email attachment. Out of scope: credit notes, self-service invoice re-download from the account page.",
+  "acceptance_criteria": [
+    "Given an order whose payment succeeded, when the confirmation email job runs, then the email is sent within 2 minutes with the invoice PDF attached.",
+    "Given the order API response, when the invoice PDF is rendered, then line items with unit prices, per-item VAT rate, and gross total match GET /orders/{id} exactly.",
+    "Given a hard-bouncing recipient address, when the confirmation email is sent, then it is retried once after 5 minutes and then written to the mail audit log (no silent loss).",
+    "Given an invoice rendering failure, when the confirmation email job runs, then the email is still sent without the attachment and the failure appears on the alerting dashboard (no customer-visible error)."
+  ],
+  "epic_context": "Payment Platform Expansion — Checkout Reliability",
+  "roadmap_context": "Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate.",
+  "comments": [],
+  "context_stories": []
+}

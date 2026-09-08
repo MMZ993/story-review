@@ -1,0 +1,11 @@
+{
+  "story_id": "story-41",
+  "title": "intl",
+  "status": "New",
+  "description": "## intl\nCheckout is English-only, EUR-only, and offers cards and PayPal only. The shop already ships to several EU markets but checkout has not followed the international expansion. Sales wants five additional markets live this year, support says non-English tickets already take days to resolve, finance has no position on display currencies and FX pricing, and there is no single owner for international checkout. Scope is not defined: markets, languages, currencies, and local payment methods are all open.\nWhen an international customer reaches checkout, checkout is usable for them. When prices are displayed in a non-EUR market, they are correct for that market. When an international order is placed, it can be fulfilled like a domestic one.",
+  "acceptance_criteria": [],
+  "epic_context": "Payment Platform Expansion — Alternative Payment Methods",
+  "roadmap_context": "Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate.",
+  "comments": [],
+  "context_stories": []
+}

@@ -1,0 +1,16 @@
+{
+  "story_id": "story-02",
+  "title": "Google Pay at checkout",
+  "status": "New",
+  "description": "Context: The payment service provider exposes Google Pay in their gateway API (POST /payment-intents with method \"google_pay\"), and the web checkout can render the button via the PSP's JS SDK. The checkout payment-list flow is the existing integration point.\nReason: Competitors have it and customers keep asking for more payment options at checkout.\nScope: Add the method to the existing checkout payment-list flow. Out of scope: other payment methods, native apps.",
+  "acceptance_criteria": [
+    "Given a browser where the PSP SDK reports Google Pay availability, when the checkout payment step renders, then the Google Pay button is shown; otherwise it is hidden.",
+    "Given the customer selects Google Pay, when the payment is initiated, then a payment intent with method google_pay is created and the existing payment flow completes with the order state machine unchanged.",
+    "Given a failed or cancelled Google Pay intent, when the failure is handled, then the flow returns to the payment-list step with the previous selection cleared, no order state change, and the failure logged with the PSP correlation ID.",
+    "Given the enabled method, when the checkout e2e suite and accessibility checks run, then they pass with the button keyboard-accessible."
+  ],
+  "epic_context": "Payment Platform Expansion — Alternative Payment Methods",
+  "roadmap_context": "Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate.",
+  "comments": [],
+  "context_stories": []
+}

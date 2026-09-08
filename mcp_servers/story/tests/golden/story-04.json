@@ -1,0 +1,15 @@
+{
+  "story_id": "story-04",
+  "title": "Auto-select last used payment method at checkout",
+  "status": "New",
+  "description": "Context: Checkout currently shows all available payment methods with no default; returning customers re-pick their method on every order. The one-page checkout redesign under this feature aims to remove checkout steps.\nReason: Funnel analytics: returning customers spend a median 11 seconds selecting a payment method they used on their previous order; UX research flagged method selection as the top friction point for returning customers. Marketing asked for a \"one-tap pay\" experience.\nScope: Web checkout for signed-in returning customers. Out of scope: guest checkout, native apps, adding new payment methods.",
+  "acceptance_criteria": [
+    "Given a returning customer with a previously used payment method, when checkout loads, then their last used method is pre-selected.",
+    "Given a pre-selected method, when the customer confirms the order, then payment is charged with that method without a separate selection step.",
+    "Given a customer whose last used method is no longer available, when checkout loads, then no method is pre-selected and a message explains why."
+  ],
+  "epic_context": "Payment Platform Expansion — Alternative Payment Methods",
+  "roadmap_context": "Grow revenue and conversion by expanding the checkout to modern payment methods and making payment flows reliable. Roadmap context: Q3-Q4 growth initiative; business goal is +8% checkout conversion and reduced payment-failure support tickets. Success is measured via checkout funnel analytics and the payments incident rate.",
+  "comments": [],
+  "context_stories": []
+}
