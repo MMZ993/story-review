@@ -41,14 +41,21 @@ REPO = Path(__file__).resolve().parents[2]
 STORIES_DIR = REPO / "dataset" / "stories"
 CANONICAL = REPO / "dataset" / "canonical-facts.md"
 T5SPEC = REPO / "dataset" / "t5-enabler-spec.md"
+COMMENTSSPEC = REPO / "dataset" / "comments-stories-spec.md"
 CONTEXT_IDS = {2, 3, 4}  # epic + two features
-EXPECTED_STORIES = 42
-EXPECTED_CONTEXT = 3
+EXPECTED_STORIES = 45
 TEMPLATE_BY_AREA = {None: "t1", "T2": "t2", "T3": "t3", "T4": "t4", "T5": "t5", "T6": "t6"}
 SLUGS = [
     "clean", "business-weak", "engineering-weak", "conflicting",
     "partial-resolution", "unresolvable", "hidden-conflict",
 ]
+# t1-only comment scenarios (dataset extensions, D9 amendment 3): not part
+# of the template-major grid; numbered 43+ after the 42 core stories.
+T1_ONLY_SLUGS = [
+    "comments-benign", "comments-clarify-business",
+    "comments-complete-engineering",
+]
+FIRST_T1_ONLY_ID = 43
 
 
 def _sorted_keys(obj):
@@ -234,7 +241,8 @@ def provenance_map() -> dict[int, tuple[str, str]]:
     """
     mapping: dict[int, tuple[str, str]] = {}
     sources = [(CANONICAL, r"^- provenance: (.+)$"),
-               (T5SPEC, r"^- provenance: (.+)$")]
+               (T5SPEC, r"^- provenance: (.+)$"),
+               (COMMENTSSPEC, r"^- provenance: (.+)$")]
     for path, line_re in sources:
         text = path.read_text()
         for m in re.finditer(r"^## (\S+)\n$(.*?)((?=^## )|\Z)", text, re.M | re.S):
@@ -252,18 +260,26 @@ def provenance_map() -> dict[int, tuple[str, str]]:
 
 
 def story_id_for(template: str, scenario: str) -> str:
-    """Deterministic dataset story id (D9 amendment 2): story-NN, numbered
-    template-major (t1/clean=01 ... t6/hidden-conflict=42). Stress
-    duplicates ('<slug>-2') get their own file but must not silently
-    collide — they abort until explicitly registered here."""
+    """Deterministic dataset story id (D9 amendment 2): story-NN.
+
+    Core scenarios are numbered template-major (t1/clean=01 ...
+    t6/hidden-conflict=42, stride = len(SLUGS)). T1-only comment
+    scenarios (D9 amendment 3) continue after the core grid: 43+ in slug
+    order, and must not appear outside t1. Stress duplicates ('<slug>-2')
+    get their own file but must not silently collide — they abort until
+    explicitly registered here."""
     base = scenario.rsplit("-2", 1)[0] if scenario.endswith("-2") else scenario
     if template not in TEMPLATE_BY_AREA.values():
         sys.exit(f"no story id registered for template {template!r}")
-    t_index = int(template[1]) - 1
+    if base in T1_ONLY_SLUGS:
+        if scenario in T1_ONLY_SLUGS and template == "t1":
+            return f"story-{FIRST_T1_ONLY_ID + T1_ONLY_SLUGS.index(scenario):02d}"
+        sys.exit(f"scenario {scenario!r} is t1-only but exported from {template}")
     if base not in SLUGS:
         sys.exit(f"no story id registered for scenario {scenario!r} (add it to SLUGS first)")
     if base != scenario:
         sys.exit(f"stress duplicate {scenario!r} needs its own story id (extend story_id_for)")
+    t_index = int(template[1]) - 1
     return f"story-{t_index * len(SLUGS) + SLUGS.index(scenario) + 1:02d}"
 
 

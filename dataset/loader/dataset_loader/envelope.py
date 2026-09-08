@@ -25,6 +25,8 @@ Scenario = Annotated[
     StringConstraints(
         pattern=r"^(clean|business-weak|engineering-weak|conflicting"
         r"|partial-resolution|unresolvable|hidden-conflict)(-2)?$"
+        r"|^(comments-benign|comments-clarify-business"
+        r"|comments-complete-engineering)$"
     ),
 ]
 CaseId = Annotated[
@@ -70,6 +72,14 @@ class WorkItem(BaseModel):
         )
 
 
+# T1-only comment scenarios (D9 amendment 3): valid scenario slugs that
+# must never appear outside template t1.
+T1_ONLY_SCENARIOS = frozenset(
+    {"comments-benign", "comments-clarify-business",
+     "comments-complete-engineering"}
+)
+
+
 class StoryEnvelope(BaseModel):
     """Dataset story file envelope (see dataset/README.md)."""
 
@@ -99,6 +109,15 @@ class StoryEnvelope(BaseModel):
     def linked_stories_are_unique(self):
         if len(set(self.linked_stories)) != len(self.linked_stories):
             raise ValueError("linked_stories contains duplicates")
+        return self
+
+    @model_validator(mode="after")
+    def t1_only_scenario_stays_in_t1(self):
+        if self.scenario in T1_ONLY_SCENARIOS and self.template != "t1":
+            raise ValueError(
+                f"scenario {self.scenario!r} is t1-only "
+                f"but exported from {self.template}"
+            )
         return self
 
     def case_id_matches_components(self) -> bool:
