@@ -125,7 +125,7 @@ def _context_stories(
 ) -> list[ContextStory]:
     """Resolve ``linked_stories`` refs into prepared ContextStory entries."""
     relation_by_target: dict[int, str] = {}
-    for relation in story.relations or []:
+    for relation in story.model_extra.get("relations") or []:
         rel = relation.get("rel")
         target = int(str(relation.get("url", "")).rstrip("/").rsplit("/", 1)[-1])
         if rel in _RELATION_BY_ADO_TYPE:
@@ -140,16 +140,30 @@ def _context_stories(
         )
         target_item = target.work_item
         stories.append(
-            ContextStory(
+            context_story_from_work_item(
+                target_item,
+                _comments(target.comments),
+                relation_by_target.get(target_item.id, "related"),
                 story_id=target.story_id,
-                title=_field(target_item, "System.Title", owner=f"linked story {case_id}"),
-                relation=relation_by_target.get(target_item.id, "related"),
-                description=html_to_text(target_item.fields.get(_DESCRIPTION) or ""),
-                acceptance_criteria=html_to_blocks(target_item.fields.get(_ACCEPTANCE) or ""),
-                comments=_comments(target.comments),
             )
         )
     return stories
+
+
+def context_story_from_work_item(
+    item: WorkItem, comments: list[StoryComment], relation: str, *, story_id: str
+) -> ContextStory:
+    """Map one work item to a ``ContextStory`` (shared by both sources:
+    dataset peers and live Azure linked work items; the caller supplies the
+    public story id — envelope id for dataset peers, ``ado-N`` for live)."""
+    return ContextStory(
+        story_id=story_id,
+        title=_field(item, "System.Title", owner=f"linked work item {item.id}"),
+        relation=relation,
+        description=html_to_text(item.fields.get(_DESCRIPTION) or ""),
+        acceptance_criteria=html_to_blocks(item.fields.get(_ACCEPTANCE) or ""),
+        comments=comments,
+    )
 
 
 def prepare_story(
@@ -160,18 +174,36 @@ def prepare_story(
 ) -> StoryDetail:
     """Map one dataset story envelope to the public ``StoryDetail``."""
     env = envelope if isinstance(envelope, StoryEnvelope) else StoryEnvelope.model_validate(envelope)
-    story = env.work_item
+    return prepare_work_item(
+        env.work_item,
+        story_id=env.story_id,
+        comments=env.comments,
+        context=context,
+        context_stories=_context_stories(env.work_item, env.linked_stories, peers),
+    )
+
+
+def prepare_work_item(
+    story: WorkItem,
+    *,
+    story_id: str,
+    comments: list[WorkItemComment],
+    context: ContextIndex,
+    context_stories: list[ContextStory],
+) -> StoryDetail:
+    """Map one ADO work item to ``StoryDetail`` (shared by both sources;
+    the caller supplies the public story id and prepared context stories)."""
     epic, feature = _epic_and_feature(story, context)
     return StoryDetail(
-        story_id=env.story_id,
+        story_id=story_id,
         title=_field(story, "System.Title", owner="story"),
         status=_field(story, "System.State", owner="story"),
         description=html_to_text(story.fields.get(_DESCRIPTION) or ""),
         acceptance_criteria=html_to_blocks(story.fields.get(_ACCEPTANCE) or ""),
         epic_context=_epic_context(epic, feature),
         roadmap_context=html_to_text(epic.fields.get(_DESCRIPTION) or ""),
-        comments=_comments(env.comments),
-        context_stories=_context_stories(story, env.linked_stories, peers),
+        comments=_comments(comments),
+        context_stories=context_stories,
     )
 
 

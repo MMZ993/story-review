@@ -1,1 +1,9 @@
+# Phase 4 story MCP server (D10 dual source). Pinned-compatible with the
+# Runbook-06 spike stack; compiled to requirements.lock with uv pip compile.
 pydantic>=2.13
+mcp[cli]==2.1.1
+google-auth>=2.40
+requests>=2.32  # google.auth.transport.requests import used by the token verifier
+httpx>=0.27  # azure-source REST client + MCP client contract tests
+google-cloud-storage>=2.14  # mock source gs:// dataset location
+uvicorn>=0.31
