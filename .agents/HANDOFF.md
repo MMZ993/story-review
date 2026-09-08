@@ -37,6 +37,9 @@ Session 18 (2026-09-09) — **Phase 4 increment 1 correction**:
 - Independent read-only review: first pass found the missing direct
   `StoryDetail` rejection test and stale docstring; both fixed. Follow-up:
   **Ready to proceed**, no findings.
+- Committed as `9950ae9` (docs-only) and `20ccd90` (implementation + local
+  records). The docs commit was cherry-picked to `docs/initial-frozen` as
+  `5307b70`; no push was performed.
 
 Session 17 (2026-09-09) — **Phase 4 opened** (plan + increment 0):
 - **Frozen-branch reconciliation check** (prior next-step 0): full-tree diff
@@ -353,11 +356,12 @@ cross-checks, test-first red/green, review findings fixed).
   session 15; also recorded in the extensions plan).
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
-- Git: main was **4 ahead of origin** at session start; session-18 changes
-  are uncommitted. The owner still needs to push existing commits after any
-  requested new commits. `docs/initial-frozen` is pushed and
-  reconciled (sole accepted divergence: the `docs/index.md` docs-local
-  pointer from `c5dc040`).
+- Git: `main` is **6 ahead of origin** after session 18 (docs correction
+  `9950ae9`, implementation `20ccd90`, plus four prior commits); the owner
+  must push it. `docs/initial-frozen` is **1 ahead of origin** with the
+  cherry-picked docs correction `5307b70`; the owner must push it too. The
+  sole accepted prior divergence remains the `docs/index.md` docs-local
+  pointer from `c5dc040`.
   Session-16 cherry-picks: `dfbde69`, `7b9975d`, `a787dbe` (hidden-conflict
   row rode along — correct content-wise). Old history note:
   `docs/initial-frozen` = `d5cb413`; superseded hashes `a519899`,
