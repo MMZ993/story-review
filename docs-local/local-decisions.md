@@ -237,3 +237,9 @@ session 16, commit `52534ef`); plan
   (context/ widening vs template folders, expected-file absence) will be
   decided at authoring; the envelope/validator structure above already
   supports them.
+- Comment **personas** (owner, session 16 spike): single anonymized
+  "comment author" — one real user only; the Phase 4 story MCP will likely
+  drop comment authors entirely (revisit `StoryComment.author` then).
+  Comments export evidence: Runbook 08 comments-API spike (preview-only
+  `7.1-preview.4`; az fallback not viable with MSA login; comments key
+  omitted when empty).
