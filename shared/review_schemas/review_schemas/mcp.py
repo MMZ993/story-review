@@ -22,6 +22,7 @@ from review_schemas.base import (
     SaveArtifactType,
     ShortText,
     StoryId,
+    StorySource,
     StrictModel,
     Perspective,
 )
@@ -56,9 +57,11 @@ def expected_content_model(artifact_type: str):
 
 
 class ListStoriesInput(StrictModel):
-    """`list_stories` call: optional short-text story-status filter."""
+    """`list_stories` call: optional short-text story-status filter and
+    optional data-source override (default None = deployment default)."""
 
     filter: ShortText | None = None
+    source: StorySource | None = None
 
 
 class ListStoriesOutput(StrictModel):
@@ -69,9 +72,11 @@ class ListStoriesOutput(StrictModel):
 
 
 class GetStoryInput(StrictModel):
-    """`get_story` call: the dataset story to fetch."""
+    """`get_story` call: the story to fetch (mock `story-NN` or azure
+    `ado-N` id) plus the optional source override."""
 
     story_id: StoryId
+    source: StorySource | None = None
 
 
 class SaveArtifactInput(StrictModel):

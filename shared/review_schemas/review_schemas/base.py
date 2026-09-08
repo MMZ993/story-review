@@ -29,8 +29,14 @@ class StrictModel(BaseModel):
 
 StoryId = Annotated[
     str,
-    StringConstraints(pattern=r"^story-[0-9]{2}$", min_length=8, max_length=8),
+    StringConstraints(
+        pattern=r"^(story-[0-9]{2}|ado-[0-9]{1,8})$", min_length=5, max_length=12
+    ),
 ]
+# `story-NN` = frozen mock dataset; `ado-N` = live Azure DevOps work item
+# (story MCP server dual source). The id spaces never mix within a call or
+# story run.
+StorySource = Literal["azure", "mock"]
 RunId = Annotated[
     str,
     StringConstraints(

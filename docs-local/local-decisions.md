@@ -296,8 +296,9 @@ Owner decisions:
   pinned to one source by the deployment it executes in (compose/demo =
   `mock`, production Cloud Run = `azure`). Session-pinned headers were
   rejected (ADK toolset plumbing, state in a stateless server).
-- **StoryId widened** to `^(story|ado)-[0-9]{1,8}$`: `story-NN` = frozen mock
-  dataset, `ado-N` = live Azure work item; id spaces never mix; cross-source
+- **StoryId widened** to `^(story-[0-9]{2}|ado-[0-9]{1,8})$`: `story-NN` =
+  frozen mock dataset (zero-padded, unchanged), `ado-N` = live Azure work
+  item; id spaces never mix; cross-source
   lookups return `STORY_NOT_FOUND`.
 - **Mock dataset lives in GCS** (`gs://$PROJECT_ID-story-dataset/`), pushed
   from local via `make dataset-push` (stories + context envelopes only,
