@@ -23,6 +23,50 @@ Last updated: 2026-09-09 (session 19 — Phase 4 increment 1 part 1: dual-source
 
 ## Previous Session Summary
 
+Session 20 (2026-09-10) — **Phase 4 increment 1 COMPLETE** (see Verification
+  and Next Steps below; detail also in Runbook 10):
+- **`shared/ado_wire` extraction (D9 amendment 6, commit `23b2ab1`)**:
+  cheap-model subagent assessed first (tests-untouched hypothesis held),
+  implementation subagent did the split move — `WorkItem`/`WorkItemComment`
+  (verbatim) to new shared package `ado-wire` 0.1.0 (pydantic only);
+  `StoryEnvelope` + dataset aliases stay in `dataset_loader`, which
+  re-exports the moved models. All existing test dirs byte-identical. New
+  `make ado-wire-test` (7 tests).
+- **Story MCP server (commit `b2124be`)**: `backlog.py` (id spaces
+  `story-NN`/`ado-N`, status filter, source resolution), `mock_source.py`
+  (directory or `gs://` location, in-memory prep at startup, fail-loud),
+  `azure_source.py` (live ADO REST: PAT, WIQL + workitemsbatch +
+  `$expand=all` + comments; `httpx.MockTransport` fixtures, no network in
+  tests; 404→STORY_NOT_FOUND, transient→UPSTREAM_UNAVAILABLE retryable),
+  `errors.py` (ToolError payloads, correlation id from `X-Correlation-Id`),
+  `server.py` (mcp 2.1.1 `MCPServer` — FastMCP was renamed; tools
+  `list_stories`/`get_story` with flat schemas matching the shared models;
+  unknown-field rejection via raw call arguments —
+  `context.request_context.params["arguments"]` is a Mapping KEY; every
+  failure = structured ToolError with is_error), `auth.py` (spike-pattern
+  ID-token middleware, `/healthz` public, missing audience + auth on → 503
+  fail-closed, `STORY_AUTH_DISABLED=1` local switch), `app.py`/`main.py`
+  (env-driven stateless Streamable HTTP wiring). `prepare.py` extracted
+  `prepare_work_item`/`context_story_from_work_item` cores
+  behavior-identically (goldens stayed byte-stable). story-mcp 0.2.0.
+- **Infra pieces**: Dockerfile (root context; ships `story_mcp`,
+  `review_schemas`, `ado_wire`, `dataset/loader` code-only + build-time
+  guard banning `dataset/stories`/`dataset/expected` content); container
+  smoke over real HTTP passed (healthz + tools/list; bad location aborts
+  startup loudly); `dataset/tools/push_dataset.py` + `make dataset-push`
+  (48 objects: 45 stories + 3 context; `--dry-run` verified; bucket
+  bootstrap stays at increment 5).
+- **repository-layout.md amended** (owner decision a): Dockerfiles may copy
+  the `dataset/loader` CODE, never dataset content — main `ad841b3`, frozen
+  cherry-pick `2a29f71`.
+- **Increment-1 independent review**: first pass Needs fixes (2 Important:
+  allowlist fail-open on missing env; azure 404-vs-transient conflation) —
+  both fixed same session with regression tests; minors fixed or accepted
+  as-is (documented in Runbook 10). **Owner decision: Cloud Run deploys
+  stay at increment 5 per plan (option 1); increments 2–4 local first.**
+- Runbook 10: increment 1 part 1b + part 2 entries with evidence and mcp
+  2.1.1 gotchas (commit `b938c3a`).
+
 Session 19 (2026-09-09) — **Phase 4 increment 1, part 1: dual-source design +
 preparation**:
 - **D10 design change (owner-driven)**: story MCP server gets a dual data
@@ -259,6 +303,18 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 20:
+- Test-first per module (red confirmed: `story_mcp.backlog`/`mock_source`/
+  `app` ModuleNotFoundError; azure fixture tests red on missing module).
+- Suites at close: `review-schemas-test` **154**, `ado-wire-test` **7**,
+  `dataset-test` **36**, `mcp-story-test` **67** (21 prep/golden + 10
+  backlog + 7 mock-source + 9 azure-fixture + 20 server-contract).
+  `git diff --check` clean; Docker build + container smoke passed.
+- Increment-1 review (schema + server): Needs fixes → fixed → re-verified
+  (67 green incl. two regression tests). Findings detail in Runbook 10.
+- ado_wire refactor verified by the implementing subagent AND the main
+  session (all four suites re-run independently).
+
 Session 19:
 - Test-first throughout: flattener red (`ModuleNotFoundError: story_mcp`),
   prepare red (`No module named 'story_mcp.prepare'`), schema red (missing
@@ -368,23 +424,21 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Phase 4 increment 1, part 2 — story MCP server** (plan
-   `docs-local/plans/phase-4-mcp-servers.md`, rescoped for D10): server
-   (`server.py`: FastMCP Streamable HTTP, stateless), source abstraction
-   (mock: directory or `gs://` location; azure: live REST via PAT — not
-   exercised by local tests, recorded fixtures only), tools
-   `list_stories`/`get_story` with `source` default + override, error
-   taxonomy `ToolError(ErrorBody)`, spike-pattern ID-token middleware
-   (local-profile off switch), contract tests against the ASGI app,
-   dataset-agnostic Dockerfile + build-time no-dataset check,
-   `make dataset-push` upload script (bucket itself at increment 5).
-   Test-first; then the **increment-1 independent review** covering the
-   schema change too (deferred from part 1).
-2. Phase 4 increments 2–5 follow the plan (artifact → report → compose →
-   Cloud Run deploy/smoke; Runbook 10 accumulates evidence). Increment 5
-   also: story-dataset bucket bootstrap (Terraform) + PAT secret.
-3. Extension 2 (linked context stories) mock data — deferred by owner;
-   structure is codified; authoring later is pure data preparation.
+1. **Phase 4 increment 2 — artifact MCP server** (plan
+   `docs-local/plans/phase-4-mcp-servers.md`): `GcsArtifactService` with
+   injectable endpoint (fake-gcs-server locally, real GCS in Cloud Run),
+   tools `save_artifact`/`get_artifact`/`list_artifacts` with lineage
+   scoping, `(story_run_id, type, idempotency_key)` idempotency +
+   `IDEMPOTENCY_KEY_REUSED`, immutability, `(type, perspective, version)`
+   ordering + `is_latest`, facilitator read-only (save forbidden);
+   contract tests against fake GCS; Dockerfile (no dataset). Reuse the
+   session-20 story-server patterns (server/auth/app wiring, mcp 2.1.1
+   gotchas in Runbook 10).
+2. Increments 3 (report server, PDF library decision) and 4 (compose +
+   cross-service contract tests = exit gate #1) follow.
+3. Increment 5: Cloud Run deploys + smoke, story-dataset bucket bootstrap
+   (Terraform, plan-before-apply), PAT secret (owner-created), `make
+   dataset-push` against the real bucket.
 
 ## Important Notes
 
@@ -394,10 +448,11 @@ cross-checks, test-first red/green, review findings fixed).
   session 15; also recorded in the extensions plan).
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
-- Git: **owner push pending from session 19** — local `main` +5
-  (`37309db`, `7521c81`, `336ea8e`, `61acc3f`, `542569f`, plus this
-  wrap-up commit) and `docs/initial-frozen` +2 (`5ab7380`, `7eb9cec`);
-  check `git status -sb` before assuming the remote is current.
+- Git: **owner push pending from session 20** — local `main` +3 (`ad841b3`
+  docs amend, `b2124be` story server, `b938c3a` runbook) plus the wrap-up
+  commit, and `docs/initial-frozen` +1 (`2a29f71`). Session-19 push was
+  confirmed done by the owner. Check `git status -sb` before assuming the
+  remote is current.
   Session-16 cherry-picks: `dfbde69`, `7b9975d`, `a787dbe` (hidden-conflict
   row rode along — correct content-wise). Old history note:
   `docs/initial-frozen` = `d5cb413`; superseded hashes `a519899`,
