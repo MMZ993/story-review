@@ -275,3 +275,42 @@ story does not carry its expected review outcome. The dataset envelope's
 for the Phase 9 runner only; story preparation must never map or return it.
 `shared/review_schemas` is version 0.3.0; its contract test rejects a public
 story payload containing `quality_class`.
+
+## D10 — Story MCP server dual data source (production Azure, mock GCS)
+
+Owner-approved 2026-09-09 (session 19), ahead of Phase 4 increment 1. The
+owner wants the story MCP server to have a **real production path** (live
+Azure DevOps) alongside the mock dataset used for testing and demos. This is
+a design change, applied to `docs/design/` (schemas.md StorySource + widened
+StoryId, mcp-servers.md "Dual data source", mock-data.md GCS publication,
+repository-layout/deployment/tech-stack dataset-agnostic images,
+connectivity-identity PAT secret) as separate atomic docs commits
+(cherry-picked to `docs/initial-frozen`).
+
+Owner decisions:
+
+- **Selection mechanism (option a)**: optional `source` field
+  (`azure`|`mock`, default `None` = deployment `STORY_SOURCE` env) on
+  `ListStoriesInput`/`GetStoryInput`; explicit override is orchestration-only
+  and transparent to agents. The server stays stateless; a story run is
+  pinned to one source by the deployment it executes in (compose/demo =
+  `mock`, production Cloud Run = `azure`). Session-pinned headers were
+  rejected (ADK toolset plumbing, state in a stateless server).
+- **StoryId widened** to `^(story|ado)-[0-9]{1,8}$`: `story-NN` = frozen mock
+  dataset, `ado-N` = live Azure work item; id spaces never mix; cross-source
+  lookups return `STORY_NOT_FOUND`.
+- **Mock dataset lives in GCS** (`gs://$PROJECT_ID-story-dataset/`), pushed
+  from local via `make dataset-push` (stories + context envelopes only,
+  never `dataset/expected/`); local tests/compose use a directory location
+  instead of the bucket. Images are fully dataset-agnostic (no Dockerfile
+  copies `dataset/`) — supersedes the D9-amendment-4 baked-image working
+  assumption; startup preparation in memory is unchanged.
+- **Azure path**: live REST (WIQL list, `workitems/{id}?$expand=all` +
+  comments API get; the Runbook-09-proven REST access), PAT from Secret
+  Manager, egress to dev.azure.com. Owner reuses the existing `rest-verify`
+  PAT (Work Items: Read) from gitignored `infra/envs/ado.env`; at increment 5
+  it moves into Secret Manager for the deployed service (owner may rotate it
+  into a dedicated token then).
+- **Evaluation guard**: evaluation and regression runs always use `mock`;
+  `azure` is production/demo only (content drift would invalidate
+  `dataset/expected/`).
