@@ -1,0 +1,21 @@
+[project]
+name = "artifact-mcp"
+version = "0.1.0"
+description = "Phase 4 artifact MCP server: GCS-backed artifact store (lineage-scoped, idempotent, immutable) + save/get/list tools."
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.13",
+    "mcp[cli]>=2.1",
+    "review-schemas",
+    "google-auth>=2.40",
+    "requests>=2.32",
+    "google-cloud-storage>=2.14",
+    "uvicorn>=0.31",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["artifact_mcp"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

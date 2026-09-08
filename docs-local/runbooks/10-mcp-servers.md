@@ -225,3 +225,91 @@ Gotchas learned:
   is 42–45); malformed X-Correlation-Id replaced, not rejected.
 - Repository-layout.md amended for the code-only `dataset/loader` image
   copy: main `ad841b3`, frozen cherry-pick `2a29f71` (owner decision (a)).
+
+## Increment 2 — artifact MCP server (local, fake GCS; no cost)
+
+**Status: DONE** (session 21, 2026-09-10).
+
+What was built (test-first, package `mcp_servers/artifact/`, uv package
+`artifact-mcp` 0.1.0):
+
+- `storage.py` — `GcsArtifactService` over `google-cloud-storage` with an
+  injectable endpoint (fake-gcs-server locally, real GCS in Cloud Run —
+  same code path). Object layout `runs/<run>/artifacts/<art-id>.json`
+  (record + canonical content) and `runs/<run>/idem/<type>/<key>` (key →
+  artifact id). Immutability via generation-0 preconditions on both writes.
+  **Claim-before-write order** for crash safety: the idempotency key is
+  claimed first, so a crash between claim and record leaves an orphaned
+  key whose retry writes the missing record (test covers it) instead of a
+  duplicate version. Version = max+1 per (type, perspective) — assumes
+  orchestration serializes saves per run (documented in code). `list`
+  sorts by (type, perspective, version), paginates, flags `is_latest`.
+- `server.py` — `MCPServer("artifact")` with `save_artifact` /
+  `get_artifact` / `list_artifacts` over the shared input models;
+  per-tool allowlists (`save` = orchestration only, reads = orchestration
+  ∪ facilitator; `CallerRoles`); unknown-field rejection via raw call
+  arguments (Runbook-10 gotcha); input validation with
+  `model_validate(..., strict=False)` — wire JSON carries UUIDs as
+  strings and the strict models reject those instances otherwise.
+- `errors.py` — ToolError mapping incl. `ARTIFACT_NOT_FOUND`,
+  `IDEMPOTENCY_KEY_REUSED` (both non-retryable), `PreconditionFailed` →
+  retryable UPSTREAM_UNAVAILABLE, last-resort internal errors
+  **non-retryable**.
+- `auth.py` — spike-pattern ID-token middleware (env renamed
+  `ARTIFACT_*`); `app.py`/`main.py` env-driven stateless wiring —
+  `ARTIFACT_BUCKET` (validated non-empty at build; empty would otherwise
+  fail opaquely at the first tool call), `ARTIFACT_GCS_ENDPOINT`,
+  `ARTIFACT_SERVICE_URL`, `ARTIFACT_AUTH_DISABLED`,
+  `ARTIFACT_{ORCHESTRATION,FACILITATOR}_CALLERS` (both fail-closed as
+  empty sets when unset, same semantics as the story fix).
+- Dockerfile (root context; ships `artifact_mcp` + `review_schemas`
+  code-only + the dataset-absence guard). Container smoke over real HTTP:
+  healthz OK against a fake-gcs endpoint.
+- Makefile `mcp-artifact-test`: starts `fsouza/fake-gcs-server:latest`
+  (port 9023, readiness-checked with explicit failure), runs pytest with
+  `ARTIFACT_TEST_GCS_ENDPOINT`, tears the container down on exit.
+
+Evidence (local, session 21): `make mcp-artifact-test` **32 passed**
+(14 storage + 13 server/contract + 5 ingress); other suites re-run green
+(review-schemas 154, dataset 36, story 67, ado-wire 7); Docker build +
+container healthz smoke OK; `git diff --check` clean.
+
+Gotchas learned:
+
+- `RunId`/`ArtifactId` are dashed-uuid ids (`run-{uuid}` / `art-{uuid}`,
+  40 chars) — `.hex` forms are one char short of the pattern minimums.
+- Strict shared models reject their own JSON round trip (`strict=True`
+  refuses string datetimes/UUIDs) — revalidate persisted records with
+  `model_validate(..., strict=False)`.
+- The StreamableHTTP session manager `.run()`s once per app instance —
+  contract tests must build a **fresh app per round trip** (hit as
+  "RuntimeError: can only be called once per instance").
+- fake-gcs-server listens on **4443** by default (`-scheme http` only
+  switches the scheme, not the port); it *does* enforce
+  `ifGenerationMatch=0` (returns PreconditionFailed 412).
+- `_new_reference` briefly ignored the claimed artifact id (regenerated
+  its own) — retries created "duplicate" records under new ids; caught by
+  the retry test, fixed by threading the id through.
+
+**Independent read-only review** (subagent): first pass **Needs fixes** —
+3 Important, 6 Minor. Fixed same session:
+
+- Important: lost idempotency race with identical content raised
+  IDEMPOTENCY_KEY_REUSED instead of returning the winner (retry poisoned);
+  claim-loss now falls through to checksum comparison.
+- Important: crash window between record write and key claim could
+  duplicate versions; claim order reversed (see above) + orphan-key test.
+- Important: `internal_error` was retryable (default flipped during the
+  port) — against "retry hints only where safe"; now non-retryable
+  (regression test).
+- Minor fixed: `STORY_AUTH_DISABLED` copy-paste in the auth docstring;
+  string-matched PreconditionFailed branch → `isinstance` with
+  `google.cloud.exceptions`; five ingress middleware tests ported (401
+  missing/invalid token, 503 missing audience, healthz public, verified
+  allowlisted caller succeeds); fake-gcs readiness loop now fails
+  explicitly; empty `ARTIFACT_BUCKET` rejected at app build.
+- Minor documented in code, not changed: `_run_references` downloads full
+  records per list/save (O(run × content) — capstone-scale acceptable);
+  version assignment assumes orchestration is the serialized writer per
+  run; auth middleware remains a story-server copy (extraction candidate
+  if the report server needs a third copy — increment 3 decision).

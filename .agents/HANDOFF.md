@@ -1,9 +1,8 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-09 (session 19 — Phase 4 increment 1 part 1: dual-source
-  story-server design D10, shared schema 0.4.0, preparation pipeline with
-  45 owner-reviewed golden snapshots; suites 154/21/36 green).
+Last updated: 2026-09-10 (session 21 — Phase 4 increment 2: artifact MCP
+  server, artifact-mcp 0.1.0; suites 154/7/36/67/32 green).
 
 ## Where we are
 
@@ -22,6 +21,36 @@ Last updated: 2026-09-09 (session 19 — Phase 4 increment 1 part 1: dual-source
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 21 (2026-09-10) — **Phase 4 increment 2 COMPLETE** (detail in
+  Runbook 10 §2):
+- **Artifact MCP server** `mcp_servers/artifact/` (uv package
+  `artifact-mcp` 0.1.0): `GcsArtifactService` over google-cloud-storage
+  with injectable endpoint (fake-gcs-server locally, real GCS in Cloud
+  Run — same code path). Object layout `runs/<run>/artifacts/<id>.json`
+  + `runs/<run>/idem/<type>/<key>`; generation-0 preconditions for
+  immutability; **claim-before-write** idempotency (crash window →
+  orphaned key, retry fills the record, no duplicate versions);
+  (type, perspective, version) ordering + pagination + `is_latest`.
+- `server.py` (mcp 2.1.1 `MCPServer`; tools `save_artifact`/
+  `get_artifact`/`list_artifacts`; per-tool allowlists via `CallerRoles` —
+  save orchestration-only, reads + facilitator; input validation
+  `strict=False` because wire UUIDs are strings), `errors.py`
+  (ARTIFACT_NOT_FOUND / IDEMPOTENCY_KEY_REUSED non-retryable;
+  PreconditionFailed retryable; internal errors non-retryable),
+  `auth.py`/`app.py`/`main.py` (spike pattern, `ARTIFACT_*` env;
+  fail-closed allowlists; `ARTIFACT_BUCKET` validated at build).
+- Dockerfile (no dataset + guard); container healthz smoke OK against
+  fake GCS. New `make mcp-artifact-test` (starts fake-gcs-server in
+  Docker on :9023, readiness-checked, tears down after).
+- **Increment-2 independent review**: first pass Needs fixes (3 Important:
+  lost-race idempotency poisoning, claim/record crash window, retryable
+  internal errors) — all fixed same session with regression tests;
+  minors fixed (docstring env name, isinstance PreconditionFailed, five
+  ported ingress tests, readiness failure, bucket validation) or
+  documented in code (full-record downloads per list/save; serialized-
+  writer version assumption; auth middleware still a story copy —
+  extraction candidate at increment 3).
 
 Session 20 (2026-09-10) — **Phase 4 increment 1 COMPLETE** (see Verification
   and Next Steps below; detail also in Runbook 10):
@@ -303,6 +332,17 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 21:
+- Test-first per module (red confirmed: `ModuleNotFoundError: artifact_mcp`
+  for storage tests, `artifact_mcp.app` for server tests).
+- Suites at close: `mcp-artifact-test` **32** (14 storage + 13 server
+  contract + 5 ingress), `review-schemas-test` **154**, `ado-wire-test`
+  **7**, `dataset-test` **36**, `mcp-story-test` **67**. `git diff --check`
+  clean; Docker build + container healthz smoke passed.
+- Increment-2 review (storage + server): Needs fixes → fixed → re-verified
+  (32 green incl. orphan-key and non-retryable-internal regression tests).
+  Findings detail in Runbook 10 §2.
+
 Session 20:
 - Test-first per module (red confirmed: `story_mcp.backlog`/`mock_source`/
   `app` ModuleNotFoundError; azure fixture tests red on missing module).
@@ -424,18 +464,15 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Phase 4 increment 2 — artifact MCP server** (plan
-   `docs-local/plans/phase-4-mcp-servers.md`): `GcsArtifactService` with
-   injectable endpoint (fake-gcs-server locally, real GCS in Cloud Run),
-   tools `save_artifact`/`get_artifact`/`list_artifacts` with lineage
-   scoping, `(story_run_id, type, idempotency_key)` idempotency +
-   `IDEMPOTENCY_KEY_REUSED`, immutability, `(type, perspective, version)`
-   ordering + `is_latest`, facilitator read-only (save forbidden);
-   contract tests against fake GCS; Dockerfile (no dataset). Reuse the
-   session-20 story-server patterns (server/auth/app wiring, mcp 2.1.1
-   gotchas in Runbook 10).
-2. Increments 3 (report server, PDF library decision) and 4 (compose +
-   cross-service contract tests = exit gate #1) follow.
+1. **Phase 4 increment 3 — report MCP server** (plan
+   `docs-local/plans/phase-4-mcp-servers.md`): `render_report` reads the
+   same-run `finalized-review` artifact, renders MD + PDF deterministically
+   (PDF library decision here — image size/determinism), idempotent per
+   (story_run_id, format), saves `report-<format>` artifacts; contract
+   tests incl. byte-identical double renders, wrong-reference/cross-run
+   rejections. Reuse session-21 patterns; decide whether the auth
+   middleware copy gets extracted (third copy would force it).
+2. Increment 4: compose + cross-service contract tests (exit gate #1).
 3. Increment 5: Cloud Run deploys + smoke, story-dataset bucket bootstrap
    (Terraform, plan-before-apply), PAT secret (owner-created), `make
    dataset-push` against the real bucket.
@@ -450,8 +487,9 @@ cross-checks, test-first red/green, review findings fixed).
   pipelines written at promotion (local-decisions.md D3).
 - Git: **owner push pending from session 20** — local `main` +3 (`ad841b3`
   docs amend, `b2124be` story server, `b938c3a` runbook) plus the wrap-up
-  commit, and `docs/initial-frozen` +1 (`2a29f71`). Session-19 push was
-  confirmed done by the owner. Check `git status -sb` before assuming the
+  commit, and `docs/initial-frozen` +1 (`2a29f71`). Session-21 artifact-
+  server work is uncommitted (owner decides commit granularity; likely
+  one increment-2 commit). Check `git status -sb` before assuming the
   remote is current.
   Session-16 cherry-picks: `dfbde69`, `7b9975d`, `a787dbe` (hidden-conflict
   row rode along — correct content-wise). Old history note:
