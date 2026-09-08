@@ -1,19 +1,17 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-09 (session 16 CONTINUED — extension session:
-  comments + context stories; dataset structure
-  codified; comments API spike; 3 t1-only comment stories authored end-to-
-  end incl. expected files + manual plans, 45 stories / 36 tests green;
-  frozen-branch reconciliation check complete).
+Last updated: 2026-09-09 (session 17 — Phase 4 opened: plan written,
+  increment 0 shared-schema catch-up done + reviewed, suite 151 green;
+  frozen-branch reconciliation check closed).
 
 ## Where we are
 
-- Phase: **3 — Mock dataset: COMPLETE** (closed session 16; dataset
-  extensions session ran same day — see below). Dataset now 45 stories
-  (42 core + 3 t1-only comment scenarios), 10 expected files.
-- Next: Phase 4 (MCP servers + compose); extension 2 (linked context
-  stories) mock data still deferred.
+- Phase: **4 — MCP servers + compose: IN PROGRESS** (session 17 opened it:
+  plan + increment 0 done; next = increment 1, story MCP server).
+- Phase 3 COMPLETE (session 16 close). Dataset: 45 stories (42 core + 3
+  t1-only comment scenarios), 10 expected files; extension 2 (linked
+  context stories) mock data deferred.
 - Phase 2 COMPLETE and post-reviewed (session 11, owner-run: independent review
   + 41 negative tests added, suite **147 passed**; commit `2d639b3`).
 - Phase 1 complete: end-to-end trace passed under the D8 ingress fallback; all
@@ -25,64 +23,35 @@ Last updated: 2026-09-09 (session 16 CONTINUED — extension session:
 
 ## Previous Session Summary
 
-Session 16 part 2 (2026-09-09, same day) — **dataset extensions session**
-(comments + linked context stories; plan
-`docs-local/plans/dataset-extensions-comments-linked-stories.md`):
-- `docs/` design changes (owner-approved, docs-only atomic commit
-  `52534ef`): `StoryComment` + `ContextStory` in schemas.md (comments cap
-  50; context_stories cap 5, relation related|depends, own comments;
-  separate list — never merged into the main story); agents.md reviewer
-  input includes both, framing "related items — do not review the linked
-  items"; synthesis unchanged; mcp-servers.md/api-contract.md get_story
-  notes.
-- Dataset structure codified (test-first, D9 amendment 3): envelope
-  `comments` (verbatim sanitized, non-empty text) + `linked_stories`
-  (case-id refs, max 5, unique, loader-enforced resolution + no
-  self-reference); README + local-decisions updated.
-- **Comments API spike** (Runbook 08): comments endpoint is preview-only
-  (`7.1-preview.4`); PAT needs Read&Write (owner widened `rest-verify`, PAT
-  stays); `az rest` cannot auth with MSA login — comments export requires
-  REST mode (loud abort otherwise); API returns newest-first (export sorts
-  chronological); no-comments stories omit the key (42 files byte-stable).
-  Owner decisions: single anonymized "comment author" persona; MCP will
-  likely drop comment authors (revisit StoryComment.author at Phase 4);
-  tmp spike story deleted by owner.
-- **3 comment stories authored end-to-end** (owner-approved, spec
-  `dataset/comments-stories-spec.md` — independently reviewed pre-authoring:
-  2 Important tooling defects caught and fixed — story-id renumbering,
-  silent provenance-heading mismatch): ADO ids 57/58/59 (story-43/44/45,
-  t1-only branch in story_id_for; core numbering untouched), 3 comments
-  each; expected files comments-benign (clean arc, comment-invariance),
-  comments-clarify-business (engineering-weak arc, business positive via
-  comments), comments-complete-engineering (clean arc via comments);
-  manual plans for all three; re-export verified (45+3, identifier checks
-  clean, exported_at-only diffs reverted); `docs/quality/mock-data.md`
-  scenario rows added (docs-only commit `9b430ce`).
-- Owner scope decisions: comment case stories T1-only; C-2/C-3 arcs per
-  plan; **extension 2 (linked-stories) mock data deferred** — only the
-  data structure is codified.
+Session 17 (2026-09-09) — **Phase 4 opened** (plan + increment 0):
+- **Frozen-branch reconciliation check** (prior next-step 0): full-tree diff
+  `docs/initial-frozen main -- docs/` shows exactly one divergence — the
+  `docs/index.md` docs-local pointer from `c5dc040`. Owner decision: leave
+  it (home-phase cross-reference, not design). Both branches pushed by owner.
+- **Phase 4 plan written**: `docs-local/plans/phase-4-mcp-servers.md`
+  (increments 0–5; commit `cf48512`).
+- **Increment 0 done (test-first, commit `6452b15`)**:
+  `shared/review_schemas` 0.2.0 — `StoryComment` + `ContextStory` added to
+  `StoryDetail` exactly per schemas.md (code catching up to the session-16
+  design change); re-exports + package-install test updated (that test pins
+  version AND exact `__all__` — same-change update required).
+- **Owner decisions recorded (D9 amendment 4, local-decisions.md)**:
+  `StoryComment.author` KEPT (maps the anonymized persona; no docs change);
+  preparation at SERVER STARTUP in memory (HTML flattening + ADO→StoryDetail
+  mapping table; images dataset-agnostic; golden snapshots pin output);
+  PDF library deferred to increment 3.
+- **Runbook 10 opened** (`docs-local/runbooks/10-mcp-servers.md`) with
+  increment-0 evidence + gotchas; `docs-local/runbook.md` evidence log
+  updated.
+- **Independent read-only review** of increment 0: Ready to proceed,
+  0 Critical/Important, 1 Minor (runbook test-count wording) — fixed.
 
-Session 16 part 1 (2026-09-09) — **Phase 3 CLOSED**. Independent read-only
-subagent completion review of the dataset + expected files (contract
-boundary): verdict **Ready to close** — 0 Critical/Important, 3 Minor
-doc-drift findings, all fixed same session: (1) `docs/quality/mock-data.md`
-§Expected-file contract + `evaluation-tests.md` still described per-case
-files — realigned to the scenario-canonical contract (semantic-stub
-findings, invariance block, loader expansion), committed docs-only/atomic
-(`5e35128`) per the new cherry-pick rule; (2) story-templates.md matrix
-paragraph now lists seven scenarios incl. hidden-conflict; (3)
-canonical-facts.md provenance cross-references t5-enabler-spec (T5 ids
-42–48). Reviewer re-verified: 42 stories + 3 context, sanitization clean
-across all 111 dataset files, story_id template-major sequence, loader
-vocabulary-consistent with review_schemas, suites 28 + 147 green.
-Phase 3 marked done in development-plan.md; Runbook 09 evidence updated.
-Owner rule recorded (HANDOFF + extensions plan): commits touching `docs/`
-must be separate and atomic — no mixing with code/dataset/docs-local —
-so they can be cherry-picked onto `docs/initial-frozen`. Clarified with
-owner: reviewers' story-input contract (StoryDetail + agents.md input)
-lives in `docs/` and today covers title/description/AC/epic_context/
-roadmap_context; comments + context_stories are the extension session's
-owner-approval design changes.
+Session 16 (2026-09-09, two parts) — Phase 3 CLOSED (completion review
+Ready-to-close, 3 Minor doc-drift fixed) + dataset extensions session
+(comments + linked context stories: docs/ design changes, dataset structure
+codified, comments API spike, 3 t1-only comment stories authored end-to-end
+incl. expected files + manual plans, 45 stories / 36 tests green). Detail in
+Runbooks 08–09 and git history.
 
 Session 15 (2026-09-08) — Runbook 09 **increments 3 + 4 DONE — runbook
 COMPLETE** (phase-completion review pending). Increment 3: expected files
@@ -254,6 +223,14 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 17:
+- `make review-schemas-test`: **151 passed** (147 + 4 new behavior tests,
+  red-first ImportError on `ContextStory`); `make dataset-test`:
+  **36 passed** (untouched).
+- Independent read-only subagent review of increment 0: **Ready to
+  proceed**, 0 Critical/Important, 1 Minor (runbook test-count wording,
+  fixed same session).
+
 Session 16:
 - Extension authoring: `make dataset-test` **36 passed** (42→45 counts,
   matrix core-grid + t1-only, t1-only validator, 4 stale-count tests
@@ -329,24 +306,16 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-0. ~~Frozen-branch reconciliation check~~ DONE (session 16 continuation):
-    full-tree diff `git diff docs/initial-frozen main -- docs/` shows exactly
-    one divergence — the `docs/index.md` "Local (home) development phase"
-    pointer to `docs-local/` from `c5dc040` (session 12). Owner decision:
-    **leave it** as the sole intentional divergence (home-phase cross-reference,
-    not a design change — does not belong on the frozen design record).
-    All four later docs/ commits confirmed in sync via cherry-picks. Both
-    branches pushed by owner.
-1. **Phase 4 (MCP servers + compose)**: story MCP serves verbatim from
-   `dataset/stories/` (D9) — now 45 stories incl. comments; hosted demo
-   uploads the JSON files to the Google-hosted mock endpoint; expected
-   files stay out of runtime images. At Phase 4: revisit
-   `StoryComment.author` (likely dropped at MCP level) and the D9
-   fidelity/trimming decision against the verbatim export.
-2. Extension 2 (linked context stories) mock data — deferred by owner;
-   structure is codified (envelope `linked_stories`, docs ContextStory);
-   authoring later is pure data preparation (context-only story placement
-   decision pending, see the plan's open decisions).
+1. **Phase 4 increment 1 — story MCP server** (plan
+   `docs-local/plans/phase-4-mcp-servers.md`): preparation module
+   (envelope → `StoryDetail` per the D9-amendment-4 mapping table, HTML
+   flattening, golden snapshots over all 45 files), then `list_stories` /
+   `get_story` tools with spike-pattern auth wiring, error taxonomy,
+   Dockerfile (copies `dataset/stories/` only). Test-first per increment.
+2. Phase 4 increments 2–5 follow the plan (artifact → report → compose →
+   Cloud Run deploy/smoke; Runbook 10 accumulates evidence).
+3. Extension 2 (linked context stories) mock data — deferred by owner;
+   structure is codified; authoring later is pure data preparation.
 
 ## Important Notes
 
@@ -356,15 +325,13 @@ cross-checks, test-first red/green, review findings fixed).
   session 15; also recorded in the extensions plan).
 - Deployment pipeline stance: none yet — local scripts + runbook only;
   pipelines written at promotion (local-decisions.md D3).
-- Git: main is PUSHED (owner, incl. all session-16 commits).
-  `docs/initial-frozen` cherry-picks done (owner-requested, session 16):
-  `dfbde69` expected-file contract, `7b9975d` comments+context contract,
-  `a787dbe` comment scenarios (conflict resolved: the hidden-conflict row
-  from session 14 had never been cherry-picked and rode along — correct
-  content-wise). Branch pushed by owner (2026-09-09, after the
-  reconciliation check). Sole accepted divergence vs main in `docs/`:
-  the `docs/index.md` docs-local pointer from `c5dc040` (see Next Steps 0).
-  Old history note:
+- Git: main is **3 ahead of origin** after session 17 (`cf48512` plan,
+  `6452b15` schema, `68c08cf` handoff) plus the wrap-up chore commit —
+  **owner still needs to push**. `docs/initial-frozen` is pushed and
+  reconciled (sole accepted divergence: the `docs/index.md` docs-local
+  pointer from `c5dc040`).
+  Session-16 cherry-picks: `dfbde69`, `7b9975d`, `a787dbe` (hidden-conflict
+  row rode along — correct content-wise). Old history note:
   `docs/initial-frozen` = `d5cb413`; superseded hashes `a519899`,
   `bcd1c1b`, `dadd2e1`, `9482e6a`, `649f7c4` were from the rewrite era.
   Check `git status -sb` before assuming the remote is current — tracking
