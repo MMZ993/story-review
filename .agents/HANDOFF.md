@@ -1,14 +1,15 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-10 (session 23 — Phase 4 increment 4: local compose +
-  cross-service contract tests; suites 154/7/36/67/32/7/34 + compose 20 green).
+Last updated: 2026-09-10 (session 24 — main PC: merged dev-server session 23;
+  Phase 4 increment 5 COMPLETE — Cloud Run deploys + smoke green, exit gate #2).
 
 ## Where we are
 
-- Phase: **4 — MCP servers + compose: IN PROGRESS** (increments 0–4 done
-  locally; remaining: increment 5, Cloud Run deploys + smoke — needs the
-  owner's main PC with cloud access).
+- Phase: **4 — implementation COMPLETE** (increments 0–5 done; both exit gates
+  green). Remaining for phase close: independent review + owner-approved
+  commits/push. Then Phase 5 (agents + ADK adapters, `local-agents` compose
+  profile).
 - Phase 3 COMPLETE (session 16 close). Dataset: 45 stories (42 core + 3
   t1-only comment scenarios), 10 expected files; extension 2 (linked
   context stories) mock data deferred.
@@ -22,6 +23,22 @@ Last updated: 2026-09-10 (session 23 — Phase 4 increment 4: local compose +
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 24 (2026-09-10, main PC — full cloud access; detail in Runbook 10 §5):
+- Merged `dev-server/session-23` (increment 4) into main (merge commit);
+  added repo-scoped ignore for `deploy/env/.env`; fixed runbook port-binding
+  prose; created local `WORKING_ENVIRONMENT.md` per the new AGENTS.md step 0.
+- **Phase 4 increment 5 COMPLETE (exit gate #2)**: `infra/modules/mcp-service`
+  + three Cloud Run services (spike pattern: D8 ingress, ID-token audience
+  fail-closed, two-step apply, min instances 0); storage-module fixes
+  (report SA grants matched to the real `runs/` layout — D11, runs-tree
+  lifecycle 90d, story-dataset bucket); `deploy/cloud-run/{story,artifact,
+  report}/deploy.sh` + `.env.example`; `deploy/cloud-run/smoke/` + Makefile
+  `mcp-*-deploy`/`mcp-*-smoke` (impersonated sa-orchestration ID tokens,
+  sandbox-only tokenCreator grant via `smoke_user_email`); `make
+  dataset-push` (48 objects). All three smokes green (story/artifact/report).
+- Also fixed pre-existing Makefile bug: `dataset-push` used `guard-project`
+  as a prerequisite (a recipe define) — would have failed.
 
 Session 23 (2026-09-10, dev server — env-restricted session; detail in
   Runbook 10 §4):
@@ -393,6 +410,21 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 24:
+- terraform validate + fmt-check green; every apply owner-run on a reviewed
+  targeted plan (Cloud SQL untouched throughout — stayed STOPPED).
+- Smoke green on Cloud Run (sanitized evidence in Runbook 10 §5): story
+  (45 stories + detail + STORY_NOT_FOUND), artifact (save/get roundtrip),
+  report (md render from live-saved finalized review across both services).
+- Independent read-only subagent review of the increment-5 diff: **Ready to
+  proceed**; 1 Important (audience-as-plain-env deviation unrecorded → D12
+  added) + 5 Minor — all fixed same session (smoke null-URL guards,
+  smoke-script cleanups); all three smokes re-run green after the fixes.
+- `make db-status` STOPPED at start and end; cost state: 3 Cloud Run
+  services min-0, near-empty buckets. Added `make artifacts-purge`
+  (owner-run, confirmation-gated) for dev hygiene; Cloud Run needs no
+  up/down (scale-to-zero).
+
 Session 23:
 - Red→green for the gotcha fix: `make mcp-artifact-test` 32 errors
   (DefaultCredentialsError) → **32 passed**; `make mcp-report-test` 26
@@ -552,16 +584,15 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Commit session-23 work** (owner decides): natural split — one
-   `feat:` commit for the ADC fix + compose + contract suite, one
-   `docs-local:` runbook/HANDOFF commit; then owner pushes (also carries
-   `9441ef8`).
-2. **Phase 4 increment 5 — Cloud Run deploys + smoke** (owner's main PC:
-   cloud access required): `deploy/cloud-run/{story,artifact,report}/`
-   deploy.sh + .env.example per the spike pattern; story-dataset bucket
-   bootstrap (Terraform, plan-before-apply); PAT secret (owner-created);
-   `make dataset-push` against the real bucket; smoke targets. Exit
-   gate #2, then phase completion review.
+1. **Commit + push this session's work** (owner decides): natural split —
+   (a) already-merged increment 4 + the merge + gitignore/runbook chore
+   (merge commit `060d387`, chore `eb8e81f` exist locally, unpushed);
+   (b) `feat:` increment 5 (infra module, storage fixes, deploy scripts,
+   smoke, Makefile, dataset-push fix); (c) `docs-local:` runbook 10 §5 +
+   D11 + HANDOFF. Azure PAT secret value still owner-created-when-needed
+   (story server deployed with `STORY_SOURCE=mock` for evaluation).
+2. **Phase 4 close**: independent read-only subagent review of the
+   increment-5 diff, then phase completion review per development-plan.
 3. Phase 5 opens after Phase 4 close (agents + ADK adapters,
    `local-agents` compose profile).
 

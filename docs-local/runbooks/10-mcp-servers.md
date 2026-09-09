@@ -501,3 +501,99 @@ stack + suite re-verified green (20 passed, clean up/down):
   `--env-file env/.env` — added for consistency.
 - Minor: `story` service gated on `gcs-init` despite never touching GCS
   — dependency removed.
+
+## Increment 5 — Cloud Run deploys + smoke (write actions, exit gate #2)
+
+Session (main PC — full cloud access, terraform state, ADC). All tier-2
+actions owner-approved in chat; commands below use `$PROJECT_ID` from
+`infra/envs/home.env`. Evidence sanitized: service URLs shown as
+`<mcp-story-url>` etc.
+
+### Docs-first findings fixed along the way (owner-approved)
+
+Two gaps between `infra/modules/storage` and the phase-4 server code:
+
+1. **Report SA grants did not match the object layout**: the conditioned
+   objectAdmin used a literal `objects/reports/` prefix, but the report
+   server writes `runs/<run>/reports/` + `runs/<run>/report-idem/` and
+   *reads* `runs/<run>/artifacts/` — as written every render would have
+   failed. Fixed: unconditional `objectViewer` (reads) + conditioned
+   objectAdmin. Final condition: `startsWith('.../objects/runs/')`
+   (see gotcha below) — recorded in local-decisions.
+2. **Lifecycle rule never fired**: `matches_prefix = ["reports/"]` cannot
+   match `runs/<run>/reports/` (GCS prefixes are literal). Owner decision:
+   90-day deletion on the whole `runs/` tree.
+
+Gotcha: GCS resource-name CEL conditions — `.contains()` **fails to
+compile** ("undeclared reference"), and an `extract()`-based mid-path
+condition (`runs/{run}/{kind}/` in list) compiles but **does not grant on
+`storage.objects.create`** (live 403, log-confirmed). Only `startsWith`
+proved reliable. `iam.serviceAccountTokenCreator` on the target SA is
+required for `gcloud auth print-identity-token --impersonate-service-account`
+(the `gcloud iam services generate-id-token` command does not exist).
+
+### Terraform (targeted applies; Cloud SQL stayed STOPPED)
+
+A full plan wanted to flip `activation_policy` NEVER→ALWAYS (restart +
+billing) — drift from `make db-pause`. Avoided with `-target` on every
+increment-5 apply (warning acknowledged; acceptable for this reason).
+
+- New `infra/modules/mcp-service/` (per-service `google_cloud_run_v2_service`
+  + invoker IAM; spike pattern: `INGRESS_TRAFFIC_ALL` per D8, ID-token
+  audience env empty on first apply = fail closed, min instances 0).
+- `infra/main.tf`: `module.mcp_{story,artifact,report}` (count-gated on the
+  image var), env wiring from SA/bucket outputs; story defaults
+  `STORY_SOURCE=mock` + `gs://$PROJECT_ID-story-dataset/stories/`.
+- `module.storage`: fixes above + new story-dataset bucket
+  (`$PROJECT_ID-story-dataset`, EU, UBLA) with objectViewer for
+  sa-story-mcp (pushes run from the owner workstation per D2).
+- `smoke_user_email` var (home.tfvars, gitignored): tokenCreator on
+  sa-orchestration for the owner user — sandbox-only, impersonation for
+  smoke; remove on promotion.
+- Apply evidence (sanitized): `5 to add, 1 to change, 1 to destroy` (storage
+  layer; one mid-apply failure on the CEL compile error, binding re-applied
+  after the fix), then `8 to add` (three services + 5 invoker members),
+  then `3 to change` (audience envs), then `1 to add, 1 to destroy`
+  (condition relaxation). All applies complete; no errors outstanding.
+
+### Deploys + dataset
+
+- `deploy/cloud-run/{story,artifact,report}/deploy.sh` (+ `.env.example`,
+  gitignored `.env` overrides): build from the repo-root Dockerfiles, push
+  to `$ARTIFACT_REGISTRY/mcp-<service>:<ts>-<sha>`. Three images pushed
+  under one tag (20260909-1650-eb8e81f).
+- `make dataset-push`: 48 story/context objects →
+  `gs://$PROJECT_ID-story-dataset/stories/` (expected files never upload).
+
+### Smoke (Makefile `mcp-*-smoke`)
+
+Impersonated sa-orchestration ID token (`gcloud auth print-identity-token
+--impersonate-service-account=... --audiences=<service-url> --include-email`
+— the email claim is required by the ingress verifier) +
+`deploy/cloud-run/smoke/smoke.py` (mcp SDK 2.x client; auth headers go on
+the injected `httpx` client, not `streamable_http_client(headers=...)`).
+Report smoke mints a second artifact-audience token for the seed call.
+
+Evidence (sanitized):
+
+```
+smoke ok: story: 45 stories listed, story-01 detail ok, STORY_NOT_FOUND ok
+smoke ok: artifact: save/get roundtrip ok (run run-<uuid>)
+smoke ok: report: md rendered from live-saved finalized review (run run-<uuid>)
+```
+
+Debug path that led here (all since fixed in the Makefile/smoke script):
+wrong gcloud token surface; missing `--include-email` (verifier requires
+the email claim); mcp 2.x header API; single-audience token reused across
+services; smoke `_payload` now raises on `is_error` with the error code.
+
+### Cost state
+
+Three Cloud Run services (min 0 — idle cost 0), one near-empty dataset
+bucket, artifact bucket ~empty; Cloud SQL remains STOPPED (`make db-status`
+checked at session start and after work).
+
+Dev-hygiene purge (owner-run, destructive, confirmation-gated):
+`make artifacts-purge` deletes everything under
+`gs://$PROJECT_ID-artifacts/runs/` — smoke/test/demo artifacts only; the
+dataset is untouched and re-pushable via `make dataset-push`.
