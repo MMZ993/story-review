@@ -1,0 +1,116 @@
+# Local development stack (Phase 4 increment 4, `local` profile).
+#
+# Three MCP services (story, artifact, report) built from the repository-root
+# Dockerfiles, plus a fake-gcs-server substitute for GCS — per
+# docs/operations/repository-layout.md "Local compose". Service-account
+# ingress checks are disabled ONLY here via the *_AUTH_DISABLED env vars;
+# no other profile or deployment shape may set them.
+#
+# Substitutes (design docs): GCS -> fsouza/fake-gcs-server (buckets
+# pre-created by gcs-init before the servers start, because both the
+# artifact and report servers validate the bucket at startup); the mock
+# story dataset is bind-mounted read-only, never baked into any image.
+#
+# Usage (short commands; long logic lives in the Makefile):
+#   make compose-up      # build + start this profile
+#   make compose-down    # stop and remove
+#
+# Ports and the bucket name are configurable via deploy/env/.env.
+
+name: story-review
+
+services:
+  fake-gcs:
+    image: fsouza/fake-gcs-server:latest
+    command: -scheme http -backend memory
+    # Host-side access only (contract tests, debugging): bind loopback.
+    # Container-to-container traffic uses the compose service DNS
+    # (http://fake-gcs:4443) and never traverses this mapping; the
+    # Runbook-10 0.0.0.0 gotcha applies to *separate* docker-run
+    # containers reaching a host-published port, not to one compose
+    # network.
+    ports:
+      - "127.0.0.1:${FAKE_GCS_PORT:-9025}:4443"
+    profiles: ["local"]
+
+  gcs-init:
+    # Creates the shared artifact bucket before the servers start; the
+    # servers then connect to http://fake-gcs:4443 inside the compose
+    # network (never through the host port).
+    image: python:3.13-slim
+    depends_on:
+      - fake-gcs
+    environment:
+      ARTIFACT_BUCKET: ${ARTIFACT_BUCKET:-artifacts-local}
+    entrypoint:
+      - python
+      - -c
+      - |
+        import os, time, urllib.request, urllib.error
+        bucket = os.environ["ARTIFACT_BUCKET"]
+        url = f"http://fake-gcs:4443/storage/v1/b?project=local"
+        body = f'{{"name": "{bucket}"}}'.encode()
+        for _ in range(60):
+            try:
+                req = urllib.request.Request(
+                    url, data=body, headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req, timeout=2) as resp:
+                    print("bucket created:", resp.status)
+                    break
+            except urllib.error.HTTPError as e:
+                if e.code == 409:  # already exists from a previous run
+                    print("bucket already present")
+                    break
+                raise
+            except (urllib.error.URLError, OSError):
+                time.sleep(0.5)  # fake-gcs not ready yet
+        else:
+            raise SystemExit("fake-gcs-server not ready")
+    profiles: ["local"]
+
+  story:
+    build:
+      context: ..
+      dockerfile: mcp_servers/story/Dockerfile
+    # No gcs-init dependency: the mock source reads the mounted directory
+    # and never touches GCS.
+    environment:
+      STORY_SOURCE: mock
+      STORY_DATASET_LOCATION: /app/dataset-stories
+      STORY_AUTH_DISABLED: "1"
+    volumes:
+      # Mock dataset bind-mounted read-only; images stay dataset-agnostic.
+      - ../dataset/stories:/app/dataset-stories:ro
+    ports:
+      - "127.0.0.1:${STORY_PORT:-8101}:8080"
+    profiles: ["local"]
+
+  artifact:
+    build:
+      context: ..
+      dockerfile: mcp_servers/artifact/Dockerfile
+    depends_on:
+      gcs-init:
+        condition: service_completed_successfully
+    environment:
+      ARTIFACT_BUCKET: ${ARTIFACT_BUCKET:-artifacts-local}
+      ARTIFACT_GCS_ENDPOINT: http://fake-gcs:4443
+      ARTIFACT_AUTH_DISABLED: "1"
+    ports:
+      - "127.0.0.1:${ARTIFACT_PORT:-8102}:8080"
+    profiles: ["local"]
+
+  report:
+    build:
+      context: ..
+      dockerfile: mcp_servers/report/Dockerfile
+    depends_on:
+      gcs-init:
+        condition: service_completed_successfully
+    environment:
+      REPORT_BUCKET: ${ARTIFACT_BUCKET:-artifacts-local}
+      REPORT_GCS_ENDPOINT: http://fake-gcs:4443
+      REPORT_AUTH_DISABLED: "1"
+    ports:
+      - "127.0.0.1:${REPORT_PORT:-8103}:8080"
+    profiles: ["local"]

@@ -35,6 +35,7 @@ import json
 import uuid
 from datetime import UTC, datetime
 
+from google.auth.credentials import AnonymousCredentials
 from google.cloud import storage
 from google.cloud.exceptions import PreconditionFailed
 
@@ -103,7 +104,14 @@ class GcsArtifactService:
     def _bucket(self):
         if self._client is None:
             options = {"api_endpoint": self._endpoint} if self._endpoint else None
-            self._client = storage.Client(project=self._project, client_options=options)
+            # An explicit endpoint means the local fake-GCS profile: no ADC
+            # in that container, and the target accepts anonymous access.
+            credentials = AnonymousCredentials() if self._endpoint else None
+            self._client = storage.Client(
+                project=self._project,
+                client_options=options,
+                credentials=credentials,
+            )
         return self._client.bucket(self._bucket_name)
 
     def save(self, request: SaveArtifactInput) -> SaveArtifactOutput:
