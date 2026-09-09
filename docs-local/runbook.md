@@ -52,6 +52,11 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 
 Append entries: date, phase, what was proven, artifact path / correlation ID.
 
+- 2026-09-12 — Phase 5 — increment 2: engineering-reviewer agent + adapter
+  (reviewer contract extracted to agent_kit.adapter, business adapter
+  re-bound thin); live gate PASS (8 passed). Evidence:
+  `runbooks/11-agents.md` §2.
+
 - 2026-09-12 — Phase 5 — increment 1: business-reviewer ADK agent + local
   adapter + live Vertex gate PASS (8 passed, 2 real model calls); Vertex
   structured-output serving limit recorded as D13 amendment 1 (serving-safe
