@@ -38,7 +38,7 @@
 - `deploy/cloud-sql/run-migrations.sh` applies ordered migrations before an application
   deploy that requires them.
 - FastAPI is reachable via service-account ingress, or via an authenticated demo route
-  for the live demo; root `/healthz` stays unauthenticated.
+  for the live demo; root `/health` stays unauthenticated.
 
 ## Versioning and rollback
 
