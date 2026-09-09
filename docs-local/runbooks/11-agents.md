@@ -58,3 +58,73 @@ Gotchas:
 
 No environment actions were taken this increment (no gcloud/terraform
 calls beyond the read-only session-start `make db-status`: STOPPED/NEVER).
+
+## Increment 1 — business reviewer (ADK agent + adapter + live gate)
+
+**Status: COMPLETE (2026-09-12). Live Vertex gate PASS.**
+
+What landed:
+
+- `agent_kit.reviewer_input` — frozen reviewer request model + deterministic
+  user-message rendering (story JSON, optional previous review, optional PO
+  extra context).
+- `agents/business-reviewer/business_reviewer/agent.py` — ADK `LlmAgent`
+  builder: model/generation settings only from immutable `config.yaml`,
+  instruction only from the prompt file, native `output_schema` structured
+  output.
+- `deploy/compose/adapters/business-reviewer/` — package
+  `business-reviewer-adapter` 0.1.0: `assembly.py` (pure agreement checks —
+  perspective/story-id echo/version-without-previous — plus
+  `agent_version`/`prompt_sha256` stamping), `runner.py` (the only model
+  I/O: fresh single-turn `InMemoryRunner` run + strict parse),
+  `app.py` (FastAPI `POST /invoke` + `GET /health`, `ErrorEnvelope`
+  mapping: 400/422 VALIDATION_ERROR non-retryable, 503
+  UPSTREAM_UNAVAILABLE retryable after ADK retries).
+- Makefile: `business-reviewer-adapter-test` (deterministic) and
+  `business-reviewer-live-test` (sources `home.env`, sets
+  `AGENT_LIVE_TESTS=1` + Vertex env).
+
+Checks (main PC):
+
+- `make agent-kit-test` **21 passed**; `make agents-test` **3×4 passed**;
+  `make business-reviewer-adapter-test` **6 passed, 2 skipped** (live tests
+  skip without the gate env — verified skipped on the deterministic run).
+- **Live gate** `make business-reviewer-live-test` → **8 passed** (~30 s,
+  2 real gemini-2.5-flash calls, europe-west4, via ADC): golden story-01 →
+  schema-valid business `ReviewReport` (`perspective=business`,
+  `story_id=story-01`, correct `prompt_sha256`, content sanity: summary
+  mentions invoice/email); second call with PO extra context →
+  `based_on_extra_context` populated. Cost: 2 flash calls — negligible.
+
+Gotchas learned:
+
+- **Vertex structured-output serving limit (D13 amendment 1)**: the strict
+  `ReviewReport` schema is rejected 400 INVALID_ARGUMENT ("too many states
+  for serving": patterns, array max_lengths, bounded ints). Fixed with the
+  serving-safe mirror in `agent_kit.llm_output`; strict shared validation
+  stays authoritative at the adapter boundary. The failure surfaced
+  correctly as a retryable-looking 503 ErrorEnvelope before the fix —
+  noting that a 400-class model error should map non-retryable eventually
+  (minor, deferred; the generic handler currently lumps model failures).
+- ADK 2.8.0 uses `output_schema` (+`generate_content_config`); the
+  `output_type` parameter is from newer ADK versions.
+- Adapter needs its own pyproject (uv `--with-editable .` requires it);
+  `pytest.ini` must be INI-format (`[pytest] asyncio_mode = auto`), not
+  TOML.
+- FastAPI: return-type union with `JSONResponse` requires
+  `response_model=None` on the route decorator.
+- The mismatch test for `perspective` must use empty findings — the shared
+  model itself rejects E-prefixed findings under a business perspective
+  before the adapter check runs.
+
+Increment-1 independent review (read-only subagent, 2026-09-12):
+**Ready to proceed** — 0 Critical/Important, 6 Minor. Fixed same session:
+runner now concatenates multi-part text (was last-part-wins latent fragility);
+`business_reviewer.__init__` no longer imports `build_agent` eagerly
+(deterministic skeleton tests stay google-adk-free); `ReviewerResponse`
+uses the contract's `ShortText`/`Sha256` annotated types. Deferred minors
+(recorded in HANDOFF): named-but-unmapped local deps in pyprojects are a
+trap for out-of-convention installs; generic 503 handler maps model 400s
+retryable; `previous_review_version` echo not cross-checked against the
+supplied previous review (contract doesn't require it). All suites re-run
+green after the fixes incl. the live gate (8 passed, ~30 s).
