@@ -408,3 +408,16 @@ the synthesis agent, and a separate session-scoped interface for the
 facilitator. Phase 6 orchestration owns input assembly. The approved
 request/response fields are frozen in the Phase 5 increment-0 hand-off spec
 before adapter code is written.
+
+## D14 — Agent packaging: four separate packages + shared agent-kit helper (2026-09-12)
+
+Owner decision at Phase 5 increment 0 implementation start: the four agents
+are four separate uv packages under `agents/<slug>/` (exactly as
+`docs/operations/repository-layout.md` documents — each with its own
+immutable `config.yaml` and `requirements.in`/`lock`, matching the per-unit
+deploy/pipeline layout). The fail-loud `PROMPTS_DIR` loading + SHA-256 and
+strict `config.yaml` parsing live in a new shared package
+`shared/agent_kit` (`agent-kit` 0.1.0), following the established
+`shared/mcp_ingress` pattern. `google-adk` pinned at the spike-proven 2.8.0
+in each agent lock; `temperature: 0.0` / `max_output_tokens: 8192` initial
+generation settings (D13 model: gemini-2.5-flash, europe-west4).

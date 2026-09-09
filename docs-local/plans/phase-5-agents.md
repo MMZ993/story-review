@@ -119,6 +119,11 @@ Recorded outcomes are in `docs-local/local-decisions.md` (D13).
 
 ### 0. Packaging skeleton + invocation interface + open decisions (local)
 
+- Status: in progress (2026-09-12). Packaging decided with the owner as
+  **D14**: four separate packages under `agents/<slug>/` + shared
+  `shared/agent_kit` for PROMPTS_DIR loading/hashing and strict config.yaml
+  parsing.
+
 - Settle the six open decisions above; record them.
 - Draft the **invocation interface contract** (decision 4) as a short spec in
   this plan's appendix or `docs-local/` — it is the Phase 6 hand-off and must

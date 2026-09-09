@@ -52,6 +52,13 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 
 Append entries: date, phase, what was proven, artifact path / correlation ID.
 
+- 2026-09-12 — Phase 5 — increment 0 (in progress): agent packaging decided
+  (D14: four packages + shared agent-kit); `shared/agent_kit` 0.1.0
+  (PROMPTS_DIR loader + strict config.yaml), four agent skeletons with
+  pinned config, minimal functional prompts (owner review pending);
+  agent-kit 12 + agents 3×4 green, review-schemas 154 regression green.
+  Evidence: `runbooks/11-agents.md` §0.
+
 - 2026-09-10 — Phase 4 — increment 3: report MCP server
   (`mcp_servers/report`, `report-mcp` 0.1.0) — deterministic MD/PDF
   rendering (fpdf2, owner decision) of the run's finalized-review artifact,
