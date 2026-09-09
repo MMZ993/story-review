@@ -35,7 +35,13 @@ turns) against the trial credits (near-zero used of zł1,114, expire
   consumer, not a schema author. Any schema gap found during implementation is
   raised with the owner first (docs-first rule), not patched silently.
 - Story MCP server's `get_story` returns `StoryDetail` with comments and
-  context stories (Phase 4) — the reviewer input contract.
+  context stories (Phase 4) — the reviewer input contract. Note: linked
+  context stories exist **only** inside that single `get_story` response —
+  the story MCP server derives them from the internal Azure DevOps work-item
+  relations (Related/Depends). There is deliberately no separate
+  linked-story tool, UI command, or agent-side retrieval step; reviewers
+  receive them as part of the `story` input and never fetch them
+  themselves.
 - ADK available in the local toolchain (mise/uv) at the pinned version;
   Vertex AI reachable via ADC from the machine running live smokes
   (**the owner's main PC — the dev server has no ADC and cannot run live
@@ -44,50 +50,53 @@ turns) against the trial credits (near-zero used of zł1,114, expire
 ## Machine split (learned constraint)
 
 - **Dev server (no cloud access)**: plan docs, prompt authoring, agent code,
-  adapters, compose `local-agents` wiring, all mock-LLM unit tests, reviews.
-- **Main PC (ADC + Vertex)**: every live-verification gate (the actual exit
-  criterion "schema-valid typed output against Vertex AI locally"), and later
-  the Agent Engine deploys (Phase 8, not Phase 5).
+  adapters, compose `local-agents` wiring, deterministic non-LLM tests (such
+  as prompt loading and hashing), reviews.
+- **Main PC (ADC + Vertex)**: all agent-behavior tests and live-verification
+  gates use a real low-cost Gemini model, and later the Agent Engine deploys
+  (Phase 8, not Phase 5).
 
-Each increment below splits its verification into local (mock) and live
-(ADC) gates accordingly.
+Each increment below splits deterministic local checks from real-model ADC
+verification accordingly.
 
-## Open decisions to settle in increment 0 (owner)
+## Increment 0 owner decisions (settled)
 
-1. **Mock-LLM test strategy** on ADC-less machines: ADK's built-in mock LLM /
-  fake model vs a thin scripted stub behind the adapter interface. Working
-  assumption: ADK mock model for unit tests of wiring + a small scripted-stub
-  layer for adapter contract tests; live gates run only on the main PC.
-2. **Model per agent**: Phase 0 evidence is gemini-2.5-flash (europe-west4).
-  One model for all four agents (working assumption — simplicity first,
-  versioned in each `config.yaml` so they can diverge later), or a stronger
-  model for synthesis/facilitator up front? Decide against current Vertex
-  catalogue, token pricing, and the trial-credit budget.
-3. **Structured-output mechanism**: ADK native output-schema enforcement vs
-  prompt-constrained JSON + strict parse. Working assumption: use ADK native
-  structured output where it validates against our strict models; either way
-  the bounded corrective re-prompt loop (observability.md) stays for
-  validation failures and is recorded as an observability event.
-4. **Reviewer invocation interface shape** (deliverable of increment 0, needs
-  owner approval): the exact single-turn call contract orchestration (Phase 6)
-  will use for reviewers/synthesis — input assembly is orchestration's job,
-  so Phase 5 must freeze the interface, not just the implementation:
-  request fields (story `StoryDetail` JSON, optional previous review, optional
-  PO extra context; for synthesis: two latest artifacts one per perspective),
-  response (typed report + agent/prompt version labels), error taxonomy
-  (structured, incl. validation-failure-after-reprompts).
-5. **Facilitator session backend locally**: `DatabaseSessionService` needs
-  PostgreSQL; compose `local` profile already plans a `postgres:16`
-  substitute. Use it for the facilitator adapter from the start (deployed
-  shape parity) vs ADK `InMemorySessionService` in Phase 5 and Postgres in
-  Phase 6. Working assumption: Postgres from the start (same interfaces, no
-  later rework), migrations deferred to Phase 6 (facilitator sessions are
-  runtime state, not the audited application records).
-6. **Prompt review workflow**: prompts are owner-reviewed artifacts (golden-
-  snapshot precedent from Phase 4). Confirm the same one-time owner review
-  per prompt file before first commit.
+1. **LLM test strategy — decided (D13)**: do not mock or script LLM
+  responses. Agent-behavior and adapter tests call a real low-cost Gemini
+  model through Vertex AI on the main PC. Deterministic tests remain limited
+  to non-LLM behavior such as prompt loading and hashing; the dev server does
+  not run agent-behavior tests.
+2. **Model per agent — decided (D13)**: `gemini-2.5-flash` in
+  `europe-west4` for all four agents. Phase 0 already proved it; one model
+  keeps cost and behavior simple. Pin it in each immutable `config.yaml` so
+  later versions can diverge if evidence warrants it.
+3. **Structured-output mechanism — decided (D13)**: use ADK native
+  structured-output enforcement backed by the shared strict Pydantic models.
+  Only malformed facilitator delegation output gets the bounded corrective
+  re-prompt loop from observability.md; it is recorded as an observability
+  event. Reviewer and synthesis output failures follow the normal structured
+  error path after transport retries.
+4. **Reviewer invocation interface shape — decided (D13)**: separate typed
+  single-turn interfaces for each reviewer and synthesis agent; a separate
+  session-scoped interface for the facilitator. Orchestration owns input
+  assembly. The approved request/response fields are frozen in the
+  increment-0 hand-off spec below: story `StoryDetail` (including linked
+  `context_stories`), optional previous review and PO context for reviewers;
+  two latest perspective artifacts for synthesis; typed report plus
+  agent/prompt-version labels; structured errors. Only facilitator
+  delegation-validation exhaustion follows corrective re-prompts.
+5. **Facilitator session backend locally — decided (D13)**: use
+  `DatabaseSessionService` with the compose `postgres:16` substitute from the
+  start, for deployed-shape parity and no later backend rework. Migrations for
+  audited application records remain Phase 6; facilitator sessions are runtime
+  state only in Phase 5.
+6. **Prompt review workflow — decided (D13)**: prompts remain centrally
+  accessible static data in `prompts/`. Create minimal functional initial
+  prompts; the owner reviews all four together before their first commit.
+  Later prompt iterations are evidence-driven once the full application
+  exists, rather than attempting premature prompt optimization in Phase 5.
 
-Recorded outcomes go to `docs-local/local-decisions.md` (expected D13).
+Recorded outcomes are in `docs-local/local-decisions.md` (D13).
 
 ## Deliverables
 
@@ -101,8 +110,8 @@ Recorded outcomes go to `docs-local/local-decisions.md` (expected D13).
 - `deploy/docker-compose.yml` — new `local-agents` profile wiring the
   adapters to the existing `local` MCP stack (story read-only MCP endpoints
   for the facilitator via `McpToolset`; auth disabled local-only as today).
-- Makefile: `agents-test` (or per-agent targets) for the mock-LLM suites,
-  and `agents-live-smoke` (main PC only) for the Vertex gates.
+- Makefile: deterministic non-LLM test targets plus real-model agent test
+  targets (main PC only) for Vertex gates.
 - Runbook 11 (`docs-local/runbooks/11-agents.md`) — commands and evidence
   per increment, sanitized.
 
@@ -118,7 +127,8 @@ Recorded outcomes go to `docs-local/local-decisions.md` (expected D13).
   modules vs four small packages — follow repository-layout.md, decide with
   the owner), `requirements.in`/`lock`, `PROMPTS_DIR` loading + UTF-8/missing
   fail-loud helper, `prompt_sha256` computation.
-- Test-first: loading/hash/shape tests green locally.
+- Test-first: loading/hash/shape tests green locally; agent behavior is
+  tested against the real model on the main PC.
 
 ### 1. Business reviewer (local code + mock tests; live gate on main PC)
 
@@ -127,19 +137,20 @@ Recorded outcomes go to `docs-local/local-decisions.md` (expected D13).
   semantic input; context stories framed as related-reference-only. Owner
   reviews the prompt once before commit.
 - ADK agent, `config.yaml`, typed `ReviewReport` output validated against
-  `shared/review_schemas` (strict) with the bounded corrective re-prompt (max
-  2, distinct from transport retries — observability.md).
-- Adapter behind the frozen invocation interface; mock-LLM unit tests for
-  wiring, validation-failure → re-prompt → structured error.
+  `shared/review_schemas` (strict). Validation failures return structured
+  errors; only normal transport retries apply (observability.md).
+- Adapter behind the frozen invocation interface; real-model tests on the
+  main PC for wiring and structured validation failures.
 - **Live gate (main PC)**: one real call against Vertex AI with a T1 dataset
   story (via the compose story server or the dataset loader directly) →
   schema-valid `ReviewReport`; evidence in Runbook 11.
 
 ### 2. Engineering reviewer (local + live gate)
 
-- Same contract, `prompts/engineering-reviewer.md`: technical completeness,
-  missing behaviors, edge cases, dependencies, risks, unknowns,
-  architectural impact.
+- Same real-model test approach and contract:
+  `prompts/engineering-reviewer.md` covers technical completeness, missing
+  behaviors, edge cases, dependencies, risks, unknowns, and architectural
+  impact.
 - Reuse the increment-1 skeleton; tests mirror it plus prompt-distinctness
   checks. Live gate as increment 1.
 
@@ -149,8 +160,8 @@ Recorded outcomes go to `docs-local/local-decisions.md` (expected D13).
   perspective) — pairing is orchestration's job in Phase 6; the Phase 5 test
   harness assembles pairs, including the single-perspective-re-review pairing.
 - Typed `SynthesisReport`; hidden-conflict scenario (zero per-perspective
-  findings, contradiction flagged in synthesis) is a required test case —
-  drafted with a mock LLM locally, proven live on the main PC.
+  findings, contradiction flagged in synthesis) is a required real-model test
+  case on the main PC.
 
 ### 4. Facilitator + `local-agents` compose profile (local + live gate)
 
@@ -162,7 +173,8 @@ Recorded outcomes go to `docs-local/local-decisions.md` (expected D13).
   compose `local` stack; no report tools.
 - Typed `FacilitatorTurnOutput` (reply + `DelegationDecision` +
   `ResolutionDraft`s) with strict validation; invalid combinations rejected;
-  bounded corrective re-prompting recorded as counters.
+  malformed delegation output gets at most two corrective re-prompts, recorded
+  as counters.
 - Session-scoped runs per decision 5 (Postgres substitute in compose).
 - `local-agents` profile in `deploy/docker-compose.yml` + Makefile wiring;
   adapter contract tests over the interface.
@@ -174,10 +186,11 @@ Recorded outcomes go to `docs-local/local-decisions.md` (expected D13).
 
 ## Verification gates
 
-- Every increment: test-first, mock-LLM suites green locally; existing suites
+- Every increment: test-first deterministic non-LLM checks locally and
+  real-model agent-behavior tests on the main PC; existing suites
   (review-schemas, dataset, mcp-*, compose contract) stay green (Phase 4
   suite counts are the baseline).
-- Live gates run on the main PC only; sanitized evidence into Runbook 11;
+- Vertex gates run on the main PC only; sanitized evidence into Runbook 11;
   identifier check before any commit containing evidence.
 - Independent read-only subagent review per increment and before phase
   close (Phase 2/3/4 pattern), plus the owner's one-time prompt reviews.
@@ -225,3 +238,46 @@ evidence in Runbook 11.
   (azure path stays out of Phases 5–7)
 - `shared/review_schemas` (typed outputs), `mcp_servers/story` +
   `mcp_servers/artifact` (facilitator toolset targets)
+
+## Appendix — frozen local-adapter invocation contract (increment 0)
+
+All adapter request and response DTOs are strict Pydantic models. The adapters
+are local representations of the Agent Engine invocation boundary; they do not
+change the shared domain schemas. Orchestration assembles every request and
+persists outputs.
+
+### Reviewers
+
+Each reviewer adapter exposes one single-turn invocation. Its request contains:
+
+- `story: StoryDetail` — including `context_stories` when linked stories exist;
+- `previous_review: ReviewReport | None`; and
+- `extra_context: Text | None`.
+
+Its response contains `report: ReviewReport`, `agent_version: ShortText`, and
+`prompt_sha256: Sha256`. Reviewers have no MCP tools. Invalid typed output is a
+structured error after normal transport retries; it does not cause a corrective
+model re-prompt.
+
+### Synthesis
+
+The synthesis adapter exposes one single-turn invocation. Its request contains
+the latest business and engineering pairs, each consisting of a `ReviewReport`
+and its `ArtifactReference`; both references must belong to one story run. Its
+response contains `report: SynthesisReport`, `agent_version: ShortText`, and
+`prompt_sha256: Sha256`.
+
+### Facilitator
+
+The facilitator adapter exposes a session-scoped turn invocation. Its request
+contains `session_id: SessionId`, `turn_number`, the PO message when applicable,
+the latest synthesis report and its `ArtifactReference`, and the
+lineage-scoped `ArtifactReference` values available for evidence reads. Its
+ADK session state is held in PostgreSQL. The configured MCP tools are read-only
+story and artifact tools; the facilitator never invokes reviewers or synthesis
+as tools. Its response contains `output: FacilitatorTurnOutput`,
+`agent_version: ShortText`, and `prompt_sha256: Sha256`.
+
+For all adapters, failures use the existing `ErrorEnvelope` taxonomy. Only a
+malformed facilitator delegation output receives up to two corrective
+re-prompts; exhaustion returns `DELEGATION_VALIDATION`.
