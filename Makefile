@@ -115,7 +115,7 @@ compose-down: ## Stop the local development stack (Phase 4)
 compose-contract-test: ## Phase 4 cross-service contract tests over HTTP (needs compose-up)
 	for i in $$(seq 1 60); do \
 		ok=1; for port in $(STORY_PORT) $(ARTIFACT_PORT) $(REPORT_PORT); do \
-			curl -sf http://127.0.0.1:$$port/healthz >/dev/null || ok=0; \
+			curl -sf http://127.0.0.1:$$port/health >/dev/null || ok=0; \
 		done; [ $$ok = 1 ] && break; sleep 1; \
 	done; \
 	cd tests/contract && \

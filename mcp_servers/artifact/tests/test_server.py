@@ -283,7 +283,7 @@ def _ingress_post(app):
     return asyncio.run(scenario())
 
 
-def _ingress_get(app, path="/healthz"):
+def _ingress_get(app, path="/health"):
     import asyncio
 
     async def scenario():
@@ -312,7 +312,7 @@ def test_missing_audience_fails_closed(make_app):
     )
 
 
-def test_healthz_is_public(make_app):
+def test_health_is_public(make_app):
     assert _ingress_get(_authed(make_app, _fake_verifier(ORCH))).status_code == 200
 
 

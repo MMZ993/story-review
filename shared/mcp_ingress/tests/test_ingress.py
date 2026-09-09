@@ -1,7 +1,7 @@
 """Middleware behavior tests (pure ASGI — no web framework needed).
 
 Covers the fail-closed contract from mcp-servers.md cross-cutting concerns:
-/healthz stays public, missing audience with auth on is 503, missing or
+/health stays public, missing audience with auth on is 503, missing or
 invalid tokens are 401, and a verified token sets the principal contextvar
 for downstream tool handlers. Async coroutines run via `asyncio.run` — the
 plugin-free convention shared with the MCP server test suites.
@@ -76,10 +76,10 @@ def harness():
     return _build
 
 
-def test_healthz_is_public(harness) -> None:
+def test_health_is_public(harness) -> None:
     h = harness()
-    h.call(_scope("/healthz"))
-    assert h.app.responses, "/healthz must bypass token verification"
+    h.call(_scope("/health"))
+    assert h.app.responses, "/health must bypass token verification"
 
 
 def test_missing_audience_fails_closed_503(harness) -> None:

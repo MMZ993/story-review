@@ -286,7 +286,7 @@ def _ingress_post(app):
     return asyncio.run(scenario())
 
 
-def _ingress_get(app, path="/healthz"):
+def _ingress_get(app, path="/health"):
     async def scenario():
         transport = httpx2.ASGITransport(app=app)
         async with httpx2.AsyncClient(
@@ -315,7 +315,7 @@ def test_missing_audience_fails_closed(make_app):
     assert _ingress_post(app).status_code == 503
 
 
-def test_healthz_is_public(make_app):
+def test_health_is_public(make_app):
     app = IdTokenAuthMiddleware(make_app(None), _fake_verifier(ORCH), "https://report.test")
     assert _ingress_get(app).status_code == 200
 

@@ -1,7 +1,7 @@
 """ASGI application wiring for the story MCP service.
 
 Composes the MCP server (Streamable HTTP, stateless), the configured data
-sources, `/healthz`, and the ID-token ingress middleware (adapted from the
+sources, `/health`, and the ID-token ingress middleware (adapted from the
 Runbook-06 spike). The container entrypoint (`main.py`) runs this app with
 uvicorn.
 
@@ -63,8 +63,8 @@ def build_app(
 
     mcp = server.mcp()
 
-    @mcp.custom_route("/healthz", methods=["GET"])
-    async def healthz(request) -> JSONResponse:
+    @mcp.custom_route("/health", methods=["GET"])
+    async def health(request) -> JSONResponse:
         return JSONResponse({"status": "ok"})
 
     resolved_host = http_host or _host_from_url(os.environ.get("STORY_SERVICE_URL", ""))
