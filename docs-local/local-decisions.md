@@ -334,3 +334,32 @@ no longer need the loader for wire models (`prepare.py` still imports
 `StoryEnvelope` from `dataset_loader` for the mock path); the D10
 images-carry-no-dataset-content rule is unchanged and enforced by the
 build-time check.
+
+### D11 — report MCP bucket scope and runs-tree lifecycle (2026-09-10, increment 5)
+
+Owner-approved deviation from connectivity-identity.md's "objectAdmin
+scoped to a report prefix": GCS IAM resource-name conditions cannot express
+mid-path wildcards (`runs/<run>/reports/`). `.contains()` fails CEL
+compilation; an `extract()`-based condition compiles but does not grant on
+`storage.objects.create` (live-verified 403). sa-report-mcp therefore gets
+unconditional `objectViewer` (it must read finalized-reviews under
+`runs/<run>/artifacts/`, which the old binding also missed) plus
+`objectAdmin` conditioned on `startsWith('.../objects/runs/')` — the whole
+runs tree, not just report prefixes. Accepted residual risk: the report
+service *could* write artifact-prefix objects; mitigated by it being an
+internal, orchestration-only-called service, and both servers share the
+bucket by design. Same constraint resolved the lifecycle rule: the 90-day
+deletion now covers the whole `runs/` tree (artifacts are per-run data
+too). If a future prefix-precise mechanism appears, tighten both.
+
+### D12 — MCP service URLs/audiences as plain Terraform env, not Secret Manager (2026-09-10, increment 5)
+
+connectivity-identity.md lists "MCP endpoints and audiences" among runtime
+values that live in Secret Manager. The increment-5 implementation injects
+each service's audience (`*_SERVICE_URL`) as a plain Terraform var →
+container env var instead: a Cloud Run service URL is not a secret (it is
+unusable without a valid ID token), and the two-step apply pattern (URL
+known only after the first apply) is materially simpler with a plain var
+than with Secret Manager round-trips. Owner-approved with the review
+finding; revisit on production promotion if the doc's shape is mandatory
+there.
