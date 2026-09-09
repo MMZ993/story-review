@@ -1,3 +1,5 @@
 # Runtime dependency inputs for the agent_kit package.
 # Lock is compiled with: uv pip compile requirements.in -o requirements.lock
+# review-schemas installs by staged local path at deploy and --with-editable
+# in tests (same convention as the MCP servers).
 pyyaml>=6.0
