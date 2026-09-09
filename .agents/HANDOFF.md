@@ -1,15 +1,21 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-10 (session 25 CLOSED — `/healthz`→`/health` rename,
-  Cloud Run redeployed, smokes green; commits pushed + frozen cherry-pick done).
+Last updated: 2026-09-11 (session 26 CLOSED — Phase 4 completion review
+  Ready-to-close, phase marked complete; Phase 5 plan merged and committed;
+  commits pending owner push).
 
 ## Where we are
 
-- Phase: **4 — implementation COMPLETE** (increments 0–5 done; both exit gates
-  green). Remaining for phase close: independent review + owner-approved
-  commits/push. Then Phase 5 (agents + ADK adapters, `local-agents` compose
-  profile).
+- Phase: **5 — Agents (ADK) + local adapters — OPEN, plan ready, increment 0
+  not started**. Plan at `docs-local/plans/phase-5-agents.md` (merged
+  best-of-both: dev-server draft + main-PC draft). Six increment-0 owner
+  decisions pending (mock-LLM strategy, model per agent, structured-output
+  mechanism, invocation interface, facilitator session backend, prompt
+  review workflow).
+- Phase 4 **COMPLETE and CLOSED** (session 26, 2026-09-11): independent
+  completion review Ready-to-close; D10 amendment 7 recorded (azure/
+  Secret-Manager wiring deferred to Phase 8); development-plan updated.
 - Phase 3 COMPLETE (session 16 close). Dataset: 45 stories (42 core + 3
   t1-only comment scenarios), 10 expected files; extension 2 (linked
   context stories) mock data deferred.
@@ -23,6 +29,33 @@ Last updated: 2026-09-10 (session 25 CLOSED — `/healthz`→`/health` rename,
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 26 (2026-09-11, main PC):
+- **Phase 4 completion review (independent read-only subagent, diff
+  `68c08cf..616064b`): Ready-to-close.** 0 Critical; 1 Important (azure/
+  Secret-Manager deferral unrecorded — fixed as **D10 amendment 7** in
+  local-decisions.md: deferred to Phase 8, Phases 5–7 need nothing from it);
+  4 Minor, all accepted-as-is notes (internal_error→UPSTREAM_UNAVAILABLE
+  mapping per taxonomy; observability.md RENDER_FAILED phrasing ambiguity —
+  implementation matches schemas.md, one-line docs clarification someday;
+  lock-pinned `httpx2` fork in smoke.py deliberate; documented artifact-store
+  scale/serialization limits).
+- All suites re-run green at close: review-schemas 154, ado-wire 7, dataset
+  36, mcp-ingress 7, mcp-story 67, mcp-artifact 32, mcp-report 34, compose
+  contract 20 (stack up→down; gotcha reminder: `compose-contract-test`
+  needs `make compose-up` first). Cloud SQL STOPPED throughout.
+- Phase 4 marked COMPLETE in development-plan.md; completion-review section
+  added to Runbook 10.
+- **Phase 5 plan**: a draft already existed as an *uncommitted file on the
+  dev server* (owner-authored during session 23's machine; fetched via scp,
+  compared with the fresh main-PC draft). Merged best-of-both into
+  `docs-local/plans/phase-5-agents.md`: dev-server base (machine split,
+  increments 0–4 per agent, frozen invocation-interface spec, Postgres
+  session backend from start, mock-LLM strategy, prompt owner-review) +
+  main-PC additions (structured-output decision, risks section, cost notes,
+  references, D13). Dev-server copy deleted by the owner.
+- Commits: `80744e0` (phase 4 close-out), `67e7523` (phase 5 plan) — plus
+  `616064b` (session-25 close) = **main ahead 3, owner push pending**.
 
 Session 25 (2026-09-10, main PC; detail in Runbook 10 follow-up section):
 - Owner-driven manual curl session against the deployed story service led to
@@ -431,6 +464,12 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 26:
+- Completion review verdict Ready-to-close (findings above); Important fixed
+  same session (D10 amendment 7).
+- All suites green (154/7/36/7/67/32/34/20); compose stack up→down clean;
+  `make db-status` STOPPED at start and end.
+
 Session 25:
 - Test-first red confirmed in all four suites (401 / PUBLIC_PATHS mismatch),
   then green: mcp-ingress **7**, story **67**, artifact **32**, report **34**;
@@ -617,14 +656,22 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Phase 4 close**: phase completion review per development-plan (the
-   increment-5 independent review is already done and green).
-2. Phase 5 opens after Phase 4 close (agents + ADK adapters,
-   `local-agents` compose profile).
-3. Optional hardening candidate for a later increment: put the
+1. **Owner push**: main is ahead 3 (`616064b`, `80744e0`, `67e7523`). No
+   docs/ changes this session — no frozen cherry-pick needed.
+2. **Phase 5 increment 0**: settle the six open decisions in
+   `docs-local/plans/phase-5-agents.md` (mock-LLM strategy; model per agent —
+   Phase 0 evidence gemini-2.5-flash europe-west4; structured-output
+   mechanism; invocation-interface spec; facilitator session backend;
+   prompt review workflow) → record D13, then skeleton + interface spec.
+3. Optional hardening candidate (later increment): move the
    `mcp_*_service_url` audiences into `home.tfvars` so image-update applies
    cannot silently wipe them (runbook gotcha, session 25).
+4. Someday-minor: one-line clarification of RENDER_FAILED retryability
+   phrasing in docs/design/observability.md (atomic docs commit + frozen
+   cherry-pick if done).
 
+Session-26 commits (owner push pending): `80744e0` (phase 4 close-out),
+   `67e7523` (phase 5 plan); plus session-25's `616064b`.
 Session-25 pushes (owner, done): main `830e789`/`28b2774`/`2a7a5e6` pushed;
    `830e789` cherry-picked onto `docs/initial-frozen` and pushed.
 
