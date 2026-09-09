@@ -32,7 +32,7 @@ Conventions:
 | `POST /api/v1/sessions/{session_id}/turns` | `TurnRequest` | `TurnResponse` | One PO action; may finalize. |
 | `POST /api/v1/sessions/{session_id}/finalize` | empty body | `ReportResponse` | Finalization retry (flow 3). |
 | `GET /api/v1/sessions/{session_id}/report` | path `session_id` | `ReportResponse` | Regenerate signed report URLs. |
-| `GET /healthz` | none | health flags | Liveness; downstream reachability. |
+| `GET /health` | none | health flags | Liveness; downstream reachability. |
 
 ### Stories (browse, before a session exists)
 
@@ -183,7 +183,7 @@ code `REPORT_NOT_READY` (not completed). Never changes session state.
 
 | Method & path | Purpose |
 |---|---|
-| `GET /healthz` | liveness; downstream reachability flags |
+| `GET /health` | liveness; downstream reachability flags |
 
 ## Status-code summary
 
