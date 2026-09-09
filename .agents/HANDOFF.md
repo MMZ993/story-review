@@ -1,8 +1,8 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-10 (session 24 — main PC: merged dev-server session 23;
-  Phase 4 increment 5 COMPLETE — Cloud Run deploys + smoke green, exit gate #2).
+Last updated: 2026-09-10 (session 25 — main PC: `/healthz`→`/health` rename
+  after GFE interception discovery; Cloud Run redeployed + smokes green).
 
 ## Where we are
 
@@ -23,6 +23,27 @@ Last updated: 2026-09-10 (session 24 — main PC: merged dev-server session 23;
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 25 (2026-09-10, main PC; detail in Runbook 10 follow-up section):
+- Owner-driven manual curl session against the deployed story service led to
+  the discovery that **the Google frontend intercepts the literal path
+  `/healthz` on `*.run.app` hostnames** (container logs proved exact-path
+  requests never reach uvicorn; `/healthz/` → 307 did). Owner decision:
+  rename the public health path to `/health`.
+- Rename implemented test-first: `mcp-ingress` **0.1.1** (`PUBLIC_PATHS =
+  {"/health"}` — version bump required: the story test target installs the
+  package non-editable and uv served the cached 0.1.0 wheel), three servers'
+  custom routes, Makefile compose wait, `tests/contract/conftest.py`.
+- Redeployed: three images rebuilt/pushed (`20260909-180[12]-353f3b4`),
+  image content verified pre-apply, owner-run targeted applies. Two apply
+  gotchas hit and recorded in the runbook: (1) an image-update apply must
+  also pass the `mcp_*_service_url` -vars or the audiences get wiped →
+  fail-closed 503; (2) placeholder text pasted into `-var` values plans fine
+  and fails at apply. All three smokes green on the new revision; manual
+  `curl /health` → `{"status":"ok"}`; Cloud SQL stayed STOPPED throughout.
+- `docs/design/api-contract.md` + `docs/operations/deployment.md` updated to
+  `GET /health` (atomic docs commit; **cherry-pick to `docs/initial-frozen`
+  pending — owner**).
 
 Session 24 (2026-09-10, main PC — full cloud access; detail in Runbook 10 §5):
 - Merged `dev-server/session-23` (increment 4) into main (merge commit);
@@ -410,6 +431,18 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 25:
+- Test-first red confirmed in all four suites (401 / PUBLIC_PATHS mismatch),
+  then green: mcp-ingress **7**, story **67**, artifact **32**, report **34**;
+  compose rebuilt + `make compose-contract-test` → **20 passed**;
+  `git diff --check` clean; identifier check on the diff clean.
+- Cloud Run: all three smokes green post-redeploy (story/artifact/report);
+  `make db-status` STOPPED NEVER at start and end; manual authed
+  `GET /health` → `{"status":"ok"}` on all inputs.
+- No independent review this session (small mechanical rename + docs;
+  review threshold per development-rules not met — no schema/gate/security
+  logic change beyond a public-path constant).
+
 Session 24:
 - terraform validate + fmt-check green; every apply owner-run on a reviewed
   targeted plan (Cloud SQL untouched throughout — stayed STOPPED).
@@ -584,16 +617,16 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Push** (owner): local main is ahead of origin by 6 commits — the
-   dev-server session-23 work (merge `060d387`), chore `eb8e81f`, feat
-   `fb3cd77` (increment 5) and docs `bf55e8b` (runbook/D11/D12/HANDOFF).
-   Azure PAT secret value still owner-created-when-needed (story server
-   deployed with `STORY_SOURCE=mock` for evaluation).
+1. **Push** (owner) + **cherry-pick the docs commit onto
+   `docs/initial-frozen`** (the `GET /health` api-contract/deployment
+   change) and push that branch too.
 2. **Phase 4 close**: phase completion review per development-plan (the
-   increment-5 independent review is already done and green — see
-   Verification).
+   increment-5 independent review is already done and green).
 3. Phase 5 opens after Phase 4 close (agents + ADK adapters,
    `local-agents` compose profile).
+4. Optional hardening candidate for a later increment: put the
+   `mcp_*_service_url` audiences into `home.tfvars` so image-update applies
+   cannot silently wipe them (runbook gotcha, session 25).
 
 ## Important Notes
 

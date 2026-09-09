@@ -597,3 +597,81 @@ Dev-hygiene purge (owner-run, destructive, confirmation-gated):
 `make artifacts-purge` deletes everything under
 `gs://$PROJECT_ID-artifacts/runs/` — smoke/test/demo artifacts only; the
 dataset is untouched and re-pushable via `make dataset-push`.
+
+## Follow-up — `/healthz` unreachable on `*.run.app` (renamed to `/health`)
+
+Owner-driven manual curl session against the deployed story service (read-only
+diagnostics, all evidenced live):
+
+- `POST /mcp` (initialize, sa-orchestration token) → 200; `GET /mcp` → 200
+  SSE; unauthenticated `POST /mcp` → 403 at the Cloud Run IAM edge (expected,
+  fail-closed design).
+- `GET /healthz` → Google-styled 404 HTML **with or without a token**, while
+  `GET /healthz/` → 307 (Starlette redirect) and `GET /xyz` → app-level 404.
+  Container request logs show `/xyz`, `/mcp`, `/healthz/`, `/Healthz`
+  arriving at uvicorn — but **no request for exactly `/healthz` ever reaches
+  the container**.
+
+Root cause: the Google frontend intercepts the literal path `/healthz` on
+`*.run.app` hostnames (reserved for Google's own health-check infrastructure)
+and answers 404 itself. Not an application defect — the same image serves
+`/healthz` fine in compose.
+
+Owner decision: rename the public health path to `/health`.
+
+- `shared/mcp_ingress` **0.1.1**: `PUBLIC_PATHS = {"/health"}` (+ docstring).
+  Version bump is required, not cosmetic: the story test target installs the
+  package non-editable (`--with ../../shared/mcp_ingress`) and uv serves the
+  cached 0.1.0 wheel — the renamed-path test stayed red until the bump.
+- Three servers: `@mcp.custom_route("/health")` + handler renamed
+  `health`; Makefile compose wait and `tests/contract/conftest.py`
+  `wait_healthy` now poll `/health`.
+- Test-first: `test_health_is_public` flipped in all four suites, confirmed
+  red (401 / PUBLIC_PATHS mismatch), then green: mcp-ingress 7, story 67,
+  artifact 32, report 34; compose rebuilt + `make compose-contract-test`
+  → 20 passed.
+- `docs/design/api-contract.md` + `docs/operations/deployment.md` updated to
+  `GET /health` (separate atomic docs commit; cherry-pick to frozen pending).
+- Manual curl recipe (owner-requested, works as-is post-rename):
+
+```
+SVC=story
+URL=$(terraform -chdir=infra output -json mcp_services | jq -r ".$SVC.url")
+TOKEN=$(gcloud auth print-identity-token \
+  --impersonate-service-account=sa-orchestration@${PROJECT_ID}.iam.gserviceaccount.com \
+  --audiences="$URL" --include-email)
+curl -s -H "Authorization: Bearer $TOKEN" "$URL/health"
+curl -s -X POST "$URL/mcp" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+```
+
+Gotchas learned: stateless deployments issue no `Mcp-Session-Id` (skip the
+handshake dance in manual curl); impersonated ID tokens expire ~1h; the
+`/healthz` interception is per-hostname-path at GFE level (query params and
+casing do not help — only a different path works).
+
+Redeployment executed (owner-run applies; plan built by the agent, read-only,
+with the owner pasting outputs):
+
+- Images rebuilt + pushed: `mcp-story:20260909-1801-353f3b4`,
+  `mcp-artifact` / `mcp-report:20260909-1802-353f3b4`. Image content verified
+  pre-apply (`docker run --entrypoint grep` on the pushed tag: `/health`
+  present, `healthz` gone) — docker layer cache is content-keyed, so fully
+  CACHED builds were safe.
+- **Apply gotcha (bitten once)**: an image-update targeted apply MUST also
+  pass the `mcp_*_service_url` -vars (audiences live only in `-var`, not in
+  tfvars — the second step of the two-step apply pattern). An apply without
+  them wipes `*_SERVICE_URL` to empty → middleware fail-closed → smoke fails
+  with `503` from uvicorn (and the env churn WAS visible in the plan as
+  `value = ... -> null`; do not dismiss it as rendering noise). Fix: re-apply
+  with the URLs from `terraform output mcp_services`.
+- Also bitten: pasting literal `<placeholder>` text into `-var` values —
+  terraform plans happily against them and the apply 400s at Cloud Run. The
+  plan file is a zip; inspect real values with
+  `python3 -c "import zipfile,re; ..."` or check the plan text for `<`
+  brackets before applying.
+- Post-apply verification: `make db-status` → STOPPED NEVER (targeted apply
+  kept Cloud SQL out); all three smokes green on the new revision
+  (story 45 stories + detail + STORY_NOT_FOUND; artifact save/get roundtrip;
+  report md render from live-saved finalized review).
