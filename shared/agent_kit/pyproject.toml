@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "pyyaml>=6.0",
+    "fastapi>=0.115",
+    "google-adk==2.8.0",
     "review-schemas",
 ]
 

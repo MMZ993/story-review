@@ -14,7 +14,8 @@ ARTIFACT_PORT  ?= $(if $(_artifact_port),$(_artifact_port),8102)
 REPORT_PORT    ?= $(if $(_report_port),$(_report_port),8103)
 
 .PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-ingress-test mcp-story-test mcp-artifact-test mcp-report-test dataset-push agent-kit-test agents-test \
-	business-reviewer-adapter-test business-reviewer-live-test compose-up compose-down compose-contract-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
+	business-reviewer-adapter-test business-reviewer-live-test \
+	engineering-reviewer-adapter-test engineering-reviewer-live-test compose-up compose-down compose-contract-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -142,6 +143,27 @@ business-reviewer-live-test: ## Phase 5: business-reviewer real-model gate (main
 		--with-editable ../../../../shared/agent_kit \
 		--with-editable ../../../../shared/review_schemas \
 		--with-editable ../../../../agents/business-reviewer \
+		--with-editable . python -m pytest tests -q
+
+engineering-reviewer-adapter-test: ## Phase 5: engineering-reviewer adapter deterministic tests (no LLM)
+	cd deploy/compose/adapters/engineering-reviewer && \
+	PROMPTS_DIR=$$PWD/../../../../prompts \
+	uv run --no-project --with-requirements tests/requirements.lock \
+		--with-editable ../../../../shared/agent_kit \
+		--with-editable ../../../../shared/review_schemas \
+		--with-editable ../../../../agents/engineering-reviewer \
+		--with-editable . python -m pytest tests -q
+
+engineering-reviewer-live-test: ## Phase 5: engineering-reviewer real-model gate (main PC, ADC + Vertex)
+	source infra/envs/home.env && \
+	cd deploy/compose/adapters/engineering-reviewer && \
+	PROMPTS_DIR=$$PWD/../../../../prompts \
+	AGENT_LIVE_TESTS=1 GOOGLE_GENAI_USE_VERTEXAI=true \
+	GOOGLE_CLOUD_PROJECT=$$PROJECT_ID GOOGLE_CLOUD_LOCATION=$$REGION \
+	uv run --no-project --with-requirements tests/requirements.lock \
+		--with-editable ../../../../shared/agent_kit \
+		--with-editable ../../../../shared/review_schemas \
+		--with-editable ../../../../agents/engineering-reviewer \
 		--with-editable . python -m pytest tests -q
 
 compose-up: ## Local development stack (Phase 4 `local` profile)

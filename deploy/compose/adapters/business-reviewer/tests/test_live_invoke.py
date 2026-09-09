@@ -16,7 +16,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from agent_kit.prompts import load_prompt
-from business_reviewer_adapter.app import create_app
+from business_reviewer_adapter import create_app
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("AGENT_LIVE_TESTS") != "1"

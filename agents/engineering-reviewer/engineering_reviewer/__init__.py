@@ -1,4 +1,4 @@
-"""Engineering perspective reviewer agent — Phase 5 skeleton (slug, immutable config)."""
+"""Engineering-perspective reviewer agent — Phase 5 (slug, immutable config)."""
 
 from __future__ import annotations
 
