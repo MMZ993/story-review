@@ -7,17 +7,25 @@ file fully before acting.
 
 ## Session catch-up order (fresh session)
 
-0. **Cloud SQL cost check**: run `make db-status` (read-only). If the instance
-   is RUNNING and no work in the session needs the database, remind the owner
-   to `make db-pause`. At session wrap-up, if the DB is RUNNING, remind the
-   owner to pause it (`make db-pause`) unless the next session needs it live.
-1. This file.
-2. `.agents/HANDOFF.md` — current phase, what is done, what is next.
-3. `docs-local/development-plan.md` — phased plan detail.
-4. `docs-local/runbook.md` + `docs-local/runbooks/` — what has been executed and
+0. **Local environment**: try to read [WORKING_ENVIRONMENT.md](WORKING_ENVIRONMENT.md)
+   if it exists (it may not — it is local-only and gitignored). It describes
+   the current machine's working environment: what is available (credentials,
+   terraform state, env files, tools) and what is not, and any environment-specific
+   rules. **Never commit, stage, or delete this file** — it relates only to the
+   computer it lives on. If absent, assume nothing about the environment beyond
+   this AGENTS.md.
+1. **Cloud SQL cost check** (only if the local environment has cloud access): run
+   `make db-status` (read-only). If the instance is RUNNING and no work in the
+   session needs the database, remind the owner to `make db-pause`. At session
+   wrap-up, if the DB is RUNNING, remind the owner to pause it (`make db-pause`)
+   unless the next session needs it live.
+2. This file.
+3. `.agents/HANDOFF.md` — current phase, what is done, what is next.
+4. `docs-local/development-plan.md` — phased plan detail.
+5. `docs-local/runbook.md` + `docs-local/runbooks/` — what has been executed and
    evidenced so far.
-5. `docs-local/local-decisions.md` — home-phase decisions (D1–D5).
-6. `docs/` design set — only the sections relevant to the current task; the reading
+6. `docs-local/local-decisions.md` — home-phase decisions (D1–D5).
+7. `docs/` design set — only the sections relevant to the current task; the reading
    order is in `docs/index.md`.
 
 The git history is the authoritative record of what changed; runbooks are the
