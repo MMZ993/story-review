@@ -4,8 +4,16 @@
 PROJECT_ID ?= $(shell sed -nE 's/^export PROJECT_ID="?([^"]+)"?.*/\1/p' infra/envs/home.env 2>/dev/null)
 REGION     ?= europe-west4
 SMOKE_MODEL ?= gemini-2.5-flash
+# Port defaults mirror deploy/env/.env (the compose stack's own config);
+# both must agree when ports are changed.
+_story_port := $(shell sed -nE 's/^STORY_PORT=([0-9]+).*/\1/p' deploy/env/.env 2>/dev/null)
+_artifact_port := $(shell sed -nE 's/^ARTIFACT_PORT=([0-9]+).*/\1/p' deploy/env/.env 2>/dev/null)
+_report_port := $(shell sed -nE 's/^REPORT_PORT=([0-9]+).*/\1/p' deploy/env/.env 2>/dev/null)
+STORY_PORT     ?= $(if $(_story_port),$(_story_port),8101)
+ARTIFACT_PORT  ?= $(if $(_artifact_port),$(_artifact_port),8102)
+REPORT_PORT    ?= $(if $(_report_port),$(_report_port),8103)
 
-.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-ingress-test mcp-story-test mcp-artifact-test mcp-report-test dataset-push compose-up compose-down terraform-plan terraform-apply db-pause db-resume db-status
+.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-ingress-test mcp-story-test mcp-artifact-test mcp-report-test dataset-push compose-up compose-down compose-contract-test terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -97,11 +105,22 @@ mcp-report-test: ## Phase 4: report MCP render + contract tests (fake GCS in Doc
 		--with-editable ../../shared/mcp_ingress \
 		python -m pytest tests -q
 
-compose-up: ## Local development stack (Phase 4+)
-	@echo "compose-up: stub — defined when MCP services land (Phase 4)"
+compose-up: ## Local development stack (Phase 4 `local` profile)
+	[ -f deploy/env/.env ] || cp deploy/env/.env.example deploy/env/.env
+	cd deploy && docker compose --profile local --env-file env/.env up -d --build
 
-compose-down: ## Stop the local development stack (Phase 4+)
-	@echo "compose-down: stub — defined when MCP services land (Phase 4)"
+compose-down: ## Stop the local development stack (Phase 4)
+	cd deploy && docker compose --profile local --env-file env/.env down
+
+compose-contract-test: ## Phase 4 cross-service contract tests over HTTP (needs compose-up)
+	for i in $$(seq 1 60); do \
+		ok=1; for port in $(STORY_PORT) $(ARTIFACT_PORT) $(REPORT_PORT); do \
+			curl -sf http://127.0.0.1:$$port/healthz >/dev/null || ok=0; \
+		done; [ $$ok = 1 ] && break; sleep 1; \
+	done; \
+	cd tests/contract && \
+	uv run --no-project --with-requirements requirements.lock \
+		python -m pytest . -q
 
 terraform-plan: ## Review plan for the home environment
 	terraform -chdir=infra plan -var-file=envs/home.tfvars -out=home.tfplan

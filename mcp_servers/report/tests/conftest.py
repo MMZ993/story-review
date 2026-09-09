@@ -17,6 +17,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from google.auth.credentials import AnonymousCredentials
 from google.cloud import storage
 
 from review_schemas.facilitator import FinalizedReview
@@ -93,7 +94,9 @@ def gcs_endpoint() -> str:
 def bucket_name(gcs_endpoint: str) -> str:
     """A throwaway bucket in the fake GCS server (created once per session)."""
     client = storage.Client(
-        project="test-project", client_options={"api_endpoint": gcs_endpoint}
+        project="test-project",
+        client_options={"api_endpoint": gcs_endpoint},
+        credentials=AnonymousCredentials(),
     )
     bucket = client.create_bucket(f"reports-test-{uuid.uuid4().hex[:10]}")
     return bucket.name
@@ -118,7 +121,9 @@ def seed_finalized(gcs_endpoint: str, bucket_name: str):
             checksum_sha256=_checksum(review.model_dump(mode="json")),
         )
         blob = storage.Client(
-            project="test-project", client_options={"api_endpoint": gcs_endpoint}
+            project="test-project",
+            client_options={"api_endpoint": gcs_endpoint},
+            credentials=AnonymousCredentials(),
         ).bucket(bucket_name).blob(f"runs/{run}/artifacts/{reference.artifact_id}.json")
         blob.upload_from_string(
             json.dumps(

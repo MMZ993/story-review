@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from google.auth.credentials import AnonymousCredentials
 from google.cloud import storage
 
 from review_schemas.mcp import RenderReportInput
@@ -38,7 +39,9 @@ def _request(run: str, reference, fmt: str) -> RenderReportInput:
 
 def _bucket(gcs_endpoint, bucket_name):
     return storage.Client(
-        project="test-project", client_options={"api_endpoint": gcs_endpoint}
+        project="test-project",
+        client_options={"api_endpoint": gcs_endpoint},
+        credentials=AnonymousCredentials(),
     ).bucket(bucket_name)
 
 
