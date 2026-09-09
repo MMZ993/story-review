@@ -8,7 +8,7 @@ contextvar visible to MCP tool handlers running in the same request.
 
 Fail-closed rules:
 
-- every path except `/healthz` requires a verified token;
+- every path except `/health` requires a verified token;
 - with auth enabled, a missing audience is a 503 (the window between the
   first and second Terraform apply must never serve traffic unverified);
 - auth is disabled only via the per-server env switch in the **local
@@ -25,7 +25,7 @@ from collections.abc import Callable
 
 logger = logging.getLogger("mcp_ingress.auth")
 
-PUBLIC_PATHS = frozenset({"/healthz"})
+PUBLIC_PATHS = frozenset({"/health"})
 
 Verifier = Callable[[str, str], dict]
 

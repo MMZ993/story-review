@@ -138,14 +138,14 @@ def seeded_finalized(finalized_review):
 
 
 def wait_healthy(base_url: str, timeout_s: float = 60.0) -> None:
-    """Block until a compose service answers /healthz (public path)."""
+    """Block until a compose service answers /health (public path)."""
     import time
     import urllib.request
 
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         try:
-            with urllib.request.urlopen(f"{base_url}/healthz", timeout=2) as resp:
+            with urllib.request.urlopen(f"{base_url}/health", timeout=2) as resp:
                 if resp.status == 200:
                     return
         except OSError:

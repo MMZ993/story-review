@@ -262,12 +262,12 @@ def test_missing_audience_fails_closed():
     assert asyncio.run(scenario()).status_code == 503
 
 
-def test_healthz_is_public():
+def test_health_is_public():
     async def scenario():
         app = _authed_app(_fake_verifier(ORCH), {ORCH})
         transport = httpx2.ASGITransport(app=app)
         async with httpx2.AsyncClient(transport=transport, base_url="http://story.test") as c:
-            return await c.get("http://story.test/healthz")
+            return await c.get("http://story.test/health")
 
     assert asyncio.run(scenario()).status_code == 200
 

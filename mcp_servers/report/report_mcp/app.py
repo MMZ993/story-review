@@ -1,7 +1,7 @@
 """ASGI application wiring for the report MCP service.
 
 Composes the MCP server (Streamable HTTP, stateless), the report store,
-`/healthz`, and the shared ID-token ingress middleware (`mcp_ingress` —
+`/health`, and the shared ID-token ingress middleware (`mcp_ingress` —
 extracted from the story/artifact copies at increment 3). The container
 entrypoint (`main.py`) runs this app with uvicorn.
 
@@ -74,8 +74,8 @@ def build_app(
 
     mcp = server.mcp()
 
-    @mcp.custom_route("/healthz", methods=["GET"])
-    async def healthz(request) -> JSONResponse:
+    @mcp.custom_route("/health", methods=["GET"])
+    async def health(request) -> JSONResponse:
         return JSONResponse({"status": "ok"})
 
     resolved_host = http_host or _host_from_url(os.environ.get("REPORT_SERVICE_URL", ""))
