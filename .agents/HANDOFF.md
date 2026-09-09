@@ -1,18 +1,17 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-11 (session 26 CLOSED — Phase 4 completion review
-  Ready-to-close, phase marked complete; Phase 5 plan merged and committed;
-  commits pending owner push).
+Last updated: 2026-09-12 (session 27 CLOSED — Phase 5 doc
+  preparation complete; D13 recorded, phase-5 plan annotated;
+  commit pending owner push).
 
 ## Where we are
 
-- Phase: **5 — Agents (ADK) + local adapters — OPEN, plan ready, increment 0
-  not started**. Plan at `docs-local/plans/phase-5-agents.md` (merged
-  best-of-both: dev-server draft + main-PC draft). Six increment-0 owner
-  decisions pending (mock-LLM strategy, model per agent, structured-output
-  mechanism, invocation interface, facilitator session backend, prompt
-  review workflow).
+- Phase: **5 — Agents (ADK) + local adapters — OPEN, doc prep complete,
+  implementation not started**. Plan at `docs-local/plans/phase-5-agents.md`;
+  all six increment-0 owner decisions settled and recorded as **D13** in
+  local-decisions.md; the frozen adapter invocation contract is the plan's
+  Appendix.
 - Phase 4 **COMPLETE and CLOSED** (session 26, 2026-09-11): independent
   completion review Ready-to-close; D10 amendment 7 recorded (azure/
   Secret-Manager wiring deferred to Phase 8); development-plan updated.
@@ -29,6 +28,29 @@ Last updated: 2026-09-11 (session 26 CLOSED — Phase 4 completion review
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 27 (2026-09-12, main PC — docs-only, no environment actions;
+Cloud SQL untouched):
+- **Phase 5 design-drift check**: owner concern that agents never touch MCP
+  disproved against `docs/design/data-flow.md` — the facilitator is the
+  MCP-using agent (read-only story `get_story` tool + LLM-decided, opt
+  artifact-evidence reads `[MCP-L]`, lineage-scoped); reviewers/synthesis
+  are tool-free by design. No drift; nothing reverted.
+- **Linked-stories clarification**: confirmed across the whole docs set that
+  context stories arrive only inside the single `get_story` response
+  (derived from internal ADO relations, Related/Depends — implemented in
+  `story_mcp/prepare.py` since Phase 4); no UI command or separate tool to
+  fetch additional stories exists anywhere (api-contract endpoint list +
+  TUI state machine checked). Added an explicit note to the Phase 5 plan
+  preconditions recording this.
+- **D13 recorded** in local-decisions.md (six increment-0 decisions: real-
+  model tests on the main PC, gemini-2.5-flash europe-west4 for all agents,
+  ADK structured output + bounded corrective re-prompts for facilitator
+  delegation only, separate typed single-turn/session-scoped interfaces,
+  DatabaseSessionService on compose Postgres, one-time owner prompt review).
+- Phase 5 doc preparation is COMPLETE: plan + D13 + frozen invocation
+  contract (plan appendix). No `docs/` design changes → no frozen cherry-
+  pick needed.
 
 Session 26 (2026-09-11, main PC):
 - **Phase 4 completion review (independent read-only subagent, diff
@@ -464,6 +486,14 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 27:
+- Docs-only session: rg review of `docs/design/` (data-flow, api-contract,
+  agents, mcp-servers, schemas) + `docs-local/` — no UI command or separate
+  linked-story path found; implementation (`story_mcp/prepare.py`, ADO
+  relation mapping) verified to match the design.
+- No test suites touched; `make db-status` not re-run (no cloud work —
+  Cloud SQL remained STOPPED, no environment action taken).
+
 Session 26:
 - Completion review verdict Ready-to-close (findings above); Important fixed
   same session (D10 amendment 7).
@@ -656,13 +686,14 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Owner push**: main is ahead 3 (`616064b`, `80744e0`, `67e7523`). No
-   docs/ changes this session — no frozen cherry-pick needed.
-2. **Phase 5 increment 0**: settle the six open decisions in
-   `docs-local/plans/phase-5-agents.md` (mock-LLM strategy; model per agent —
-   Phase 0 evidence gemini-2.5-flash europe-west4; structured-output
-   mechanism; invocation-interface spec; facilitator session backend;
-   prompt review workflow) → record D13, then skeleton + interface spec.
+1. **Owner push**: main is ahead 4 (`616064b`, `80744e0`, `67e7523`, plus
+   session-27 commit). No docs/ changes — no frozen cherry-pick needed.
+2. **Phase 5 increment 0 (implementation)**: uv package layout for the four
+   agents (one package vs four — decide with owner per repository-layout.md),
+   `PROMPTS_DIR` loading + fail-loud helper + `prompt_sha256`, loading/hash
+   tests test-first; minimal functional prompts (owner reviews all four
+   before first commit). The invocation contract is already frozen in the
+   plan appendix — no further spec doc needed.
 3. Optional hardening candidate (later increment): move the
    `mcp_*_service_url` audiences into `home.tfvars` so image-update applies
    cannot silently wipe them (runbook gotcha, session 25).
