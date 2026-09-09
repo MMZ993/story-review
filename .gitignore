@@ -12,6 +12,9 @@ infra/envs/*.tfvars
 # build staging contexts (per docs/operations/repository-layout.md)
 build/
 
+# local-only environment description; never commit
+WORKING_ENVIRONMENT.md
+
 # scratch
 trash/
 
