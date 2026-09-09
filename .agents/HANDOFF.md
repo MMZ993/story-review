@@ -584,15 +584,14 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Commit + push this session's work** (owner decides): natural split —
-   (a) already-merged increment 4 + the merge + gitignore/runbook chore
-   (merge commit `060d387`, chore `eb8e81f` exist locally, unpushed);
-   (b) `feat:` increment 5 (infra module, storage fixes, deploy scripts,
-   smoke, Makefile, dataset-push fix); (c) `docs-local:` runbook 10 §5 +
-   D11 + HANDOFF. Azure PAT secret value still owner-created-when-needed
-   (story server deployed with `STORY_SOURCE=mock` for evaluation).
-2. **Phase 4 close**: independent read-only subagent review of the
-   increment-5 diff, then phase completion review per development-plan.
+1. **Push** (owner): local main is ahead of origin by 6 commits — the
+   dev-server session-23 work (merge `060d387`), chore `eb8e81f`, feat
+   `fb3cd77` (increment 5) and docs `bf55e8b` (runbook/D11/D12/HANDOFF).
+   Azure PAT secret value still owner-created-when-needed (story server
+   deployed with `STORY_SOURCE=mock` for evaluation).
+2. **Phase 4 close**: phase completion review per development-plan (the
+   increment-5 independent review is already done and green — see
+   Verification).
 3. Phase 5 opens after Phase 4 close (agents + ADK adapters,
    `local-agents` compose profile).
 
