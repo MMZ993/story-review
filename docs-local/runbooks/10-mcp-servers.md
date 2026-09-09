@@ -434,7 +434,7 @@ clean, push pending).
 ### Compose stack (`local` profile)
 
 - `deploy/docker-compose.yml`: `fake-gcs` (`-scheme http -backend memory`,
-  published on 0.0.0.0 per the session-22 gotcha — the container-internal
+  host-published port bound to `127.0.0.1` only — the container-internal
   URL is `http://fake-gcs:4443`), `gcs-init` (urllib one-shot creating the
   shared `artifacts-local` bucket, retries until fake-gcs is ready,
   409-tolerant; servers gate on `service_completed_successfully` because
