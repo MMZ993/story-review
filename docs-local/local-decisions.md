@@ -421,3 +421,20 @@ strict `config.yaml` parsing live in a new shared package
 `shared/mcp_ingress` pattern. `google-adk` pinned at the spike-proven 2.8.0
 in each agent lock; `temperature: 0.0` / `max_output_tokens: 8192` initial
 generation settings (D13 model: gemini-2.5-flash, europe-west4).
+
+### D13 amendment 1 — Serving-safe LLM-facing output mirrors (2026-09-12)
+
+Discovered at the increment-1 live gate: Vertex AI structured output
+rejects the strict shared `ReviewReport` schema natively (400
+INVALID_ARGUMENT, "schema produces a constraint that has too many states
+for serving" — regex `StringConstraints`, array `max_length`s, bounded
+integers, date-time formats). Owner decision: keep ADK native
+`output_schema` enforcement but point it at a **serving-safe mirror model**
+(plain types, identical field names) provided by `agent_kit.llm_output`;
+the shared strict models remain the sole validation authority — every model
+payload is validated through them unchanged at the adapter boundary, and
+failures take the normal structured-error path (no corrective re-prompt for
+reviewers/synthesis; the facilitator's bounded corrective loop is
+unchanged). D13-3's intent (native enforcement backed by the shared strict
+models) is preserved; the mirror is an implementation detail of the
+Vertex serving constraint.

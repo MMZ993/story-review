@@ -52,6 +52,12 @@ Detailed commands live in [runbooks/](runbooks/) — this file stays the checkli
 
 Append entries: date, phase, what was proven, artifact path / correlation ID.
 
+- 2026-09-12 — Phase 5 — increment 1: business-reviewer ADK agent + local
+  adapter + live Vertex gate PASS (8 passed, 2 real model calls); Vertex
+  structured-output serving limit recorded as D13 amendment 1 (serving-safe
+  mirror, strict model stays the validation authority). Evidence:
+  `runbooks/11-agents.md` §1.
+
 - 2026-09-12 — Phase 5 — increment 0 (in progress): agent packaging decided
   (D14: four packages + shared agent-kit); `shared/agent_kit` 0.1.0
   (PROMPTS_DIR loader + strict config.yaml), four agent skeletons with
