@@ -377,3 +377,34 @@ known only after the first apply) is materially simpler with a plain var
 than with Secret Manager round-trips. Owner-approved with the review
 finding; revisit on production promotion if the doc's shape is mandatory
 there.
+
+## D13 — Phase 5 agent tests use a real low-cost Gemini model (2026-09-11)
+
+Owner decision: do not mock or script LLM responses for the agent-based
+application. Agent-behavior and adapter tests call the real
+`gemini-2.5-flash` model through Vertex AI in `europe-west4` on the main PC,
+because validating LLM behavior is the purpose of those tests. All four agents
+use that model initially and pin it in their immutable `config.yaml` files.
+Deterministic local tests remain only for non-LLM behavior such as prompt
+loading and SHA-256 calculation; the ADC-less dev server cannot run
+agent-behavior tests.
+
+Use ADK native structured-output enforcement backed by the shared strict
+Pydantic models. Only malformed facilitator delegation output gets the
+bounded corrective re-prompt loop; reviewer and synthesis validation failures
+return structured errors after normal transport retries.
+
+Use ADK `DatabaseSessionService` with the compose `postgres:16` substitute
+from Phase 5 onward. This preserves deployed-shape parity; migrations for
+audited application records remain Phase 6.
+
+Keep prompts as centrally accessible static files in `prompts/`. Initial
+prompts are minimal and functional; the owner reviews all four together before
+their first commit. Iterate on prompt quality later from full-application test
+evidence, rather than optimizing prompts prematurely in Phase 5.
+
+Expose separate typed single-turn invocation interfaces for each reviewer and
+the synthesis agent, and a separate session-scoped interface for the
+facilitator. Phase 6 orchestration owns input assembly. The approved
+request/response fields are frozen in the Phase 5 increment-0 hand-off spec
+before adapter code is written.
