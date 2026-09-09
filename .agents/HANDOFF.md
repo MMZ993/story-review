@@ -1,8 +1,8 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-10 (session 25 — main PC: `/healthz`→`/health` rename
-  after GFE interception discovery; Cloud Run redeployed + smokes green).
+Last updated: 2026-09-10 (session 25 CLOSED — `/healthz`→`/health` rename,
+  Cloud Run redeployed, smokes green; commits pushed + frozen cherry-pick done).
 
 ## Where we are
 
@@ -617,16 +617,16 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Push** (owner) + **cherry-pick the docs commit onto
-   `docs/initial-frozen`** (the `GET /health` api-contract/deployment
-   change) and push that branch too.
-2. **Phase 4 close**: phase completion review per development-plan (the
+1. **Phase 4 close**: phase completion review per development-plan (the
    increment-5 independent review is already done and green).
-3. Phase 5 opens after Phase 4 close (agents + ADK adapters,
+2. Phase 5 opens after Phase 4 close (agents + ADK adapters,
    `local-agents` compose profile).
-4. Optional hardening candidate for a later increment: put the
+3. Optional hardening candidate for a later increment: put the
    `mcp_*_service_url` audiences into `home.tfvars` so image-update applies
    cannot silently wipe them (runbook gotcha, session 25).
+
+Session-25 pushes (owner, done): main `830e789`/`28b2774`/`2a7a5e6` pushed;
+   `830e789` cherry-picked onto `docs/initial-frozen` and pushed.
 
 ## Important Notes
 
