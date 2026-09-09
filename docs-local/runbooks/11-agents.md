@@ -128,3 +128,31 @@ trap for out-of-convention installs; generic 503 handler maps model 400s
 retryable; `previous_review_version` echo not cross-checked against the
 supplied previous review (contract doesn't require it). All suites re-run
 green after the fixes incl. the live gate (8 passed, ~30 s).
+
+## Increment 2 — engineering reviewer
+
+**Status: COMPLETE (2026-09-12). Live Vertex gate PASS.**
+
+- Refactor first: the reviewer invocation contract moved into
+  `agent_kit.adapter` (assembly agreement checks, single-turn run, FastAPI
+  shell + ErrorEnvelope mapping) parameterized by
+  (slug, perspective, build_agent, load_config, version). The
+  business-reviewer adapter is now a thin binding (same tests, still green).
+- `agents/engineering-reviewer/engineering_reviewer/agent.py` — ADK builder
+  (engineering_reviewer, serving-safe mirror output_schema).
+- `deploy/compose/adapters/engineering-reviewer/` — thin binding + tests,
+  incl. the plan's prompt-distinctness check (engineering vs business
+  prompt hashes differ).
+- Makefile: `engineering-reviewer-adapter-test`, `engineering-reviewer-live-test`.
+
+Checks (main PC): agent-kit **24** (adapter-core tests added),
+agents 3×4, business adapter **6+2 skipped** (post-refactor),
+engineering adapter **7+1 skipped** deterministic / **8 passed** live
+(~26 s, 1 real model call): golden story-14 (engineering-weak) →
+schema-valid engineering `ReviewReport` with ≥1 finding.
+
+No independent review this increment: the change is the reviewed
+increment-1 pattern re-bound (thin binding + one new prompt-distinctness
+test); threshold per development-rules not met.
+
+Cost so far this session: 5 real flash calls total (2+2+1).
