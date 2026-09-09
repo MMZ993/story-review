@@ -13,7 +13,7 @@ STORY_PORT     ?= $(if $(_story_port),$(_story_port),8101)
 ARTIFACT_PORT  ?= $(if $(_artifact_port),$(_artifact_port),8102)
 REPORT_PORT    ?= $(if $(_report_port),$(_report_port),8103)
 
-.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-ingress-test mcp-story-test mcp-artifact-test mcp-report-test dataset-push compose-up compose-down compose-contract-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
+.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-ingress-test mcp-story-test mcp-artifact-test mcp-report-test dataset-push agent-kit-test agents-test compose-up compose-down compose-contract-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -104,6 +104,22 @@ mcp-report-test: ## Phase 4: report MCP render + contract tests (fake GCS in Doc
 		--with-editable . --with-editable ../../shared/review_schemas \
 		--with-editable ../../shared/mcp_ingress \
 		python -m pytest tests -q
+
+agent-kit-test: ## Phase 5: shared agent support (prompt loading/hash, config) tests
+	cd shared/agent_kit && \
+	uv run --no-project --with-requirements tests/requirements.lock \
+		--with-requirements requirements.lock --with-editable . \
+		python -m pytest tests -q
+
+agents-test: ## Phase 5: deterministic agent-skeleton tests (all four agents)
+	for slug in business-reviewer engineering-reviewer synthesis facilitator; do \
+		cd agents/$$slug && \
+		uv run --no-project --with-requirements tests/requirements.lock \
+			--with-editable . --with-editable ../../shared/agent_kit \
+			--with-editable ../../shared/review_schemas \
+			python -m pytest tests -q || exit 1; \
+		cd ../../; \
+	done
 
 compose-up: ## Local development stack (Phase 4 `local` profile)
 	[ -f deploy/env/.env ] || cp deploy/env/.env.example deploy/env/.env
