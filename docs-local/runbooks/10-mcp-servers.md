@@ -675,3 +675,21 @@ with the owner pasting outputs):
   kept Cloud SQL out); all three smokes green on the new revision
   (story 45 stories + detail + STORY_NOT_FOUND; artifact save/get roundtrip;
   report md render from live-saved finalized review).
+
+## Phase 4 completion review (2026-09-11, session 26)
+
+Independent read-only subagent review of the full phase diff
+(`68c08cf..616064b`) against the design docs. **Verdict: Ready to close.**
+
+- All suites re-run green at review time: review-schemas 154, ado-wire 7,
+  dataset 36, mcp-ingress 7, mcp-story 67, mcp-artifact 32, mcp-report 34,
+  compose contract 20 (stack up then down; Cloud SQL STOPPED throughout).
+- Findings: 0 Critical; 1 Important (azure/Secret-Manager wiring deferred
+  without a recorded decision — fixed as **D10 amendment 7** in
+  local-decisions.md: deferred to Phase 8); 4 Minor, all notes/no-action
+  (internal_error→UPSTREAM_UNAVAILABLE mapping accepted per taxonomy;
+  observability.md RENDER_FAILED retryability phrasing ambiguous vs
+  schemas.md — implementation matches schemas; smoke script uses the
+  lock-pinned `httpx2` fork deliberately; documented scale/serialization
+  limits in artifact storage).
+- Phase 4 marked COMPLETE in development-plan.md.

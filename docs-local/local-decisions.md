@@ -316,6 +316,20 @@ Owner decisions:
   `azure` is production/demo only (content drift would invalidate
   `dataset/expected/`).
 
+### D10 amendment 7 — azure/Secret-Manager wiring deferred beyond Phase 4 (2026-09-10, phase-4 close)
+
+Phase-4 completion-review finding (Important): D10 committed the PAT to
+Secret Manager "at increment 5", but increment 5 deployed the story service
+with `STORY_SOURCE=mock` and the `mcp-service` Terraform module has no
+secret-from-Secret-Manager env support; the azure source is exercised only
+by unit tests against a stub transport. Owner decision: this is a deliberate
+deferral, not a gap — the production azure path (Secret Manager wiring,
+`STORY_SOURCE=azure` deployment, ADO PAT rotation) is **Phase 8 territory**
+(real GCP deployment / production realism). Nothing in Phases 5–7 needs it
+(evaluation is mock-only by the D10 evaluation guard). Recorded so it is not
+lost: the deferred work is "PAT → Secret Manager + module secret env + azure
+deployment story-server vars", to be planned in the Phase 8 plan.
+
 ### D9 amendment 6 — ADO wire models extracted to `shared/ado_wire` (2026-09-10, session 20)
 
 Owner-approved refactor, ahead of the story-server implementation: the pure
