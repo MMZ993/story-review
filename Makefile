@@ -13,7 +13,7 @@ STORY_PORT     ?= $(if $(_story_port),$(_story_port),8101)
 ARTIFACT_PORT  ?= $(if $(_artifact_port),$(_artifact_port),8102)
 REPORT_PORT    ?= $(if $(_report_port),$(_report_port),8103)
 
-.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-ingress-test mcp-story-test mcp-artifact-test mcp-report-test dataset-push compose-up compose-down compose-contract-test terraform-plan terraform-apply db-pause db-resume db-status
+.PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-ingress-test mcp-story-test mcp-artifact-test mcp-report-test dataset-push compose-up compose-down compose-contract-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -64,7 +64,7 @@ dataset-test: ## Phase 3: mock-dataset loader/validation tests (stories + expect
 		--with ../../shared/review_schemas --with ../../shared/ado_wire \
 		python -m pytest tests -q
 
-dataset-push: guard-project ## Phase 4: publish dataset/stories to gs://$(PROJECT_ID)-story-dataset
+dataset-push: ## Phase 4: publish dataset/stories to gs://$(PROJECT_ID)-story-dataset
 	source infra/envs/home.env && \
 		uv run --no-project --with google-cloud-storage \
 		python dataset/tools/push_dataset.py
@@ -122,11 +122,69 @@ compose-contract-test: ## Phase 4 cross-service contract tests over HTTP (needs 
 	uv run --no-project --with-requirements requirements.lock \
 		python -m pytest . -q
 
+# Phase 4 increment 5: Cloud Run deploys + smoke.
+# _mcp_url is a shell command (run via $(...) in recipes) reading the
+# terraform outputs (tier-1 read); the ID token impersonates sa-orchestration.
+define _mcp_url
+terraform -chdir=infra output -json mcp_services | jq -r ".$(1).url // empty"
+endef
+
+mcp-story-deploy: ## Phase 4: build+push story MCP image (prints terraform -var line)
+	deploy/cloud-run/story/deploy.sh
+
+mcp-artifact-deploy: ## Phase 4: build+push artifact MCP image (prints terraform -var line)
+	deploy/cloud-run/artifact/deploy.sh
+
+mcp-report-deploy: ## Phase 4: build+push report MCP image (prints terraform -var line)
+	deploy/cloud-run/report/deploy.sh
+
+mcp-story-smoke: ## Phase 4: smoke story MCP on Cloud Run (impersonated sa-orchestration)
+	$(guard-project)
+	source infra/envs/home.env && url="$$( $(call _mcp_url,story))" && \
+	[ -n "$$url" ] || { echo "story service not deployed (terraform output null)"; exit 2; } && \
+	MCP_ID_TOKEN="$$(gcloud auth print-identity-token \
+		--impersonate-service-account=sa-orchestration@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--audiences="$$url" --include-email)" \
+	uv run --no-project --with-requirements deploy/cloud-run/smoke/requirements.lock \
+		python deploy/cloud-run/smoke/smoke.py story "$$url"
+
+mcp-artifact-smoke: ## Phase 4: smoke artifact MCP on Cloud Run
+	$(guard-project)
+	source infra/envs/home.env && url="$$( $(call _mcp_url,artifact))" && \
+	[ -n "$$url" ] || { echo "artifact service not deployed (terraform output null)"; exit 2; } && \
+	MCP_ID_TOKEN="$$(gcloud auth print-identity-token \
+		--impersonate-service-account=sa-orchestration@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--audiences="$$url" --include-email)" \
+	uv run --no-project --with-requirements deploy/cloud-run/smoke/requirements.lock \
+		python deploy/cloud-run/smoke/smoke.py artifact "$$url"
+
+mcp-report-smoke: ## Phase 4: smoke report MCP (renders from a live artifact)
+	$(guard-project)
+	source infra/envs/home.env && url="$$( $(call _mcp_url,report))" && \
+	art_url="$$( $(call _mcp_url,artifact))" && \
+	[ -n "$$url" ] && [ -n "$$art_url" ] || { echo "report/artifact service not deployed (terraform output null)"; exit 2; } && \
+	MCP_ARTIFACT_URL="$$art_url" \
+	MCP_ID_TOKEN="$$(gcloud auth print-identity-token \
+		--impersonate-service-account=sa-orchestration@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--audiences="$$url" --include-email)" \
+	MCP_ID_TOKEN_ARTIFACT="$$(gcloud auth print-identity-token \
+		--impersonate-service-account=sa-orchestration@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--audiences="$$art_url" --include-email)" \
+	uv run --no-project --with-requirements deploy/cloud-run/smoke/requirements.lock \
+		python deploy/cloud-run/smoke/smoke.py report "$$url" "$$art_url"
+
 terraform-plan: ## Review plan for the home environment
 	terraform -chdir=infra plan -var-file=envs/home.tfvars -out=home.tfplan
 
 terraform-apply: ## Apply the saved home plan (write action)
 	terraform -chdir=infra apply home.tfplan
+
+artifacts-purge: ## DESTRUCTIVE: delete all runs/ artifacts (dev hygiene; owner-run)
+	$(guard-project)
+	@echo "This deletes EVERYTHING under gs://$(PROJECT_ID)-artifacts/runs/ (smoke/test/demo artifacts)."
+	@echo "Dev artifacts are disposable; the dataset is re-pushable via make dataset-push."
+	@printf "Type 'purge' to confirm: " && read ans && [ "$$ans" = purge ] || { echo "aborted"; exit 1; }
+	gcloud storage rm --recursive "gs://$(PROJECT_ID)-artifacts/runs/" && echo "artifacts purged"
 
 db-pause: ## Stop Cloud SQL instance (activation-policy NEVER) — stops compute billing
 	$(guard-project)

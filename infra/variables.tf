@@ -53,3 +53,51 @@ variable "required_services" {
     "storage.googleapis.com",
   ]
 }
+
+variable "mcp_story_image" {
+  description = "Image reference for the story MCP Cloud Run service (empty = not deployed)."
+  type        = string
+  default     = ""
+}
+
+variable "mcp_artifact_image" {
+  description = "Image reference for the artifact MCP Cloud Run service (empty = not deployed)."
+  type        = string
+  default     = ""
+}
+
+variable "mcp_report_image" {
+  description = "Image reference for the report MCP Cloud Run service (empty = not deployed)."
+  type        = string
+  default     = ""
+}
+
+variable "mcp_story_service_url" {
+  description = "Story MCP service URL (ID-token audience); set in the second apply after the first reveals it."
+  type        = string
+  default     = ""
+}
+
+variable "mcp_artifact_service_url" {
+  description = "Artifact MCP service URL (ID-token audience); set in the second apply."
+  type        = string
+  default     = ""
+}
+
+variable "mcp_report_service_url" {
+  description = "Report MCP service URL (ID-token audience); set in the second apply."
+  type        = string
+  default     = ""
+}
+
+variable "mcp_story_source" {
+  description = "STORY_SOURCE deployment default for the story MCP (mock | azure)."
+  type        = string
+  default     = "mock"
+}
+
+variable "smoke_user_email" {
+  description = "Owner user email granted tokenCreator on sa-orchestration for local smoke tests (empty = no grant)."
+  type        = string
+  default     = ""
+}

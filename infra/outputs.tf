@@ -42,3 +42,26 @@ output "service_accounts" {
   }
 }
 
+
+output "mcp_services" {
+  description = "Phase 4 MCP Cloud Run services (null when not deployed)."
+  value = {
+    story = {
+      name = length(module.mcp_story) > 0 ? module.mcp_story[0].service_name : null
+      url  = length(module.mcp_story) > 0 ? module.mcp_story[0].service_url : null
+    }
+    artifact = {
+      name = length(module.mcp_artifact) > 0 ? module.mcp_artifact[0].service_name : null
+      url  = length(module.mcp_artifact) > 0 ? module.mcp_artifact[0].service_url : null
+    }
+    report = {
+      name = length(module.mcp_report) > 0 ? module.mcp_report[0].service_name : null
+      url  = length(module.mcp_report) > 0 ? module.mcp_report[0].service_url : null
+    }
+  }
+}
+
+output "story_dataset_bucket_name" {
+  description = "GCS bucket for the frozen mock story dataset."
+  value       = module.storage.story_dataset_bucket_name
+}

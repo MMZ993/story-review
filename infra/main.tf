@@ -42,12 +42,14 @@ module "artifact_registry" {
 module "storage" {
   source = "./modules/storage"
 
-  project_id             = var.project_id
-  bucket_name            = "${local.resource_prefix}artifacts"
-  orchestration_sa_email = module.service_accounts.runtime_emails["sa-orchestration"]
-  artifact_sa_email      = module.service_accounts.runtime_emails["sa-artifact-mcp"]
-  report_sa_email        = module.service_accounts.runtime_emails["sa-report-mcp"]
-  report_retention_days  = var.report_retention_days
+  project_id                = var.project_id
+  bucket_name               = "${local.resource_prefix}artifacts"
+  story_dataset_bucket_name = "${local.resource_prefix}story-dataset"
+  orchestration_sa_email    = module.service_accounts.runtime_emails["sa-orchestration"]
+  artifact_sa_email         = module.service_accounts.runtime_emails["sa-artifact-mcp"]
+  report_sa_email           = module.service_accounts.runtime_emails["sa-report-mcp"]
+  story_sa_email            = module.service_accounts.runtime_emails["sa-story-mcp"]
+  report_retention_days     = var.report_retention_days
 }
 
 module "cloud_sql" {
@@ -111,3 +113,88 @@ module "secrets" {
   deployer_sa_email = module.service_accounts.deployer_email
 }
 
+# ---- Phase 4 MCP Cloud Run services (increment 5) ----
+# Enabled per service by supplying the built image (-var mcp_<name>_image=...);
+# the audience service URL is a second -var after the first apply reveals it.
+
+locals {
+  mcp_runtime_sas = {
+    story    = module.service_accounts.runtime_emails["sa-story-mcp"]
+    artifact = module.service_accounts.runtime_emails["sa-artifact-mcp"]
+    report   = module.service_accounts.runtime_emails["sa-report-mcp"]
+  }
+  mcp_invokers = {
+    story    = [module.service_accounts.runtime_emails["sa-orchestration"], module.service_accounts.runtime_emails["sa-facilitator"]]
+    artifact = [module.service_accounts.runtime_emails["sa-orchestration"], module.service_accounts.runtime_emails["sa-facilitator"]]
+    report   = [module.service_accounts.runtime_emails["sa-orchestration"]]
+  }
+}
+
+module "mcp_story" {
+  count = var.mcp_story_image == "" ? 0 : 1
+
+  source = "./modules/mcp-service"
+
+  project_id        = var.project_id
+  region            = var.region
+  service_name      = "mcp-story"
+  image             = var.mcp_story_image
+  runtime_sa_email  = local.mcp_runtime_sas["story"]
+  invoker_sa_emails = local.mcp_invokers["story"]
+  env = {
+    STORY_SOURCE           = var.mcp_story_source
+    STORY_DATASET_LOCATION = "gs://${module.storage.story_dataset_bucket_name}/stories/"
+    STORY_ALLOWED_CALLERS  = join(",", local.mcp_invokers["story"])
+    STORY_SERVICE_URL      = var.mcp_story_service_url # empty on first apply -> fail closed
+  }
+}
+
+module "mcp_artifact" {
+  count = var.mcp_artifact_image == "" ? 0 : 1
+
+  source = "./modules/mcp-service"
+
+  project_id        = var.project_id
+  region            = var.region
+  service_name      = "mcp-artifact"
+  image             = var.mcp_artifact_image
+  runtime_sa_email  = local.mcp_runtime_sas["artifact"]
+  invoker_sa_emails = local.mcp_invokers["artifact"]
+  env = {
+    ARTIFACT_BUCKET                = module.storage.bucket_name
+    ARTIFACT_ORCHESTRATION_CALLERS = module.service_accounts.runtime_emails["sa-orchestration"]
+    ARTIFACT_FACILITATOR_CALLERS   = module.service_accounts.runtime_emails["sa-facilitator"]
+    ARTIFACT_SERVICE_URL           = var.mcp_artifact_service_url
+  }
+}
+
+module "mcp_report" {
+  count = var.mcp_report_image == "" ? 0 : 1
+
+  source = "./modules/mcp-service"
+
+  project_id        = var.project_id
+  region            = var.region
+  service_name      = "mcp-report"
+  image             = var.mcp_report_image
+  runtime_sa_email  = local.mcp_runtime_sas["report"]
+  invoker_sa_emails = local.mcp_invokers["report"]
+  memory            = "1Gi" # PDF render path
+  env = {
+    REPORT_BUCKET                = module.storage.bucket_name
+    REPORT_ORCHESTRATION_CALLERS = module.service_accounts.runtime_emails["sa-orchestration"]
+    REPORT_SERVICE_URL           = var.mcp_report_service_url
+  }
+}
+
+# Smoke-test impersonation (owner-approved increment 5): the owner's user
+# mints sa-orchestration ID tokens locally to drive the authenticated smoke
+# targets; the middleware allowlists contain only that principal across all
+# three services. Sandbox-only grant — remove on promotion.
+resource "google_service_account_iam_member" "smoke_token_creator" {
+  count = var.smoke_user_email == "" ? 0 : 1
+
+  service_account_id = module.service_accounts.runtime_sa_ids["sa-orchestration"]
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "user:${var.smoke_user_email}"
+}

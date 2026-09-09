@@ -19,6 +19,16 @@ variable "report_sa_email" {
   type = string
 }
 
+variable "story_sa_email" {
+  description = "Story MCP runtime SA (reads the story dataset bucket)."
+  type        = string
+}
+
+variable "story_dataset_bucket_name" {
+  description = "Globally unique bucket name for the frozen mock story dataset."
+  type        = string
+}
+
 variable "force_destroy" {
   description = "Allow bucket deletion with objects inside (home phase convenience)."
   type        = bool
