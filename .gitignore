@@ -23,3 +23,6 @@ trash/
 # python caches
 __pycache__/
 .pytest_cache/
+
+# local cloud-run deploy overrides
+deploy/cloud-run/*/.env

@@ -2,3 +2,7 @@
 # Do not commit home.tfvars; it identifies the private home environment.
 project_id = "replace-with-your-project-id"
 region     = "europe-west4"
+
+# Owner user granted tokenCreator on sa-orchestration for local smoke tests
+# (empty = no grant; remove on production promotion).
+smoke_user_email = ""
