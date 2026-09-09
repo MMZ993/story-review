@@ -1,13 +1,14 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-10 (session 22 — Phase 4 increment 3: report MCP
-  server + mcp_ingress extraction; suites 154/7/36/67/32/7/34 green).
+Last updated: 2026-09-10 (session 23 — Phase 4 increment 4: local compose +
+  cross-service contract tests; suites 154/7/36/67/32/7/34 + compose 20 green).
 
 ## Where we are
 
-- Phase: **4 — MCP servers + compose: IN PROGRESS** (session 17 opened it:
-  plan + increment 0 done; next = increment 1, story MCP server).
+- Phase: **4 — MCP servers + compose: IN PROGRESS** (increments 0–4 done
+  locally; remaining: increment 5, Cloud Run deploys + smoke — needs the
+  owner's main PC with cloud access).
 - Phase 3 COMPLETE (session 16 close). Dataset: 45 stories (42 core + 3
   t1-only comment scenarios), 10 expected files; extension 2 (linked
   context stories) mock data deferred.
@@ -21,6 +22,33 @@ Last updated: 2026-09-10 (session 22 — Phase 4 increment 3: report MCP
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 23 (2026-09-10, dev server — env-restricted session; detail in
+  Runbook 10 §4):
+- **Phase 4 increment 4 COMPLETE (exit gate #1)**: `deploy/docker-compose.yml`
+  `local` profile (fake-gcs `-backend memory` + `gcs-init` bucket bootstrap
+  gating artifact/report via `service_completed_successfully`; story on
+  the mock source with `dataset/stories` bind-mounted ro; all host ports
+  bound to 127.0.0.1; `*_AUTH_DISABLED=1` local-only),
+  `deploy/env/.env.example`, real `make compose-up`/`compose-down`, new
+  `make compose-contract-test`.
+- **ADC-in-container gotcha fixed** (Runbook 10 §3 follow-up):
+  `artifact_mcp/storage.py` now mirrors the report-server
+  `AnonymousCredentials`-when-endpoint-set pattern; test fixtures in
+  artifact/report suites also fixed (masked on the main PC by working
+  ADC — red 32/26 errors on this ADC-less machine → green). Story server
+  unaffected (compose uses the mounted directory; `gs://` is
+  Cloud-Run-ADC only).
+- **Cross-service contract suite** `tests/contract/` (20 tests, real
+  streamable HTTP, no ASGI stand-in): tool matrices, dataset serving,
+  error taxonomy over the wire, artifact idempotency incl. across
+  `docker compose restart artifact`, report render md/pdf from a
+  live-saved finalized-review, shared-bucket prefix contract
+  (`runs/<run>/reports/` vs `runs/<run>/artifacts/`).
+- Increment-4 review: first pass Ready-to-proceed with 1 Important
+  (0.0.0.0 exposure) + 4 Minors — all fixed and re-verified green.
+- Session ran on the dev server (no cloud access): checkout synced via
+  owner-approved `git pull --rebase` (local AGENTS.md commit → `9441ef8`).
 
 Session 22 (2026-09-10) — **Phase 4 increment 3 COMPLETE** (detail in
   Runbook 10 §3):
@@ -365,6 +393,19 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 23:
+- Red→green for the gotcha fix: `make mcp-artifact-test` 32 errors
+  (DefaultCredentialsError) → **32 passed**; `make mcp-report-test` 26
+  errors → **34 passed** after fixture fixes.
+- `make compose-up` → all three healthz 200, bucket pre-created;
+  `make compose-contract-test` → **20 passed** (twice: before and after
+  review fixes); `make compose-down` clean.
+- Suites at close: review-schemas **154**, ado-wire **7**, dataset **36**,
+  mcp-ingress **7**, mcp-story **67**, mcp-artifact **32**, mcp-report
+  **34**, compose contract **20**. `git diff --check` clean.
+- Independent review: Ready to proceed; 1 Important + 4 Minor all fixed
+  same session (detail in Runbook 10 §4).
+
 Session 22:
 - Test-first (red confirmed: `ModuleNotFoundError: report_mcp`;
   mcp_ingress middleware tests written with the package).
@@ -511,17 +552,18 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Phase 4 increment 4 — compose + cross-service contract tests** (plan
-   `docs-local/plans/phase-4-mcp-servers.md`; exit gate #1):
-   `deploy/docker-compose.yml` `local` profile (story + artifact + report
-   + fake-gcs-server with pre-created buckets), real `compose-up`/
-   `compose-down`, contract tests against the running services over HTTP,
-   idempotency across a container restart. **Fix the ADC gap in story +
-   artifact servers first** (`AnonymousCredentials` when an endpoint
-   override is set — Runbook 10 §3 gotcha).
-2. Increment 5: Cloud Run deploys + smoke, story-dataset bucket bootstrap
-   (Terraform, plan-before-apply), PAT secret (owner-created), `make
-   dataset-push` against the real bucket.
+1. **Commit session-23 work** (owner decides): natural split — one
+   `feat:` commit for the ADC fix + compose + contract suite, one
+   `docs-local:` runbook/HANDOFF commit; then owner pushes (also carries
+   `9441ef8`).
+2. **Phase 4 increment 5 — Cloud Run deploys + smoke** (owner's main PC:
+   cloud access required): `deploy/cloud-run/{story,artifact,report}/`
+   deploy.sh + .env.example per the spike pattern; story-dataset bucket
+   bootstrap (Terraform, plan-before-apply); PAT secret (owner-created);
+   `make dataset-push` against the real bucket; smoke targets. Exit
+   gate #2, then phase completion review.
+3. Phase 5 opens after Phase 4 close (agents + ADK adapters,
+   `local-agents` compose profile).
 
 ## Important Notes
 

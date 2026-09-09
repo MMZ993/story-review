@@ -408,3 +408,96 @@ Gotchas learned (session 22):
   `mcp-ingress`) — uv pip compile fails; they ride along via
   `--with-editable` in tests and COPY in Dockerfiles (artifact-server
   convention).
+
+## Increment 4 — local compose + cross-service contract tests (local, no cost)
+
+Session 23 (2026-09-10, dev server — env-restricted: no cloud access, no
+gcloud/az, no env files; Docker + uv + make available). Owner approved
+start in chat; `git pull --rebase` first (local AGENTS.md commit replayed
+clean, push pending).
+
+### ADC-in-container gotcha fix (Runbook 10 §3 follow-up)
+
+- Red first on this ADC-less machine: `make mcp-artifact-test` → **32
+  errors**, all `DefaultCredentialsError`; `make mcp-report-test` → 26
+  errors (the gap also lived in the *test fixtures*, masked on the main
+  PC by working ADC).
+- `artifact_mcp/storage.py` `_bucket()`: `AnonymousCredentials()` when an
+  endpoint override is set — byte-for-byte the report-server pattern.
+- Test fixtures (`artifact tests/conftest.py`, `report
+  tests/conftest.py` + `test_storage.py` helper): `AnonymousCredentials()`
+  unconditionally (fixtures only ever talk to fake-GCS).
+- Story server: unaffected in compose (mock source reads the mounted
+  directory; its `gs://` path is Cloud Run + ADC only, which works there).
+- Green after: **32** and **34** passed.
+
+### Compose stack (`local` profile)
+
+- `deploy/docker-compose.yml`: `fake-gcs` (`-scheme http -backend memory`,
+  published on 0.0.0.0 per the session-22 gotcha — the container-internal
+  URL is `http://fake-gcs:4443`), `gcs-init` (urllib one-shot creating the
+  shared `artifacts-local` bucket, retries until fake-gcs is ready,
+  409-tolerant; servers gate on `service_completed_successfully` because
+  both validate the bucket at build), `story` (mock source, dataset
+  bind-mounted ro at `/app/dataset-stories` — images stay
+  dataset-agnostic), `artifact` + `report` (shared bucket,
+  `*_GCS_ENDPOINT=http://fake-gcs:4443`, `*_AUTH_DISABLED=1` — local
+  profile only, per repository-layout.md).
+- `deploy/env/.env.example` (ports 9025/8101/8102/8103 + bucket name);
+  gitignored (global `env/` rule). `compose-up` bootstraps it from the
+  example if missing.
+- Makefile: real `compose-up` / `compose-down`; new `compose-contract-test`
+  (healthz-waits all three services, then runs the contract suite).
+
+### Cross-service contract tests (`tests/contract/`, per repository-layout)
+
+20 tests over real HTTP (`mcp` SDK streamable client, no ASGI stand-in):
+
+- Tool matrix of all three servers; story dataset serving (45 summaries,
+  prepared detail); error taxonomy over the wire (STORY_NOT_FOUND for
+  cross-source/unknown ids, VALIDATION_ERROR for bad patterns/unknown
+  fields); status filter full-match/miss.
+- Artifact: save/get roundtrip with canonical checksum, idempotent retry
+  (`created=False`, same artifact id), `IDEMPOTENCY_KEY_REUSED` on content
+  mismatch, cross-run read → `ARTIFACT_NOT_FOUND`, and **idempotency
+  across `docker compose restart artifact`** (durable key survives the
+  process).
+- Report + cross-service: render md/pdf from a finalized-review saved
+  through the live artifact server, idempotent retry, wrong-run render
+  rejected, and the shared-bucket prefix contract — the report object
+  appears under `runs/<run>/reports/` in fake GCS while the artifact
+  server's listing still shows only `runs/<run>/artifacts/` entries
+  (report types are outside the artifact `type` literal by design).
+
+Evidence: `make compose-up` → all services healthy (8101/8102/8103
+healthz 200, bucket created); `make compose-contract-test` → **20 passed**;
+`make compose-down` → clean teardown.
+
+Fixture-shape corrections during bring-up (not service bugs): get_story
+payload is the flat detail (no `story` wrapper), filter is a plain
+substring (all 45 statuses are "New"), StoryDetail requires
+`epic_context`/`roadmap_context`/`context_stories` (not `linked_stories`),
+list result key is `items`, `type` literal excludes report types.
+
+Full suite at close: review-schemas **154**, ado-wire **7**, dataset
+**36**, mcp-ingress **7**, mcp-story **67**, mcp-artifact **32**,
+mcp-report **34**, compose contract **20**.
+
+**Independent read-only review** (subagent): first pass **Ready to
+proceed** with 1 Important + 4 Minor; all fixed same session and the
+stack + suite re-verified green (20 passed, clean up/down):
+
+- Important: 0.0.0.0 port publishing in compose — reviewer correctly
+  noted container-to-container traffic uses compose service DNS and
+  never traverses host mappings (the session-22 gotcha applies to
+  *separate* docker-run containers). All host-published ports now bind
+  `127.0.0.1:...`.
+- Minor: unused `httpx2` import/pin in `tests/contract` — removed
+  (requirements.in recompiled to pytest + mcp only).
+- Minor: `compose-contract-test` port defaults could diverge from
+  `deploy/env/.env` — Makefile now reads the three ports from that file
+  (falling back to 8101/8102/8103).
+- Minor: restart subprocess in the restart-idempotency test lacked
+  `--env-file env/.env` — added for consistency.
+- Minor: `story` service gated on `gcs-init` despite never touching GCS
+  — dependency removed.
