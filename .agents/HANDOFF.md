@@ -1,17 +1,17 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-12 (session 27 CLOSED — Phase 5 doc
-  preparation complete; D13 recorded, phase-5 plan annotated;
-  commit pending owner push).
+Last updated: 2026-09-12 (session 28 CLOSED — Phase 5 increments
+  0–2 complete: skeletons/prompts, business reviewer, engineering
+  reviewer; both live Vertex gates PASS; owner push pending).
 
 ## Where we are
 
-- Phase: **5 — Agents (ADK) + local adapters — OPEN, doc prep complete,
-  implementation not started**. Plan at `docs-local/plans/phase-5-agents.md`;
-  all six increment-0 owner decisions settled and recorded as **D13** in
-  local-decisions.md; the frozen adapter invocation contract is the plan's
-  Appendix.
+- Phase: **5 — Agents (ADK) + local adapters — OPEN, increments 0–2 of 4
+  COMPLETE**. Plan at `docs-local/plans/phase-5-agents.md`; invocation
+  contract frozen in the plan appendix; D13 + D13 amendment 1 + D14
+  recorded. Remaining: increment 3 (synthesis), increment 4 (facilitator +
+  `local-agents` compose profile + example-interaction walkthrough).
 - Phase 4 **COMPLETE and CLOSED** (session 26, 2026-09-11): independent
   completion review Ready-to-close; D10 amendment 7 recorded (azure/
   Secret-Manager wiring deferred to Phase 8); development-plan updated.
@@ -28,6 +28,33 @@ Last updated: 2026-09-12 (session 27 CLOSED — Phase 5 doc
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 28 (2026-09-12, main PC — code + live Vertex gates; no infra
+actions; Cloud SQL stayed STOPPED):
+- **Increment 0 COMPLETE**: D14 recorded (four separate agent packages +
+  shared `agent-kit`); `shared/agent_kit` 0.1.0 (fail-loud PROMPTS_DIR
+  loader with SHA-256, strict config.yaml parser → frozen AgentConfig,
+  later also reviewer request rendering, serving-safe mirrors, shared
+  adapter core); four `agents/<slug>/` skeletons with pinned config.yaml
+  (gemini-2.5-flash, europe-west4, temp 0, 8192 tokens) +
+  requirements.lock (google-adk==2.8.0); four minimal prompts owner-
+  reviewed and approved unchanged (D13-6 satisfied).
+- **Increment 1 COMPLETE — business reviewer**: ADK agent (native
+  `output_schema` structured output), local adapter in
+  `deploy/compose/adapters/business-reviewer/` (assembly / runner /
+  FastAPI shell, ErrorEnvelope mapping), deterministic tests, live gate
+  PASS (golden story-01 → schema-valid business ReviewReport;
+  extra_context path verified). **Vertex structured-output serving limit
+  discovered → D13 amendment 1**: strict ReviewReport schema rejected
+  ("too many states"); serving-safe mirror in `agent_kit.llm_output`, strict
+  shared model stays the validation authority. Independent review: Ready
+  to proceed, 0 Critical/Important, 6 Minor (3 fixed same session).
+- **Increment 2 COMPLETE — engineering reviewer**: reviewer contract
+  extracted to `agent_kit.adapter` (parameterized by slug/perspective);
+  business adapter re-bound thin; engineering agent + adapter + prompt-
+  distinctness test; live gate PASS (story-14 engineering-weak → ≥1
+  finding). No separate review (re-bound reviewed pattern).
+- Cost: 5 real gemini-2.5-flash calls total across the session — negligible.
 
 Session 27 (2026-09-12, main PC — docs-only, no environment actions;
 Cloud SQL untouched):
@@ -486,6 +513,24 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 28:
+- Deterministic suites at close: agent-kit **24**, agents skeleton **3×4**,
+  business adapter **6 passed + 2 skipped** (live correctly skipped without
+  gate env), engineering adapter **7 passed + 1 skipped**; regression
+  review-schemas **154**.
+- Live Vertex gates (main PC, ADC): business **8 passed** (twice: initial +
+  post-review-fix re-run), engineering **8 passed**.
+- Increment-1 independent read-only subagent review: **Ready to proceed**,
+  0 Critical/Important, 6 Minor — 3 fixed (runner multi-part concat, lazy
+  agent import, ShortText/Sha256 response types); 3 deferred minors:
+  (a) named-but-unmapped local deps in pyprojects trap out-of-convention
+  installs, (b) adapter generic handler maps model 400-class errors as
+  retryable UPSTREAM_UNAVAILABLE, (c) previous_review_version echo not
+  cross-checked against the supplied previous review (contract doesn't
+  require it).
+- Identifier checks clean before every commit; `git diff --check` clean;
+  `make db-status` STOPPED/NEVER at start and end.
+
 Session 27:
 - Docs-only session: rg review of `docs/design/` (data-flow, api-contract,
   agents, mcp-servers, schemas) + `docs-local/` — no UI command or separate
@@ -686,25 +731,31 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Owner push**: main is ahead 4 (`616064b`, `80744e0`, `67e7523`, plus
-   session-27 commit). No docs/ changes — no frozen cherry-pick needed.
-2. **Phase 5 increment 0 (implementation)**: uv package layout for the four
-   agents (one package vs four — decide with owner per repository-layout.md),
-   `PROMPTS_DIR` loading + fail-loud helper + `prompt_sha256`, loading/hash
-   tests test-first; minimal functional prompts (owner reviews all four
-   before first commit). The invocation contract is already frozen in the
-   plan appendix — no further spec doc needed.
-3. Optional hardening candidate (later increment): move the
-   `mcp_*_service_url` audiences into `home.tfvars` so image-update applies
-   cannot silently wipe them (runbook gotcha, session 25).
-4. Someday-minor: one-line clarification of RENDER_FAILED retryability
+1. **Owner push**: main ahead 6 (`0df717b`, `8887e56`, `ad60c21`,
+   `6c11058`, `99501a6`, `a99814b`). No `docs/` changes — no frozen
+   cherry-pick needed.
+2. **Phase 5 increment 3 (synthesis)**: agent + adapter; input = two
+   latest artifacts (one per perspective, each ReviewReport +
+   ArtifactReference, same run); typed SynthesisReport (needs a serving-
+   safe mirror for SynthesisReport/ConflictItem per D13 amendment 1);
+   required real-model case: hidden-conflict scenario (zero per-perspective
+   findings, contradiction flagged). Test harness assembles pairs incl.
+   single-perspective-re-review pairing.
+3. **Phase 5 increment 4 (facilitator)**: session-scoped interface,
+   DatabaseSessionService on compose Postgres, McpToolset to story+artifact
+   servers, typed FacilitatorTurnOutput + bounded corrective re-prompts
+   (DELEGATION_VALIDATION on exhaustion), `local-agents` compose profile,
+   Makefile wiring, example-interaction.md walkthrough as the live gate.
+4. Optional hardening (later increments or Phase 6): the three deferred
+   review minors above; move `mcp_*_service_url` audiences into
+   `home.tfvars` (session-25 runbook gotcha).
+5. Someday-minor: one-line clarification of RENDER_FAILED retryability
    phrasing in docs/design/observability.md (atomic docs commit + frozen
    cherry-pick if done).
 
-Session-26 commits (owner push pending): `80744e0` (phase 4 close-out),
-   `67e7523` (phase 5 plan); plus session-25's `616064b`.
-Session-25 pushes (owner, done): main `830e789`/`28b2774`/`2a7a5e6` pushed;
-   `830e789` cherry-picked onto `docs/initial-frozen` and pushed.
+Session-28 commits (owner push pending): `0df717b` (skeletons + prompts),
+   `8887e56` (D14 + runbook 11), `ad60c21`/`6c11058` (increment 1),
+   `99501a6`/`a99814b` (increment 2).
 
 ## Important Notes
 
