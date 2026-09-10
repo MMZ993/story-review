@@ -10,6 +10,7 @@ evidence references. Pure and deterministic — no LLM involvement.
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -95,10 +96,13 @@ def synth_report() -> SynthesisReport:
     return SynthesisReport.model_validate(payload)
 
 
-def request(turn_number: int = 1, po_message: str | None = None) -> FacilitatorRequest:
+def request(
+    turn_number: int = 1, po_message: str | None = None
+) -> FacilitatorRequest:
     return FacilitatorRequest(
         session_id=SESSION,
         turn_number=turn_number,
+        invocation_id=uuid.uuid4(),
         po_message=po_message,
         synthesis_report=synth_report(),
         synthesis_reference=synth_reference(),
@@ -127,6 +131,7 @@ class TestRequestModel:
             FacilitatorRequest(
                 session_id=SESSION,
                 turn_number=1,
+                invocation_id=uuid.uuid4(),
                 synthesis_report=synth_report(),
                 synthesis_reference=bad,
                 evidence_references=[],
@@ -140,6 +145,7 @@ class TestRequestModel:
             FacilitatorRequest(
                 session_id=SESSION,
                 turn_number=1,
+                invocation_id=uuid.uuid4(),
                 synthesis_report=synth_report(),
                 synthesis_reference=synth_reference(),
                 evidence_references=[other_run],

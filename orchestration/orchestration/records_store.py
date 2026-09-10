@@ -233,6 +233,41 @@ async def touch_session(pool: asyncpg.Pool, session_id: str) -> None:
         )
 
 
+async def update_session(
+    pool: asyncpg.Pool,
+    session_id: str,
+    *,
+    state: str | None = None,
+    facilitator_turn_count: int | None = None,
+    conn: asyncpg.Connection | None = None,
+) -> None:
+    """Apply a turn's session-state transition (park/complete later) and
+    the facilitator-turn count; bumps updated_at. `conn` joins an outer
+    transaction (atomic park + idempotency completion)."""
+    assignments = ["updated_at = now()"]
+    args: list = [session_id]
+    if state is not None:
+        args.append(state)
+        assignments.append(f"state = ${len(args)}")
+    if facilitator_turn_count is not None:
+        args.append(facilitator_turn_count)
+        assignments.append(f"facilitator_turn_count = ${len(args)}")
+    executor = conn
+    if executor is None:
+        async with pool.acquire() as borrowed:
+            await borrowed.execute(
+                f"update sessions set {', '.join(assignments)} "
+                "where session_id = $1",
+                *args,
+            )
+        return
+    await executor.execute(
+        f"update sessions set {', '.join(assignments)} "
+        "where session_id = $1",
+        *args,
+    )
+
+
 # --- turns ----------------------------------------------------------------
 
 

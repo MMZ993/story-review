@@ -71,12 +71,17 @@ def make_client(app) -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
-def turn_body(turn_number: int = 1, po_message: str | None = None) -> dict:
+def turn_body(
+    turn_number: int = 1,
+    po_message: str | None = None,
+    invocation_id: str = "12345678-1234-4789-8901-123456789abc",
+) -> dict:
     from tests.test_facilitator_input import synth_reference, review_reference
 
     body = {
         "session_id": "sess-00000000-0000-0000-0000-000000000001",
         "turn_number": turn_number,
+        "invocation_id": invocation_id,
         "po_message": po_message,
         "synthesis_report": None,  # filled below via model dump
         "synthesis_reference": synth_reference().model_dump(mode="json"),
@@ -181,5 +186,88 @@ def test_model_transport_failure_is_503(app, monkeypatch):
         error = resp.json()["error"]
         assert error["code"] == "UPSTREAM_UNAVAILABLE"
         assert error["retryable"] is True
+
+    asyncio.run(run())
+
+
+def test_missing_invocation_id_is_400(app):
+    async def run():
+        async with make_client(app) as client:
+            body = turn_body()
+            del body["invocation_id"]
+            resp = await client.post("/turn", json=body)
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+    asyncio.run(run())
+
+
+def test_turn_result_lookup_before_and_after(app, monkeypatch):
+    """GET /turn-result 404s before the turn runs and 200s with the exact
+    stored response after it — the reconciliation seam (D15-6)."""
+    monkeypatch.setattr(
+        fa, "make_send", lambda runner, req: ScriptedSend(json.dumps(valid_turn_payload()))
+    )
+    session_id = "sess-00000000-0000-0000-0000-000000000001"
+    invocation_id = "12345678-1234-4789-8901-123456789abc"
+
+    async def run():
+        async with make_client(app) as client:
+            missing = await client.get(
+                f"/turn-result/{session_id}/{invocation_id}"
+            )
+            assert missing.status_code == 404
+            assert missing.json()["error"]["code"] == "SESSION_NOT_FOUND"
+
+            ok = await client.post("/turn", json=turn_body())
+            assert ok.status_code == 200
+
+            stored = await client.get(f"/turn-result/{session_id}/{invocation_id}")
+        assert stored.status_code == 200
+        assert stored.json() == ok.json()
+
+    asyncio.run(run())
+
+
+def test_replayed_invocation_returns_stored_result_without_model_run(
+    app, monkeypatch
+):
+    """A POST /turn repeating a completed (session, invocation_id) returns
+    the stored response and never invokes the model — at-most-once
+    facilitator work per invocation across HTTP retries."""
+    send = ScriptedSend(json.dumps(valid_turn_payload()))
+    monkeypatch.setattr(fa, "make_send", lambda runner, req: send)
+
+    async def run():
+        async with make_client(app) as client:
+            first = await client.post("/turn", json=turn_body())
+            assert first.status_code == 200
+            replay = await client.post("/turn", json=turn_body())
+        assert replay.status_code == 200
+        assert replay.json() == first.json()
+        assert send.replies == []  # the model seam was used exactly once
+
+    asyncio.run(run())
+
+
+def test_failed_turn_is_not_stored(app, monkeypatch):
+    """A model failure stores nothing: the same invocation id may be
+    re-run on retry (this may repeat model cost, never state)."""
+    class ExplodingSend:
+        async def __call__(self, message: str) -> str:
+            raise RuntimeError("vertex unreachable")
+
+    monkeypatch.setattr(fa, "make_send", lambda runner, req: ExplodingSend())
+    session_id = "sess-00000000-0000-0000-0000-000000000001"
+    invocation_id = "12345678-1234-4789-8901-123456789abc"
+
+    async def run():
+        async with make_client(app) as client:
+            failed = await client.post("/turn", json=turn_body())
+            assert failed.status_code == 503
+            stored = await client.get(
+                f"/turn-result/{session_id}/{invocation_id}"
+            )
+        assert stored.status_code == 404
 
     asyncio.run(run())

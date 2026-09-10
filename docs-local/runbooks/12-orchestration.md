@@ -275,3 +275,113 @@ Gotchas learned:
 
 Increment 2 verdict: **green** — deterministic tier 59 passed / 6
 skipped; live gate PASS. Next: increment 3 (flow 2 — dialogue turns).
+
+## Increment 3 — flow 2: dialogue turns + reconciliation seam (2026-09-13)
+
+Scope per plan + D15 amendment 1 (owner-approved in chat):
+
+- **Adapter contract extension (option A)**: `FacilitatorRequest.invocation_id`
+  (required), adapter-side at-most-once result persistence per
+  `(session_id, invocation_id)` in `facilitator_turn_results` (Postgres
+  session backend, adapter-owned, `create table if not exists` at startup),
+  `POST /turn` replay returns the stored result without a model run,
+  `GET /turn-result/{session_id}/{invocation_id}` 200/404 reconciliation
+  endpoint. `agent_kit` got `TurnResultStore` (protocol + in-memory) and a
+  store-driven app lifespan; the binding layer supplies
+  `PostgresTurnResultStore` (asyncpg).
+- **Orchestration flow 2** (`turns_flow.py` + `turn_execution.py` +
+  `lineage.py` + `turns_api.py`): lease → idempotency claim (scoped
+  route+session) → lineage-scoped input assembly → facilitator invocation
+  with deterministic invocation id (uuid5 of the idempotency key) →
+  TurnRecord with stamped resolutions → delegation execution (both /
+  business / engineering with previous review + extra context, parallel
+  with sibling cancellation; reuse_previous / none skip reviewers) →
+  at-most-once synthesis per turn (latest-per-perspective pairing) → gate
+  precedence (park at facilitator turn 10 → continue-on-new-synthesis →
+  open-issues-empty+none finalize) → single TurnResponse; canonical
+  `CanonicalTurnResult` replay (resolutions re-read from the TurnRecord).
+- **Increment-3 finalize gap (option B)**: gate-finalize and `po_accepted`
+  return retryable 503 `UPSTREAM_UNAVAILABLE` (increment 4 wires flow 3);
+  no turn state persisted; claim stays in_progress.
+- Client: `HttpFacilitatorClient` reconciles between attempts via
+  `/turn-result` (best-effort GET, 10 s budget); reviewers/synthesis
+  unchanged.
+
+Commands (deterministic tier, all via existing targets):
+
+```
+make orchestration-test        # 76 passed / 7 skipped (baseline 59+6s; live gate skips)
+make agent-kit-test            # 86 passed (baseline 82; +4 reconciliation tests)
+make facilitator-adapter-test  # 3 passed / 1 skipped (binding now exercises /turn + /turn-result)
+make review-schemas-test       # 154 (unchanged)
+make agents-test               # 4x4 (unchanged)
+docker compose --profile local --profile local-agents build facilitator-adapter  # image ok
+docker build -f orchestration/Dockerfile .                                        # image ok
+```
+
+Evidence: deterministic tier green first run after implementation fixes
+(strict-JSON parse for artifact content — same gotcha family as increment 2;
+`CanonicalTurnResult` has no `resolutions` field, so replays re-read the
+TurnRecord). Live gate: **pending** — run
+`make orchestration-turns-live-test` (needs `agents-compose-up`, main PC,
+real Vertex; ~5 model calls incl. flow 1) with owner approval.
+
+Gotchas learned:
+
+- FastAPI/Starlette here has no `add_event_handler`; the result store is
+  wired through an app lifespan in `agent_kit` instead.
+- `ErrorBody`'s retryable⇔hint invariant forces `SESSION_LOCKED` to be
+  `retryable=true` + `retry_after_seconds`; the "new request, not the same
+  turn" rule lives in the code-specific client behavior (D15 amdt 1 item 3).
+- `GetArtifactInput` requires both `artifact_id` and `story_run_id`.
+
+### Increment 3 review + fixes + live gate (session 36)
+
+Independent read-only subagent review of the increment diff: verdict
+**Needs fixes before proceeding** → all findings fixed in-session:
+
+- **Critical**: shared-client `_reconcile_target` instance state on
+  `HttpFacilitatorClient` could cross sessions under concurrency — the
+  reconcile target is now a request-scoped closure threaded through
+  `_call(recover=...)`; the mutable `_deadline` was removed the same way
+  (backoff now receives `deadline_at`).
+- **Important**: a same-key retry of the turn that parked the session got
+  a permanent 409 SESSION_READ_ONLY — REPLAY is now served before the
+  read-only rejection, and the park transition + idempotency completion
+  are one DB transaction (`update_session`/`idempotency.complete` gained
+  optional `conn`), closing the crash window between parked state and
+  stored canonical response. New test: park-turn same-key replay 200.
+- **Important**: flow 2 persisted no facilitator AgentRunRecord — added
+  (input refs = synthesis + evidence, output = synthesis, per flow 1).
+- Minors fixed: reconcile test now covers miss-then-hit sequencing; new
+  gate test parks at facilitator turn 10 even when a synthesis was
+  produced (precedence 2 > 3); `turns_api` reuses
+  `flows.map_idempotency_reused`; adapter `POST /turn` documents the
+  concurrent-duplicate caveat (at-most-once storage, not work).
+
+Re-verification after fixes: orchestration **77 passed / 7 skipped**
+(+2), agent-kit 86, facilitator adapter 3+1s, review-schemas 154, agents
+skeleton 4×4, both images rebuilt.
+
+Live gate (owner approved in chat; `make agents-compose-up` then
+`make orchestration-turns-live-test`): **PASS** — 1 passed in 127 s.
+Real session creation (story-07) + one real dialogue turn (re-review
+message) over compose HTTP incl. real Vertex: 200 schema-valid
+TurnResponse (turn 2, outcome continue), turn record + facilitator count
+asserted in Postgres, same-key replay returned the identical canonical
+response, history read path served turns [1, 2]. ≈5 model calls.
+
+Live-only gotchas fixed in-session:
+
+- `FACILITATOR_DB_URL` in compose is the ADK/SQLAlchemy form
+  (`postgresql+asyncpg://…`) — `PostgresTurnResultStore` now normalizes
+  the scheme for asyncpg (first live run failed adapter startup with
+  `invalid DSN: … got 'postgresql+asyncpg'`).
+- throwaway-postgres startup race observed once more during test runs
+  (5 observations total; the small-retry fix in run-migrations.sh stays
+  due before Phase 8).
+
+Increment 3 verdict: **green** — deterministic tier 77+7s; live gate
+PASS. Next: increment 4 (flows 3+4 — finalization, reports, PO
+acceptance), which also removes the two documented increment-3 finalize
+gaps.

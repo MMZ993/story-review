@@ -9,6 +9,8 @@ started. Purely seam-driven (no network, no real model).
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 
 from orchestration.agent_clients import (
@@ -104,6 +106,7 @@ def facilitator_invocation(synthesis_reference) -> FacilitatorInvocation:
     return FacilitatorInvocation(
         session_id="sess-" + "a" * 32,
         turn_number=1,
+        invocation_id=uuid.uuid4(),
         po_message=None,
         synthesis_report=None,  # patched per test via object.__new__? no — see below
         synthesis_reference=synthesis_reference,
@@ -159,6 +162,7 @@ async def test_facilitator_two_attempts_and_fixed_backoff():
     request = FacilitatorInvocation.model_construct(
         session_id="sess-" + "a" * 32,
         turn_number=1,
+        invocation_id=uuid.uuid4(),
         po_message=None,
         synthesis_report=None,
         synthesis_reference=None,
@@ -169,3 +173,49 @@ async def test_facilitator_two_attempts_and_fixed_backoff():
     assert seam.calls[0]["url"].endswith("/turn")
     assert seam.sleeps == [5.0]
     assert seam.calls[0]["timeout_s"] == 120.0
+
+
+async def test_facilitator_reconciles_stored_result_between_attempts():
+    """After an ambiguous attempt failure, the facilitator client checks
+    the adapter's /turn-result seam: a lookup miss lets the retry policy
+    proceed; a stored completed result is used and the second model
+    attempt never starts (D15-6)."""
+    facilitator_payload = {
+        "output": opening_turn_output().model_dump(mode="json"),
+        "agent_version": "0.1.0",
+        "prompt_sha256": "e" * 64,
+        "corrective_reprompts": 0,
+    }
+    seam = PostRecorder(
+        [
+            envelope(503, "UPSTREAM_UNAVAILABLE", True),
+            envelope(503, "UPSTREAM_UNAVAILABLE", True),
+        ]
+    )
+    gets: list[str] = []
+
+    async def get(url: str, timeout_s: float):
+        gets.append(url)
+        # first lookup misses (not completed yet), second hits
+        return (404, {}) if len(gets) == 1 else (200, facilitator_payload)
+
+    client = make_client("facilitator", seam)
+    client._fetch = get
+    request = FacilitatorInvocation.model_construct(
+        session_id="sess-" + "a" * 32,
+        turn_number=1,
+        invocation_id=__import__("uuid").uuid4(),
+        po_message=None,
+        synthesis_report=None,
+        synthesis_reference=None,
+    )
+    result = await client.invoke(request)
+    assert result.output.delegation.invoke == "none"
+    # miss on the first lookup -> backoff + second POST; hit on the second
+    # lookup -> recovered, no third attempt
+    assert len(seam.calls) == 2
+    assert len(gets) == 2
+    assert gets[0].endswith(
+        "/turn-result/" + request.session_id + "/" + str(request.invocation_id)
+    )
+    assert seam.sleeps == [5.0]

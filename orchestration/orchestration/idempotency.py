@@ -96,21 +96,24 @@ async def complete(
     session_id: str,
     key: Any,
     canonical_response: dict[str, Any],
+    conn: asyncpg.Connection | None = None,
 ) -> None:
-    """Store the canonical logical response and mark the claim completed."""
-    async with pool.acquire() as conn:
-        await conn.execute(
-            """
-            update idempotency_claims
-            set state = 'completed', canonical_response = $4::jsonb,
-                updated_at = now()
-            where route = $1 and session_id = $2 and idempotency_key = $3
-            """,
-            route,
-            session_id,
-            key,
-            _json(canonical_response),
-        )
+    """Store the canonical logical response and mark the claim completed.
+    `conn` joins an outer transaction (atomic park + completion)."""
+    statement = (
+        """
+        update idempotency_claims
+        set state = 'completed', canonical_response = $4::jsonb,
+            updated_at = now()
+        where route = $1 and session_id = $2 and idempotency_key = $3
+        """
+    )
+    args = (route, session_id, key, _json(canonical_response))
+    if conn is not None:
+        await conn.execute(statement, *args)
+        return
+    async with pool.acquire() as borrowed:
+        await borrowed.execute(statement, *args)
 
 
 def _json(value: dict[str, Any]) -> str:

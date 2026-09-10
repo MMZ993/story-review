@@ -39,6 +39,43 @@ PASS over compose + real Vertex).
 
 ## Previous Session Summary
 
+Session 36 (2026-09-13, main PC — Phase 6 increment 3; local Docker
+(compose stack for the live gate; throwaway Postgres for the
+deterministic tier), real Vertex via adapters for the live gate only,
+no cloud actions, Cloud SQL STOPPED throughout):
+- Owner decisions recorded (D15 amendment 1): adapter contract extension
+  (option A — `FacilitatorRequest.invocation_id` + at-most-once result
+  persistence per (session, invocation) + `GET /turn-result/...`
+  reconciliation endpoint; binding got `PostgresTurnResultStore` on the
+  ADK Postgres) and increment-3 finalize scope (option B — gate-finalize
+  and `po_accepted` return retryable 503 until increment 4 wires flow 3;
+  nothing persisted, claim stays in_progress).
+- Implemented flow 2 per plan: `turns_flow.py` + `turn_execution.py` +
+  `lineage.py` + `turns_api.py` (lease → claim → lineage-scoped input
+  assembly → facilitator invocation with deterministic uuid5 invocation
+  id → TurnRecord with stamped resolutions → delegation execution
+  (both/business/engineering with previous review + extra context,
+  parallel with sibling cancellation; reuse_previous/none) → at-most-once
+  synthesis per turn (latest-per-perspective pairing) → gate precedence
+  (park-at-10 → continue-on-synthesis → open-issues-empty finalize) →
+  single TurnResponse; canonical replay re-reads resolutions from the
+  TurnRecord), `HttpFacilitatorClient` between-attempts reconciliation
+  (request-scoped closure), `records_store.update_session` +
+  `idempotency.complete` transactional variants (atomic park + claim
+  completion), Makefile `orchestration-turns-live-test`.
+- Verification: orchestration **77+7s**; agent-kit **86** (+4);
+  facilitator adapter **3+1s**; review-schemas 154; agents skeleton 4×4;
+  both images rebuilt. Independent read-only review: 1 Critical
+  (shared-client reconcile-target race) + 2 Importants (parked-session
+  same-key replay lockout; missing facilitator AgentRunRecord) + 4
+  minors — **all fixed in-session** (findings + fixes in Runbook 12).
+- Live gate run and **PASS** (owner approval in chat): real session
+  creation + one real dialogue turn (re-review message) over compose
+  HTTP — 200 schema-valid TurnResponse, durable turn record + count,
+  identical same-key replay, history reads (127 s). One live-only fix:
+  `FACILITATOR_DB_URL` (`postgresql+asyncpg://`) normalized for asyncpg
+  in `PostgresTurnResultStore`.
+
 Session 35 (2026-09-13, main PC — Phase 6 increment 2; local Docker only
 (throwaway Postgres; deterministic tier needs no compose), no cloud
 actions, Cloud SQL STOPPED throughout):
@@ -144,12 +181,12 @@ after changes):
 
 - review-schemas **154**, ado-wire **7**, dataset **36**, mcp-ingress **7**,
   mcp-story **67**, mcp-artifact **32**, mcp-report **34**, compose contract
-  **20**, agent-kit **82**, agents skeleton **4×4**, business adapter
+  **20**, agent-kit **86**, agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **59+6s** (increments 0–2);
+  facilitator adapter **3+1s**, orchestration **77+7s** (increments 0–3);
   live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
-  orchestration flow-1 live gate PASS (Runbook 12).
+  orchestration flow-1 and flow-2 live gates PASS (Runbook 12).
 - Per-session verification evidence (commands, counts, review verdicts,
   gotchas): append-only in the runbooks — Runbook 11 §0–4 + completion
   review for Phase 5; Runbook 10 for Phase 4; earlier phases in 03–09.
@@ -190,9 +227,10 @@ after changes):
 
 ## Next Steps
 
-1. **Phase 6 increment 3** (next session): flow 2 — dialogue turns
-   (lease+claim coupling, gate precedence, delegation execution;
-   reconciliation covers the opening turn too).
+1. **Phase 6 increment 4** (next session): flows 3+4 — finalization,
+   reports, PO acceptance; removes the two increment-3 finalize gaps
+   (retryable-503 branches, their tests, and the D15-amendment-1 gap
+   note).
 2. Owner push (main) when ready.
 
 ## Important Notes
@@ -222,6 +260,8 @@ after changes):
   az fallback.
 - **Local stack**: `make agents-compose-up` (local + local-agents profiles;
   needs host ADC); `compose-contract-test` needs `compose-up` first.
+  Increment-3 live gate left the stack running — `agents-compose-down`
+  when done with it.
 - **Keep private** until final review; GitHub mirror pending (owner).
 - Repo layout/plans/runbooks index: `docs-local/development-plan.md` and
   the per-phase plans under `docs-local/plans/`.

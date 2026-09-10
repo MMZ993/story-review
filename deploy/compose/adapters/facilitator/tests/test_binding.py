@@ -78,11 +78,49 @@ def test_turn_via_binding_with_scripted_model(monkeypatch):
             return json.dumps(reply)
 
     monkeypatch.setattr(fa, "make_send", lambda runner, req: Scripted())
+
+    from agent_kit.facilitator_adapter import InMemoryTurnResultStore
+
+    import facilitator_adapter as binding
+
+    monkeypatch.setattr(
+        binding, "PostgresTurnResultStore", lambda dsn: InMemoryTurnResultStore()
+    )
     app = create_app()
 
     async def call():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
-            resp = await c.get("/health")
-            assert resp.status_code == 200
+            body = {
+                "session_id": "sess-00000000-0000-0000-0000-000000000001",
+                "turn_number": 1,
+                "invocation_id": "12345678-1234-4789-8901-123456789abc",
+                "po_message": None,
+                "synthesis_report": json.loads(synth_report_json()),
+                "synthesis_reference": synth_reference_json(),
+                "evidence_references": [],
+            }
+            turn = await c.post("/turn", json=body)
+            assert turn.status_code == 200, turn.text
+            assert turn.json()["output"]["delegation"]["invoke"] == "none"
+            stored = await c.get(
+                "/turn-result/"
+                f"{body['session_id']}/{body['invocation_id']}"
+            )
+            assert stored.status_code == 200
+            assert stored.json() == turn.json()
+            health = await c.get("/health")
+            assert health.status_code == 200
 
     asyncio.run(call())
+
+
+def synth_report_json() -> str:
+    from tests.test_facilitator_input import synth_report
+
+    return synth_report().model_dump_json()
+
+
+def synth_reference_json() -> dict:
+    from tests.test_facilitator_input import synth_reference
+
+    return json.loads(synth_reference().model_dump_json())

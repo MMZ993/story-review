@@ -92,12 +92,14 @@ class SynthesisInvocation(BaseModel):
 
 
 class FacilitatorInvocation(BaseModel):
-    """`POST /turn` body for the facilitator adapter (frozen contract)."""
+    """`POST /turn` body for the facilitator adapter (frozen contract +
+    the recorded D15-6 `invocation_id` extension)."""
 
     model_config = ConfigDict(extra="forbid")
 
     session_id: SessionId
     turn_number: int = Field(ge=1, le=10)
+    invocation_id: uuid.UUID
     po_message: Text | None = None
     synthesis_report: SynthesisReport
     synthesis_reference: ArtifactReference
@@ -154,7 +156,7 @@ class FacilitatorClient(Protocol):
     ) -> FacilitatorResult: ...
 
 
-@dataclass(frozen=True)
+@dataclass
 class AgentSet:
     """The four downstream agent clients (injectable as one seam)."""
 
@@ -167,12 +169,20 @@ class AgentSet:
 # --- HTTP implementation ---------------------------------------------------
 
 Post = Callable[[str, dict, float], Awaitable[tuple[int, dict]]]
+Fetch = Callable[[str, float], Awaitable[tuple[int, dict]]]
 
 
 async def _http_post(url: str, json_body: dict, timeout_s: float) -> tuple[int, dict]:
     """One real adapter round trip; returns (status, parsed JSON body)."""
     async with httpx.AsyncClient(timeout=timeout_s) as client:
         response = await client.post(url, json=json_body)
+        return response.status_code, response.json()
+
+
+async def _http_get(url: str, timeout_s: float) -> tuple[int, dict]:
+    """One real adapter GET (reconciliation lookups)."""
+    async with httpx.AsyncClient(timeout=timeout_s) as client:
+        response = await client.get(url)
         return response.status_code, response.json()
 
 
@@ -189,6 +199,7 @@ class _HttpAgentClient:
         settings: Settings,
         *,
         post: Post = _http_post,
+        fetch: Fetch | None = None,
         sleeper: Callable[[float], Awaitable[None]] = asyncio.sleep,
         rng: Callable[[], float] = random.random,
         kind: str = "short",
@@ -196,10 +207,10 @@ class _HttpAgentClient:
         self._url = url
         self._settings = settings
         self._post = post
+        self._fetch = fetch
         self._sleep = sleeper
         self._rng = rng
         self._kind = kind
-        self._deadline: float | None = None
 
     @property
     def _attempts(self) -> int:
@@ -213,25 +224,48 @@ class _HttpAgentClient:
             return float(self._settings.facilitator_timeout_seconds)
         return float(self._settings.short_call_timeout_seconds)
 
-    async def _call(self, url: str, json_body: dict, deadline_at: float) -> tuple[int, dict]:
-        """Run the retry loop against `url`; returns body + attempt count."""
-        self._deadline = deadline_at
+    async def _call(
+        self,
+        url: str,
+        json_body: dict,
+        deadline_at: float,
+        recover: Callable[[], Awaitable[dict | None]] | None = None,
+    ) -> tuple[int, dict]:
+        """Run the retry loop against `url`; returns body + attempt count.
+
+        `recover` is consulted after an ambiguous attempt failure
+        (transport or retryable envelope): a completed result body it
+        returns is used instead of another attempt. It must be
+        request-scoped — never instance state — because one client
+        instance serves concurrent requests."""
         last_transport_error: Exception | None = None
+
+        async def no_recovery() -> dict | None:
+            return None
+
+        recover = recover or no_recovery
         for attempt in range(1, self._attempts + 1):
             timeout_s = self._clamped_timeout(deadline_at)
             try:
                 status, body = await self._post(url, json_body, timeout_s)
             except Exception as exc:  # connection / timeout
                 last_transport_error = exc
+                recovered = await recover()
+                if recovered is not None:
+                    return recovered, attempt
                 if attempt < self._attempts:
-                    await self._backoff(attempt)
+                    await self._backoff(attempt, deadline_at)
                     continue
                 raise AgentTransportError(str(exc)) from exc
             if status == 200:
                 return body, attempt
             error = self._error_body(status, body)
+            if error.retryable:
+                recovered = await recover()
+                if recovered is not None:
+                    return recovered, attempt
             if attempt < self._attempts and error.retryable:
-                await self._backoff(attempt)
+                await self._backoff(attempt, deadline_at)
                 continue
             raise AgentCallFailure(error)
         raise AgentTransportError(str(last_transport_error))
@@ -265,14 +299,14 @@ class _HttpAgentClient:
             raise DeadlineExceeded("request deadline budget exhausted")
         return min(self._timeout, remaining)
 
-    async def _backoff(self, attempt: int) -> None:
+    async def _backoff(self, attempt: int, deadline_at: float) -> None:
         if self._kind == "facilitator":
             delay = FACILITATOR_BACKOFF_SECONDS
         else:
             base = (1.0, 2.0)[min(attempt - 1, 1)]
             delay = base * (0.5 + self._rng())
         # never sleep past the point where the next attempt cannot fit
-        if self._deadline is None or time.monotonic() + delay < self._deadline:
+        if time.monotonic() + delay < deadline_at:
             await self._sleep(delay)
 
 
@@ -330,12 +364,34 @@ class HttpSynthesisClient(_HttpAgentClient):
 
 
 class HttpFacilitatorClient(_HttpAgentClient):
-    """`POST /turn` facilitator adapter client (session-scoped)."""
+    """`POST /turn` facilitator adapter client (session-scoped), with
+    ambiguous-timeout reconciliation via `GET /turn-result/...` between
+    attempts (D15-6)."""
 
     PATH = "/turn"
 
+    #: Reconciliation lookup budget (a completed result is a fast read).
+    RECONCILE_TIMEOUT_SECONDS: float = 10.0
+
     def __init__(self, url, settings, **kwargs):
         super().__init__(url, settings, kind="facilitator", **kwargs)
+
+    async def _recover(
+        self, session_id: str, invocation_id: uuid.UUID
+    ) -> dict | None:
+        """Fetch the stored result for this invocation when the adapter
+        completed it despite the failed attempt (best effort — any lookup
+        failure just lets the retry policy proceed)."""
+        if self._fetch is None:
+            return None
+        try:
+            status, body = await self._fetch(
+                f"{self._url}/turn-result/{session_id}/{invocation_id}",
+                self.RECONCILE_TIMEOUT_SECONDS,
+            )
+        except Exception:
+            return None
+        return body if status == 200 else None
 
     async def invoke(
         self, request: FacilitatorInvocation, *, deadline: float | None = None
@@ -343,8 +399,18 @@ class HttpFacilitatorClient(_HttpAgentClient):
         deadline_at = deadline or (
             time.monotonic() + self._settings.request_deadline_seconds
         )
+
+        async def recover() -> dict | None:
+            """Request-scoped closure — one client instance serves
+            concurrent sessions, so the reconcile target must never be
+            instance state."""
+            return await self._recover(request.session_id, request.invocation_id)
+
         body, attempts = await self._call(
-            self._url + self.PATH, request.model_dump(mode="json"), deadline_at
+            self._url + self.PATH,
+            request.model_dump(mode="json"),
+            deadline_at,
+            recover=recover,
         )
         return FacilitatorResult(
             output=FacilitatorTurnOutput.model_validate_json(
@@ -363,5 +429,7 @@ def default_agent_set(settings: Settings) -> AgentSet:
         business=HttpReviewerClient(settings.business_url, settings),
         engineering=HttpReviewerClient(settings.engineering_url, settings),
         synthesis=HttpSynthesisClient(settings.synthesis_url, settings),
-        facilitator=HttpFacilitatorClient(settings.facilitator_url, settings),
+        facilitator=HttpFacilitatorClient(
+            settings.facilitator_url, settings, fetch=_http_get
+        ),
     )

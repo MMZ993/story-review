@@ -503,3 +503,41 @@ Owner decisions at Phase 6 opening (all six plan items approved in chat,
    against the local adapter's Postgres session backend; mechanism
    confirmed against the actual adapter interface at increment 3, any
    divergence raised with the owner before coding around it.
+
+### D15 amendment 1 — facilitator reconciliation mechanism and increment-3 finalize scope (2026-09-13, session 36)
+
+Owner decisions at increment 3 opening (approved in chat):
+
+1. **Facilitator reconciliation via adapter contract extension (option A)**:
+   the frozen Phase 5 adapter contract lacked any invocation-ID tagging or
+   result-inspection seam, so D15-6's mechanism was added as a recorded
+   contract extension (the same mechanism used for `corrective_reprompts`):
+   - `FacilitatorRequest` gains a required `invocation_id` (UUID);
+   - the facilitator adapter persists one completed
+     `FacilitatorResponse` per `(session_id, invocation_id)` in its
+     session-backend Postgres (table `facilitator_turn_results`,
+     adapter-owned runtime state, created idempotently at startup —
+     outside the orchestration migrations);
+   - a repeated `POST /turn` for a completed invocation returns the stored
+     result without a model run (at-most-once facilitator work per
+     invocation across HTTP retries; failed turns store nothing);
+   - `GET /turn-result/{session_id}/{invocation_id}` exposes the stored
+     result (404 = never completed; may be re-invoked);
+   - orchestration derives the invocation id deterministically from the
+     idempotency key (uuid5) and reconciles between facilitator attempts.
+   Re-verified against Agent Engine semantics at Phase 8.
+2. **Increment-3 finalize scope (option B)**: the gate engine implements
+   the full precedence including `open_issues empty AND invoke=none →
+   finalize`, but both finalize paths (gate outcome and `po_accepted`)
+   continue into flow 3, which is increment 4. Until then they return a
+   retryable 503 `UPSTREAM_UNAVAILABLE` ("finalization arrives in
+   increment 4"), persist no turn state, and the claim stays in_progress
+   so the same key can complete the turn after increment 4 deploys. This
+   is a deliberate, temporary gap inside the closed `ErrorCode` taxonomy,
+   removed by increment 4.
+3. **`SESSION_LOCKED` envelope shape**: schemas.md's `ErrorBody` invariant
+   (retryable ⇔ retry hint present) forces `SESSION_LOCKED` to carry
+   `retryable=true` + `retry_after_seconds`; the api-contract prose
+   ("non-retryable ... retry a new request, not the same turn") is honored
+   by the code-specific client rule: wait for the hint, then submit a new
+   request/key (not an idempotent replay). No schema change needed.
