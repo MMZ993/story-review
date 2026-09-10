@@ -1,0 +1,20 @@
+[project]
+name = "facilitator-adapter"
+version = "0.1.0"
+description = "Local compose adapter: facilitator ADK agent behind the frozen session-scoped invocation interface."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "google-adk[mcp,db]==2.8.0",
+    "agent-kit",
+    "review-schemas",
+    "facilitator-agent",
+    "asyncpg>=0.30",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["facilitator_adapter"]

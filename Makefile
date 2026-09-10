@@ -16,7 +16,9 @@ REPORT_PORT    ?= $(if $(_report_port),$(_report_port),8103)
 .PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-ingress-test mcp-story-test mcp-artifact-test mcp-report-test dataset-push agent-kit-test agents-test \
 	business-reviewer-adapter-test business-reviewer-live-test \
 	engineering-reviewer-adapter-test engineering-reviewer-live-test \
-	synthesis-adapter-test synthesis-live-test compose-up compose-down compose-contract-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
+	synthesis-adapter-test synthesis-live-test facilitator-adapter-test \
+	facilitator-live-test agents-compose-up agents-compose-down \
+	compose-up compose-down compose-contract-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -283,3 +285,38 @@ db-status: ## Show Cloud SQL instance state (read-only)
 	$(guard-project)
 	gcloud sql instances describe $(PROJECT_ID)-sessions \
 		--format='value(state,settings.activationPolicy)'
+
+facilitator-adapter-test: ## Phase 5: facilitator adapter deterministic tests (no LLM)
+	cd deploy/compose/adapters/facilitator && \
+	PROMPTS_DIR=$$PWD/../../../../prompts \
+	uv run --no-project --with-requirements tests/requirements.lock \
+		--with-editable ../../../../shared/agent_kit \
+		--with-editable ../../../../shared/review_schemas \
+		--with-editable ../../../../agents/facilitator \
+		--with-editable . python -m pytest tests -q
+
+facilitator-live-test: ## Phase 5 exit gate: example-interaction walkthrough over compose HTTP (main PC; needs agents-compose-up)
+	source infra/envs/home.env && \
+	cd deploy/compose/adapters/facilitator && \
+	PROMPTS_DIR=$$PWD/../../../../prompts \
+	AGENT_LIVE_TESTS=1 \
+	BUSINESS_REVIEWER_URL=http://127.0.0.1:$${BUSINESS_REVIEWER_PORT:-8111} \
+	ENGINEERING_REVIEWER_URL=http://127.0.0.1:$${ENGINEERING_REVIEWER_PORT:-8112} \
+	SYNTHESIS_URL=http://127.0.0.1:$${SYNTHESIS_PORT:-8113} \
+	FACILITATOR_URL=http://127.0.0.1:$${FACILITATOR_PORT:-8114} \
+	uv run --no-project --with-requirements tests/requirements.lock \
+		--with-editable ../../../../shared/agent_kit \
+		--with-editable ../../../../shared/review_schemas \
+		--with-editable ../../../../agents/facilitator \
+		--with-editable . python -m pytest tests/test_live_walkthrough.py -q
+
+agents-compose-up: ## Local stack incl. the four agent adapters (`local` + `local-agents` profiles)
+	[ -f deploy/env/.env ] || cp deploy/env/.env.example deploy/env/.env
+	@grep -q '^GOOGLE_CLOUD_PROJECT=..*' deploy/env/.env || { \
+		echo "ERROR: set GOOGLE_CLOUD_PROJECT in deploy/env/.env (adapter containers need the Vertex project)" >&2; exit 2; } \
+	|| [ -f $$HOME/.config/gcloud/application_default_credentials.json ] || { \
+		echo "ERROR: ADC file not found at \$$HOME/.config/gcloud (adapter containers mount it read-only)" >&2; exit 2; }
+	cd deploy && HOST_UID=$$(id -u) HOST_GID=$$(id -g) docker compose --profile local --profile local-agents --env-file env/.env up -d --build
+
+agents-compose-down: ## Stop the local stack incl. agent adapters
+	cd deploy && docker compose --profile local --profile local-agents --env-file env/.env down
