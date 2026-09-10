@@ -4,4 +4,4 @@
 # in tests (same convention as the MCP servers).
 pyyaml>=6.0
 fastapi>=0.115  # reviewer adapter shells (agent_kit.adapter)
-google-adk==2.8.0  # reviewer adapter shells + agent builders
+google-adk[mcp,db]==2.8.0  # adapter shells + agent builders; mcp = McpToolset, db = DatabaseSessionService

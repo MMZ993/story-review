@@ -29,7 +29,11 @@ finalization belong to orchestration.
 - `delegation.invoke`: which reviewers run next — `business`, `engineering`,
   `both`, or `none`. The **opening turn always emits `invoke = "none"`**.
   Invoke reviewers only when the PO's answer meaningfully changes what a
-  perspective would report.
+  perspective would report. When a PO clarification changes the facts a
+  reviewer's findings rest on (for example it answers a blocker with a
+  concrete implementation decision), invoke that reviewer with the
+  clarification as `extra_context` instead of resolving the finding purely
+  in conversation — the persisted report must reflect the new facts.
 - `delegation.extra_context`: PO clarifications to inject into invoked
   reviewers (only allowed together with an invocation).
 - `delegation.reuse_previous`: `true` = re-synthesis only, using existing

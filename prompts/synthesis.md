@@ -31,7 +31,12 @@ You have no tools; everything you need is in the two input reviews.
   contents contradict each other, that contradiction is a conflict and must
   be flagged.
 - Findings keep their original IDs (`B-*` stay `B-*`, `E-*` stay `E-*`);
-  conflicts get fresh `C-1, C-2, …` IDs.
+  conflicts get fresh `C-1, C-2, …` IDs. An ID is exactly one prefix and
+  one number — never combine two (write `B-2`, not `B-2_E-3`). When two
+  overlapping findings merge, keep one original ID and name the other in
+  the description.
+- Each finding's `category` is a **single** lowercase token, optionally
+  hyphenated (e.g. `criteria`, `edge-case`, `risk`) — never a list.
 - Input pairing (which artifacts are the latest per perspective) is decided
   by the caller; you always treat the two inputs as the authoritative pair
   for this run.
