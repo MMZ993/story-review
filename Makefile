@@ -18,7 +18,7 @@ REPORT_PORT    ?= $(if $(_report_port),$(_report_port),8103)
 	engineering-reviewer-adapter-test engineering-reviewer-live-test \
 	synthesis-adapter-test synthesis-live-test facilitator-adapter-test \
 	facilitator-live-test agents-compose-up agents-compose-down \
-	compose-up compose-down compose-contract-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
+	compose-up compose-down compose-contract-test orchestration-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -189,6 +189,25 @@ synthesis-live-test: ## Phase 5: synthesis real-model gate (main PC, ADC + Verte
 		--with-editable ../../../../shared/review_schemas \
 		--with-editable ../../../../agents/synthesis \
 		--with-editable . python -m pytest tests -q
+
+orchestration-test: ## Phase 6: orchestration deterministic tests (throwaway Postgres in Docker)
+	container=$$(docker run -d --rm -e POSTGRES_USER=orch \
+		-e POSTGRES_PASSWORD=orch -e POSTGRES_DB=orchestration \
+		-p 127.0.0.1:$${ORCH_TEST_DB_PORT:-9030}:5432 postgres:16); \
+	trap 'docker rm -f $$container >/dev/null 2>&1' EXIT; \
+	for i in $$(seq 1 60); do \
+		docker exec $$container pg_isready -U orch >/dev/null 2>&1 && break; sleep 0.5; \
+	done; \
+	docker exec $$container pg_isready -U orch >/dev/null 2>&1 || { echo "test Postgres not ready" >&2; exit 1; }; \
+	DATABASE_URL=postgres://orch:orch@127.0.0.1:$${ORCH_TEST_DB_PORT:-9030}/orchestration \
+		deploy/cloud-sql/run-migrations.sh && \
+	cd orchestration && \
+	ORCH_TEST_DB_DSN=postgres://orch:orch@127.0.0.1:$${ORCH_TEST_DB_PORT:-9030}/orchestration \
+	ORCH_STORY_URL=http://story:8080/mcp ORCH_ARTIFACT_URL=http://artifact:8080/mcp \
+	ORCH_REPORT_URL=http://report:8080/mcp ORCH_BUCKET=artifacts-local \
+	uv run --no-project --with-requirements tests/requirements.lock \
+		--with-editable . --with-editable ../shared/review_schemas \
+		python -m pytest tests -q
 
 compose-up: ## Local development stack (Phase 4 `local` profile)
 	[ -f deploy/env/.env ] || cp deploy/env/.env.example deploy/env/.env
