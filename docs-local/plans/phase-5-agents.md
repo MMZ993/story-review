@@ -176,6 +176,13 @@ Recorded outcomes are in `docs-local/local-decisions.md` (D13).
 
 ### 4. Facilitator + `local-agents` compose profile (local + live gate)
 
+- Status: COMPLETE (2026-09-12). Serving-safe facilitator mirrors,
+  `agent_kit.facilitator_input` + `facilitator_adapter` (corrective loop,
+  lineage tool guard, Postgres session backend), agent builder, adapter
+  binding, `local-agents` compose profile, Makefile targets; **Phase 5
+  exit gate PASS** (example-interaction walkthrough over compose HTTP).
+  Evidence, gotchas, and D14 amendment 1 in Runbook 11 §4.
+
 - `prompts/facilitator.md`: dialogue role, delegation rules, opening turn
   `invoke` = none, `readiness` is proposal-only, PO acceptance never produced
   by the LLM.

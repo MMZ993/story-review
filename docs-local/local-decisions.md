@@ -438,3 +438,30 @@ reviewers/synthesis; the facilitator's bounded corrective loop is
 unchanged). D13-3's intent (native enforcement backed by the shared strict
 models) is preserved; the mirror is an implementation detail of the
 Vertex serving constraint.
+
+### D14 amendment 1 — Agent output-token cap 16384 + increment-4 envelope/dependency notes (2026-09-12, session 30)
+
+Evidence-driven changes recorded after Phase 5 increment 4:
+
+- **`max_output_tokens` 8192 → 16384 for all four agents**: the story-05
+  synthesis merge exceeded the 8,192-token output cap (truncated,
+  invalid JSON at ~10.7k chars). gemini-2.5-flash supports far more;
+  16,384 leaves headroom for the facilitator's dialogue turns too.
+- **`FacilitatorResponse.corrective_reprompts` (0–2)** is a recorded
+  extension of the frozen facilitator response envelope (plan appendix):
+  observability.md requires the counter to be recorded, and the adapter is
+  the only place that knows it; orchestration persists it in
+  `AgentRunRecord`.
+- **`google-adk[mcp,db]`** replaces plain `google-adk` wherever toolsets
+  or the DatabaseSessionService are imported (agent-kit, facilitator agent
+  and adapter); `asyncpg` added for the Postgres session URL.
+- **local-agents profile credential shape**: host ADC bind-mounted
+  read-only + `GOOGLE_APPLICATION_CREDENTIALS`, containers run as the host
+  uid (mode-600 ADC); local profile only, no SA keys, all ports loopback.
+- **Agent wheels force-include `config.yaml` inside the package** (one
+  shared site-packages dir would collide across agents); `load_config()`
+  resolves wheel vs editable source locations.
+
+Tool use under `output_schema` was verified empirically (Runbook 11 §4):
+ADK 2.8.0 + gemini-2.5-flash invoke function tools before producing the
+structured reply — the facilitator's read-only MCP toolsets are live.

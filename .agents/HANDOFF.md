@@ -1,17 +1,18 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-12 (session 29 CLOSED — Phase 5 increment
-  3 complete: synthesis agent + adapter; live Vertex gate PASS;
+Last updated: 2026-09-12 (session 30 — Phase 5 increment
+  4 COMPLETE: facilitator + local-agents profile; exit gate PASS;
   owner push pending).
 
 ## Where we are
 
-- Phase: **5 — Agents (ADK) + local adapters — OPEN, increments 0–3 of 4
-  COMPLETE**. Plan at `docs-local/plans/phase-5-agents.md`; invocation
-  contract frozen in the plan appendix; D13 + D13 amendment 1 + D14
-  recorded. Remaining: increment 4 (facilitator +
-  `local-agents` compose profile + example-interaction walkthrough).
+- Phase: **5 — Agents (ADK) + local adapters — all increments 0–4 of 4
+  COMPLETE**; the Phase 5 exit gate (example-interaction walkthrough,
+  development-plan criterion) PASSED in session 30. Remaining: Phase 5
+  close-out (completion review, development-plan status, owner push).
+  Plan at `docs-local/plans/phase-5-agents.md`; D13 + amendments + D14 +
+  D14 amendment 1 recorded.
 - Phase 4 **COMPLETE and CLOSED** (session 26, 2026-09-11): independent
   completion review Ready-to-close; D10 amendment 7 recorded (azure/
   Secret-Manager wiring deferred to Phase 8); development-plan updated.
@@ -28,6 +29,38 @@ Last updated: 2026-09-12 (session 29 CLOSED — Phase 5 increment
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 30 (2026-09-12, main PC — Phase 5 increment 4; local Docker only;
+Cloud SQL STOPPED throughout):
+- **Increment 4 COMPLETE — facilitator + `local-agents` profile**:
+  serving-safe `FacilitatorTurnOutput` mirrors; `agent_kit.facilitator_input`
+  (typed turn request + renderer + opening-turn rules) and
+  `agent_kit.facilitator_adapter` (≤2 corrective re-prompts →
+  DELEGATION_VALIDATION; lineage tool guard via `before_tool_callback`;
+  session-scoped `Runner` on `DatabaseSessionService`/compose Postgres;
+  FastAPI shell); facilitator agent builder; `deploy/compose/adapters/
+  facilitator/` binding; shared parameterized adapter Dockerfile;
+  `local-agents` compose profile (postgres + 4 adapters, loopback ports
+  8111–8114, ADC bind-mounted ro, host-uid containers); Makefile targets
+  (`facilitator-adapter-test`, `facilitator-live-test`,
+  `agents-compose-up/down`).
+- **Phase 5 exit gate PASS** (owner chose: everything over compose HTTP):
+  example-interaction walkthrough (story-05 partial-resolution) — both
+  reviewers → artifacts saved to the artifact MCP server → synthesis →
+  facilitator turn 1 `invoke=none` → PO clarification → turn 2
+  `invoke=engineering` + extra_context → mirrored re-review (with
+  previous review) → re-synthesis pairing → turn 3 `invoke=none` +
+  resolution drafts. Evidence + ~8 gotchas in Runbook 11 §4.
+- Two evidence-driven prompt iterations (D13-6): facilitator delegation
+  rule sharpened; synthesis ID/category constraints added.
+  `max_output_tokens` 8192→16384 all agents (**D14 amendment 1**, with the
+  envelope extension `corrective_reprompts`, `google-adk[mcp,db]`+asyncpg,
+  ADC-mount/local profile credential shape, wheel config.yaml shipping).
+- Increment-4 independent review: **Ready to proceed** (0 Critical; both
+  Importants resolved — tools under `output_schema` verified empirically
+  with a 1-call experiment; shell tests already existed). Minors fixed
+  same session.
+- Cost: ~36 real flash calls — negligible.
 
 Session 29 (2026-09-12, main PC — Phase 5 increment 3; no infra actions;
 Cloud SQL stayed STOPPED):
@@ -536,6 +569,21 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 30:
+- Deterministic suites at close: agent-kit **82** (26 new), agents
+  skeleton **4×4**, facilitator adapter **3 passed + 1 skipped**;
+  regressions green: review-schemas 154, ado-wire 7, dataset 36,
+  mcp-ingress 7, mcp-story 67, mcp-artifact 32, mcp-report 34, business
+  adapter 6+2s, engineering adapter 7+1s, synthesis adapter 7+2s;
+  `git diff --check` clean; compose stack up→down clean.
+- Live exit gate `make facilitator-live-test` **1 passed** (~3 min,
+  compose HTTP, ~10 real calls in the clean pass). Tools under
+  `output_schema` verified with a 1-call experiment.
+- Increment-4 independent read-only subagent review: **Ready to proceed**;
+  0 Critical; 2 Important resolved; minors fixed same session.
+- `make db-status` STOPPED/NEVER at start and end; identifier check on the
+  session diff clean (both env files sourced).
+
 Session 29:
 - Deterministic suites at close: agent-kit **38** (14 new), agents
   skeleton **3×4**, synthesis adapter **7 passed + 2 skipped** (live
@@ -768,13 +816,11 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Owner push**: main ahead 2 (`8f4fe5d`, `35be8a6`). No `docs/`
-   changes — no frozen cherry-pick needed.
-2. **Phase 5 increment 4 (facilitator)**: session-scoped interface,
-   DatabaseSessionService on compose Postgres, McpToolset to story+artifact
-   servers, typed FacilitatorTurnOutput + bounded corrective re-prompts
-   (DELEGATION_VALIDATION on exhaustion), `local-agents` compose profile,
-   Makefile wiring, example-interaction.md walkthrough as the live gate.
+1. **Owner push**: main ahead 3 (`e583a71`, `7b844d6`, `ff38a39`). No
+   `docs/` changes — no frozen cherry-pick needed.
+2. **Phase 5 close-out** (next session): independent completion review
+   over the whole phase, mark Phase 5 COMPLETE in development-plan.md,
+   Runbook 11 wrap-up, HANDOFF phase transition to Phase 6 (orchestration).
 4. Optional hardening (later increments or Phase 6): the three deferred
    review minors from session 28; two deferred synthesis-review minors
    (extract shared single-turn run loop from `run_reviewer`/

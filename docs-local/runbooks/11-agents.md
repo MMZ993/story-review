@@ -219,3 +219,110 @@ Gotchas learned:
 
 Cost this session: ~8 real flash calls total (three failing live iterations
 + one clean pass) — negligible.
+
+## Increment 4 — facilitator + `local-agents` compose profile + exit gate
+
+**Status: COMPLETE (2026-09-12). Phase 5 exit gate PASS.**
+
+What landed:
+
+- `agent_kit.llm_output`: serving-safe facilitator mirrors
+  (`ServingSafeFacilitatorTurnOutput`, `MirrorDelegationDecision`,
+  `MirrorResolutionDraft`) — same field names, no combination validators
+  serving-side; the strict shared model stays the authority.
+- `agent_kit.facilitator_input`: typed `FacilitatorRequest` (session id,
+  turn 1–10, PO-message turn rules, latest synthesis + reference,
+  lineage-scoped evidence refs validated to one run) + message renderer +
+  `FacilitatorTurnOutput` response + turn-context rules (opening turn =
+  `invoke=none`, no resolutions) — violations enter the corrective loop.
+  **Recorded envelope extension**: `FacilitatorResponse.corrective_reprompts`
+  (0–2) so orchestration can persist the counter (observability.md).
+- `agent_kit.facilitator_adapter`: `turn_with_corrections` (initial attempt
+  + ≤2 corrective re-prompts; exhaustion → `DELEGATION_VALIDATION` 422),
+  `lineage_tool_guard` (`before_tool_callback`; story id-space + no source
+  override; artifact reads limited to the supplied references and run),
+  `make_send` (session-scoped `Runner` with `DatabaseSessionService`,
+  session id = request session id), FastAPI `/turn` + `/health` shell with
+  the shared `ErrorEnvelope` mapping. Model I/O injected as a `send`
+  callable → fully deterministic tests.
+- `agents/facilitator/facilitator/agent.py` — agent builder (tools +
+  guard + mirror `output_schema` injected by the adapter core).
+- `deploy/compose/adapters/facilitator/` — thin binding (env-validated:
+  `FACILITATOR_STORY_URL` / `FACILITATOR_ARTIFACT_URL` /
+  `FACILITATOR_DB_URL`) + deterministic binding tests + the live
+  walkthrough gate.
+- `deploy/compose/adapters/Dockerfile` — one parameterized adapter image
+  (`--build-arg SLUG`), code-only packages, dataset build-guard, prompts
+  at `/app/prompts`.
+- `deploy/docker-compose.yml` `local-agents` profile: `postgres:16` (ADK
+  sessions, runtime state only, no host port) + the four adapters
+  (loopback ports 8111–8114, story/artifact MCP via service DNS). Vertex
+  credentials = host ADC file bind-mounted **read-only** to
+  `/tmp/adc/…` + `GOOGLE_APPLICATION_CREDENTIALS` (local profile only; no
+  SA keys). Containers run as the host uid (`user:` override) so the
+  mode-600 ADC mount stays readable.
+- Makefile: `facilitator-adapter-test`, `facilitator-live-test`,
+  `agents-compose-up` / `agents-compose-down` (fail-fast guards for
+  `GOOGLE_CLOUD_PROJECT` and the ADC file).
+
+Checks (main PC):
+
+- Deterministic suites at close: agent-kit **82** (26 new), agents
+  skeleton **4×4**, facilitator adapter binding **3 passed + 1 skipped**
+  (live gate correctly skipped), regressions: review-schemas 154,
+  ado-wire 7, dataset 36, mcp-ingress 7, mcp-story 67, mcp-artifact 32,
+  mcp-report 34, business adapter 6+2s, engineering adapter 7+1s,
+  synthesis adapter 7+2s. `git diff --check` clean.
+- **Phase 5 exit gate PASS**: `make agents-compose-up` then
+  `facilitator-live-test` — the example-interaction walkthrough
+  (docs/design/example-interaction.md arc, story-05 partial-resolution)
+  over compose HTTP: both reviewers → artifacts saved to the artifact MCP
+  server → synthesis (conflict flagged) → facilitator turn 1
+  `invoke=none` → PO clarification → turn 2 `invoke=engineering` with
+  `extra_context` → mirrored single-perspective re-review (with previous
+  review) → re-synthesis pairing business v1 + engineering v2 → PO
+  resolution message → turn 3 `invoke=none` + resolution drafts. The test
+  stands in for Phase-6 orchestration only (assembly, artifact saves,
+  re-synthesis pairing).
+- **Tools under `output_schema` verified empirically** (review finding):
+  a 1-call experiment (gemini-2.5-flash, ADK 2.8.0, function tool +
+  `output_schema` Pydantic model) showed the tool IS invoked before the
+  structured reply (`TOOL CALLS: ['France']` then valid JSON) — the
+  facilitator's McpToolsets are live, not dead code.
+- Increment-4 independent review (read-only subagent): **Ready to
+  proceed**, 0 Critical; 2 Important resolved (tool-use verification
+  above; shell tests — already present in
+  `shared/agent_kit/tests/test_facilitator_shell.py`, which the reviewer
+  had missed) and minors fixed (docstring on persistent corrective
+  messages; tautology/noise asserts; last-event-text parse rule; guard
+  tests for omitted run id + synthesis reference; ADC fail-fast in
+  `agents-compose-up`). Accepted-as-is: `${HOME}` mount assumption
+  (guarded by the Makefile check), double `load_prompt` in the shell.
+
+Gotchas learned:
+
+- **dash CMD**: the adapter Dockerfile CMD must avoid bash-isms
+  (`${VAR//…}` → "Bad substitution"); use `$(echo $SLUG | tr - _)`.
+- **Wheels don't ship `config.yaml`**: hatch wheels contained only the
+  package dir → adapters failed at startup. Fix: force-include
+  `config.yaml` into each wheel's package + a `_config_path()` fallback
+  (wheel: package dir; editable: agent root).
+- **ADC mount permissions**: mode-600 host ADC is unreadable by `nobody`;
+  the adapters run as the host uid via compose `user:` (Makefile exports
+  `HOST_UID`/`HOST_GID` — `UID` is readonly in make's shell).
+- **`IdempotencyKey` is a UUID4** — synthesized keys must be real UUIDs.
+- **mcp client SDK in tests**: `streamable_http_client` yields a 3-tuple
+  and results use `structuredContent` (camelCase) — the Phase-4 contract
+  conftest pins the older 2-tuple shape with its own lock.
+- **8192 max_output_tokens truncated synthesis**: the story-05 merge
+  exceeded the output cap (unterminated JSON at ~10.7k chars) → all four
+  configs raised to **16384** (D14 amendment 1, local-decisions.md).
+- **Model merged finding IDs** (`B-2_E-3`) and comma-listed categories in
+  synthesis → prompt iteration (IDs are exactly one `B-n`/`E-n`; category
+  is a single hyphenated token). Facilitator initially chose `invoke=none`
+  after the PO clarification → prompt iteration (delegate with
+  `extra_context` when a clarification changes the facts a finding rests
+  on). Both per D13-6 evidence-driven prompt changes; owner informed.
+
+Cost this increment: ~35 real flash calls across the failing/successful
+gate iterations + 1 experiment call — negligible.
