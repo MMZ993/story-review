@@ -64,6 +64,38 @@ class MirrorConflictItem(BaseModel):
     needs_po_clarification: bool
 
 
+class MirrorDelegationDecision(BaseModel):
+    """Serving-safe mirror of `review_schemas.DelegationDecision`.
+
+    Combination rules (reuse_previous/invoke, extra_context/invoke) are
+    deliberately NOT enforced here — Vertex structured output rejects
+    cross-field validators; the strict model enforces them at the adapter
+    boundary, where failure triggers the bounded corrective re-prompt loop.
+    """
+
+    invoke: str = "none"
+    extra_context: str | None = None
+    reuse_previous: bool = False
+    open_issues: list[str] = Field(default_factory=list)
+    readiness: str = "needs_work"
+
+
+class MirrorResolutionDraft(BaseModel):
+    """Serving-safe mirror of `review_schemas.ResolutionDraft`."""
+
+    issue: str
+    disposition: str
+    explanation: str
+
+
+class ServingSafeFacilitatorTurnOutput(BaseModel):
+    """Serving-safe mirror of `review_schemas.FacilitatorTurnOutput`."""
+
+    reply: str
+    delegation: MirrorDelegationDecision
+    resolutions: list[MirrorResolutionDraft] = Field(default_factory=list)
+
+
 class MirrorSynthesisInputs(BaseModel):
     """Serving-safe mirror of the `SynthesisReport.inputs` dict: fixed
     `business`/`engineering` keys so the model cannot invent key names."""
