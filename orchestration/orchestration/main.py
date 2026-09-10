@@ -1,20 +1,25 @@
 """FastAPI application factory (Phase 6).
 
-Wires settings, MCP clients, correlation-ID middleware, structured error
-envelope handlers, and the increment routers (stories, health). Endpoint
-ownership per docs-local/plans/phase-6-orchestration.md increments 1-4.
+Wires settings, the asyncpg pool (lifecycle-owned unless injected), MCP
+clients, agent adapter clients, correlation-ID middleware, structured
+error envelope handlers, and the increment routers (stories, sessions,
+health). Endpoint ownership per
+docs-local/plans/phase-6-orchestration.md increments 1-4.
 """
 
 from __future__ import annotations
 
 import uuid
+from contextlib import asynccontextmanager
 
+import asyncpg
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from review_schemas.api import HealthResponse
+from review_schemas.api import HealthDependency, HealthResponse
 
-from . import stories
+from . import db, sessions_api, stories
+from .agent_clients import AgentSet, default_agent_set
 from .api_errors import ApiError, make_error
 from .config import Settings
 from .health import Downstream, dependencies_state
@@ -27,10 +32,28 @@ def create_app(
     story_client: McpClient | None = None,
     artifact_client: McpClient | None = None,
     report_client: McpClient | None = None,
+    agents: AgentSet | None = None,
+    pool: asyncpg.Pool | None = None,
 ) -> FastAPI:
-    """Build the orchestration app; tests may inject settings and clients."""
+    """Build the orchestration app; tests may inject settings, clients,
+    agent fakes, and an existing pool (which suppresses the lifespan)."""
     resolved = settings or Settings.from_env()
-    app = FastAPI(title="story-review orchestration", version="0.1.0")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """Own the record pool when none was injected."""
+        app.state.pool = pool
+        if pool is None:
+            app.state.pool = await db.open_pool(resolved.db_dsn)
+        try:
+            yield
+        finally:
+            if pool is None:
+                await app.state.pool.close()
+
+    app = FastAPI(
+        title="story-review orchestration", version="0.1.0", lifespan=lifespan
+    )
     app.state.settings = resolved
     app.state.story_client = story_client or McpClient(
         resolved.story_url, resolved
@@ -41,6 +64,8 @@ def create_app(
     app.state.report_client = report_client or McpClient(
         resolved.report_url, resolved
     )
+    app.state.agents = agents or default_agent_set(resolved)
+    app.state.pool = pool
 
     @app.middleware("http")
     async def correlation_id(request: Request, call_next):
@@ -75,16 +100,37 @@ def create_app(
         )
 
     app.include_router(stories.router)
+    app.include_router(sessions_api.router)
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:
-        """Liveness + downstream reachability flags (single probe each)."""
-        return await dependencies_state(
+        """Liveness + database and downstream reachability flags."""
+        database = await dependencies_state(
             [
                 Downstream("story", app.state.story_client),
                 Downstream("artifact", app.state.artifact_client),
                 Downstream("report", app.state.report_client),
             ]
         )
+        reachable = await _database_reachable(app)
+        database.dependencies.append(
+            HealthDependency(name="database", reachable=reachable)
+        )
+        if not reachable:
+            database.status = "degraded"
+        return database
 
     return app
+
+
+async def _database_reachable(app: FastAPI) -> bool:
+    """Single `select 1` probe; never raises (health stays 200)."""
+    pool = getattr(app.state, "pool", None)
+    if pool is None:
+        return False
+    try:
+        async with pool.acquire() as conn:
+            await conn.fetchval("select 1")
+        return True
+    except Exception:
+        return False

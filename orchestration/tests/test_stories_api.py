@@ -84,7 +84,8 @@ def side_transport(*, probe_ok: bool = True):
 
 
 def make_app(
-    story=None, artifact=None, report=None, settings: Settings | None = None
+    story=None, artifact=None, report=None, settings: Settings | None = None,
+    pool=None,
 ) -> httpx.AsyncClient:
     values = dict(
         db_dsn="postgresql://x",
@@ -92,6 +93,10 @@ def make_app(
         artifact_url="http://artifact:8080/mcp",
         report_url="http://report:8080/mcp",
         bucket="artifacts-local",
+        business_url="http://business:8080",
+        engineering_url="http://engineering:8080",
+        synthesis_url="http://synthesis:8080",
+        facilitator_url="http://facilitator:8080",
     )
     resolved = settings or Settings(**values)
 
@@ -104,6 +109,7 @@ def make_app(
         pass
 
     app = create_app(
+        pool=pool,
         settings=resolved,
         story_client=client(resolved.story_url, story or story_transport()),
         artifact_client=client(
@@ -169,8 +175,8 @@ async def test_responses_carry_correlation_id_and_echo_supplied_one():
     assert echoed.headers["X-Correlation-Id"] == CORR
 
 
-async def test_health_reports_ok_when_all_downstreams_reachable():
-    async with make_app() as client:
+async def test_health_reports_ok_when_all_downstreams_reachable(pool):
+    async with make_app(pool=pool) as client:
         response = await client.get("/health")
     assert response.status_code == 200
     payload = response.json()
@@ -179,6 +185,7 @@ async def test_health_reports_ok_when_all_downstreams_reachable():
         "story",
         "artifact",
         "report",
+        "database",
     }
     assert all(d["reachable"] for d in payload["dependencies"])
 
@@ -191,7 +198,12 @@ async def test_health_reports_degraded_when_a_downstream_is_down():
     payload = response.json()
     assert payload["status"] == "degraded"
     flags = {d["name"]: d["reachable"] for d in payload["dependencies"]}
-    assert flags == {"story": True, "artifact": True, "report": False}
+    assert flags == {
+        "story": True,
+        "artifact": True,
+        "report": False,
+        "database": False,
+    }
 
 
 async def test_health_never_fails_on_a_down_downstream():

@@ -32,3 +32,7 @@ class SessionLocked(OrchestrationError):
 class ConstraintViolation(OrchestrationError):
     """A database-level invariant rejected the write (e.g. duplicate turn
     number or a second active run for a story)."""
+
+    def __init__(self, message: str, constraint: str | None = None):
+        super().__init__(message)
+        self.constraint = constraint

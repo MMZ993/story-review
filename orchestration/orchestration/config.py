@@ -22,6 +22,10 @@ _MANDATORY = (
     "ORCH_ARTIFACT_URL",
     "ORCH_REPORT_URL",
     "ORCH_BUCKET",
+    "ORCH_BUSINESS_URL",
+    "ORCH_ENGINEERING_URL",
+    "ORCH_SYNTHESIS_URL",
+    "ORCH_FACILITATOR_URL",
 )
 
 
@@ -34,6 +38,12 @@ class Settings:
     artifact_url: str
     report_url: str
     bucket: str
+    # Local adapter invocation endpoints (frozen Phase 5 contract; the
+    # local-agents compose profile publishes them on the host).
+    business_url: str
+    engineering_url: str
+    synthesis_url: str
+    facilitator_url: str
     # Observability.md: hard 5-minute end-to-end deadline for requests that
     # run agent work; short calls 60 s / 3 attempts; facilitator 120 s /
     # 2 attempts; session turn lease TTL 6 min (one minute past the deadline).
@@ -65,4 +75,8 @@ class Settings:
             artifact_url=values["ORCH_ARTIFACT_URL"],
             report_url=values["ORCH_REPORT_URL"],
             bucket=values["ORCH_BUCKET"],
+            business_url=values["ORCH_BUSINESS_URL"],
+            engineering_url=values["ORCH_ENGINEERING_URL"],
+            synthesis_url=values["ORCH_SYNTHESIS_URL"],
+            facilitator_url=values["ORCH_FACILITATOR_URL"],
         )
