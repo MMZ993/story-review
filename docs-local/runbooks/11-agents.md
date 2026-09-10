@@ -326,3 +326,40 @@ Gotchas learned:
 
 Cost this increment: ~35 real flash calls across the failing/successful
 gate iterations + 1 experiment call — negligible.
+
+## Phase 5 completion review (session 31, 2026-09-12)
+
+Independent read-only subagent review of the full phase diff
+(`67e7523..6b1e3bc`, plan adherence + exit criterion + code + docs
+consistency). Verdict: **Ready to close**.
+
+- Plan adherence: all five increments addressed and evidenced; deviations
+  recorded (D13 amendment 1 serving-safe mirrors; D14 amendment 1 token
+  cap + envelope); no scope creep.
+- Exit criterion: satisfied on Runbook 11 evidence (per-agent schema-valid
+  live outputs; walkthrough assertions match the example-interaction arc);
+  live gates not re-executed by the reviewer (read-only).
+- Security: no identifier leaks in committed files; ADC ro-mount; no key
+  material; loopback-only ports.
+
+Findings and same-session fixes:
+
+1. **Important — FIXED**: `agents-compose-up` ADC fail-fast guard was dead
+   code (`|| [ -f ADC ]` unreachable after a successful `grep … || exit`).
+   Split into two independent checks; error path re-verified
+   (`HOME=/tmp/no-adc-home make agents-compose-up` → clean exit 2 before
+   docker).
+2. **Minor — FIXED**: dead `json.loads(final_text)` in
+   `agent_kit.synthesis_adapter.run_synthesis` removed (validation re-parses
+   via `model_validate_json`); unused `import json` dropped.
+3. **Minor — deferred**: reviewer shell relies on FastAPI python-mode body
+   validation while synthesis uses explicit `model_validate_json` (strict
+   `UtcDatetime` gotcha); recommend aligning the reviewer shell later.
+4. **Minor — deferred (already recorded)**: generic 400-class model errors
+   mapped retryable UPSTREAM_UNAVAILABLE; run-loop duplication
+   reviewer/synthesis; `_STORY_PATTERN` introspection brittleness;
+   `extra_context` unbounded vs `Text`.
+
+Post-fix verification: agent-kit 82, synthesis adapter 7+2s, facilitator
+3+1s, business 6+2s, engineering 7+1s, all green; `git diff --check`
+clean. Development-plan.md marked Phase 5 COMPLETE.
