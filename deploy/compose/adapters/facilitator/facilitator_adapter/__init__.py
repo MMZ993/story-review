@@ -22,6 +22,7 @@ from importlib.metadata import PackageNotFoundError, version
 from agent_kit.facilitator_adapter import create_facilitator_app
 from facilitator import load_config
 from facilitator.agent import build_agent
+from facilitator_adapter.turn_results import PostgresTurnResultStore
 
 try:
     AGENT_VERSION = version("facilitator-agent")
@@ -42,7 +43,8 @@ def create_app():
         raise RuntimeError(
             f"facilitator adapter requires env: {', '.join(missing)}"
         )
-    return create_facilitator_app(
+    results = PostgresTurnResultStore(os.environ["FACILITATOR_DB_URL"])
+    app = create_facilitator_app(
         slug="facilitator",
         build_agent_fn=build_agent,
         load_config_fn=load_config,
@@ -50,7 +52,9 @@ def create_app():
         story_url=os.environ["FACILITATOR_STORY_URL"],
         artifact_url=os.environ["FACILITATOR_ARTIFACT_URL"],
         db_url=os.environ["FACILITATOR_DB_URL"],
+        result_store=results,
     )
+    return app
 
 
 __all__ = ["AGENT_VERSION", "create_app"]

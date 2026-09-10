@@ -14,10 +14,19 @@ loop (D13-3), not the normal structured-error path.
 Note: `FacilitatorResponse` additionally reports `corrective_reprompts`
 (0–2, observability.md) — a recorded extension of the frozen envelope so
 orchestration can persist the counter in `AgentRunRecord`.
+
+Recorded Phase 6 extension (D15-6): the request carries `invocation_id`,
+and the adapter persists one completed result per (session_id,
+invocation_id) in its session backend and exposes it via
+`GET /turn-result/{session_id}/{invocation_id}` — the reconciliation seam
+for ambiguous facilitator timeouts (observability.md). A repeated
+`POST /turn` for an already-completed invocation returns the stored
+result without invoking the model.
 """
 
 from __future__ import annotations
 
+import uuid
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -39,6 +48,7 @@ class FacilitatorRequest(BaseModel):
 
     session_id: SessionId
     turn_number: Annotated[int, Field(ge=1, le=10)]
+    invocation_id: uuid.UUID
     po_message: Text | None = None
     synthesis_report: SynthesisReport
     synthesis_reference: ArtifactReference

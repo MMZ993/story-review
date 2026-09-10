@@ -81,6 +81,17 @@ def _agent_run_id(key: uuid.UUID, agent: str) -> str:
     return f"arun-{_derived(key, f'agent:{agent}')}"
 
 
+def facilitator_invocation_id(
+    key: uuid.UUID, session_id: str, turn_number: int
+) -> uuid.UUID:
+    """Stable invocation id for one facilitator turn — the reconciliation
+    key the adapter stores its completed result under (D15-6); a retry of
+    the same idempotency key replays that result instead of re-invoking."""
+    return uuid.uuid5(
+        FLOW_NAMESPACE, f"{key}|{session_id}|facilitator-turn:{turn_number}"
+    )
+
+
 async def _save_artifact(
     artifact_client: McpClient,
     *,
@@ -294,6 +305,9 @@ async def run_create_session(
             FacilitatorInvocation(
                 session_id=session_record.session_id,
                 turn_number=1,
+                invocation_id=facilitator_invocation_id(
+                    key, session_record.session_id, 1
+                ),
                 po_message=None,
                 synthesis_report=synthesis.report,
                 synthesis_reference=synthesis_reference,

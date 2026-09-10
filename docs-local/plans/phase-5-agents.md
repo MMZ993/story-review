@@ -299,3 +299,18 @@ as tools. Its response contains `output: FacilitatorTurnOutput`,
 For all adapters, failures use the existing `ErrorEnvelope` taxonomy. Only a
 malformed facilitator delegation output receives up to two corrective
 re-prompts; exhaustion returns `DELEGATION_VALIDATION`.
+
+### Recorded extensions (post-freeze)
+
+- **Phase 5 close**: `FacilitatorResponse` additionally reports
+  `corrective_reprompts` (0–2) so orchestration can persist the counter in
+  `AgentRunRecord`.
+- **Phase 6 increment 3 (D15 amendment 1)**: the facilitator request gains a
+  required `invocation_id: UUID`; the adapter persists one completed
+  response per `(session_id, invocation_id)` in its session-backend
+  PostgreSQL (`facilitator_turn_results`), returns the stored result for a
+  repeated `POST /turn` without a model run, and exposes it via
+  `GET /turn-result/{session_id}/{invocation_id}` (404 = never completed) —
+  the ambiguous-timeout reconciliation seam. Orchestration derives the
+  invocation id deterministically from its idempotency key (uuid5) and
+  reconciles between facilitator attempts. No other adapter changed.
