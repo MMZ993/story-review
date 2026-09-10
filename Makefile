@@ -209,6 +209,13 @@ orchestration-test: ## Phase 6: orchestration deterministic tests (throwaway Pos
 		--with-editable . --with-editable ../shared/review_schemas \
 		python -m pytest tests -q
 
+orchestration-stack-test: ## Phase 6: stories-proxy stack tests over the real compose story MCP (needs compose-up)
+	for i in $$(seq 1 60); do \
+		curl -sf http://127.0.0.1:$(STORY_PORT)/health >/dev/null && break; sleep 1; \
+	done; \
+	curl -sf http://127.0.0.1:$(STORY_PORT)/health >/dev/null || { echo "story MCP not healthy (run make compose-up)" >&2; exit 1; }; \
+	ORCH_TEST_STORY_URL=http://127.0.0.1:$(STORY_PORT)/mcp $(MAKE) --no-print-directory orchestration-test
+
 compose-up: ## Local development stack (Phase 4 `local` profile)
 	[ -f deploy/env/.env ] || cp deploy/env/.env.example deploy/env/.env
 	cd deploy && docker compose --profile local --env-file env/.env up -d --build

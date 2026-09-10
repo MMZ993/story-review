@@ -6,3 +6,4 @@ pydantic>=2.13
 fastapi>=0.115
 uvicorn>=0.31
 asyncpg>=0.30
+mcp==2.1.1

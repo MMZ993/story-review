@@ -81,3 +81,73 @@ Gotchas learned:
 Increment 0 verdict: **green** (19 orchestration tests; review-schemas 154
 regression unchanged; Docker image builds and imports). Next: increment 1
 (MCP client wrapper + stories endpoints + real /health).
+
+## Increment 1 — MCP client wrapper + stories endpoints + real /health (2026-09-13)
+
+Local Docker only (throwaway Postgres + compose `local` stack); no cloud
+actions; Cloud SQL STOPPED throughout.
+
+What was implemented (per plan increment 1):
+
+- `orchestration/mcp_client.py`: direct MCP client wrapper over the `mcp`
+  SDK (streamable HTTP, one initialize+call session per attempt). Policy per
+  observability.md: 60 s short-call timeout / 3 attempts, half-jittered
+  backoff on 1 s/2 s bases, retry only on connection/timeout or retryable
+  tool codes (`UPSTREAM_UNAVAILABLE`, `RENDER_FAILED`); never on 4xx-class
+  tool errors. Remaining-deadline clamping to `min(short-call timeout,
+  remaining − 5 s cleanup reserve)`; an attempt that cannot fit is never
+  started (`DeadlineExceededError` before any transport call). Injectable
+  `session_call` seam (`tool=None` = initialize-only probe for /health).
+- `orchestration/stories.py`: `GET /api/v1/stories` (proxy `list_stories`,
+  orchestration-side case-insensitive title filter — the MCP `filter` is a
+  status filter, so the API title filter is applied here) and
+  `GET /api/v1/stories/{story_id}` (proxy `get_story`); 404
+  `STORY_NOT_FOUND` / retryable 503 envelopes; upstream payload-validation
+  failures also map to 503.
+- `orchestration/api_errors.py` + `main.py`: `ApiError` → shared
+  `ErrorEnvelope` handler, `RequestValidationError` → 422 `VALIDATION_ERROR`
+  envelope (contract: no free-form `detail`), correlation-ID middleware
+  (echo/mint; malformed supplied UUIDs are replaced, never surfaced as 500).
+- `orchestration/health.py` + real `/health`: concurrent single-probe
+  reachability flags for story/artifact/report, `ok`/`degraded`
+  (`HealthResponse`). DB flag deferred to increment 2 (app owns a pool then).
+- Makefile `orchestration-stack-test` (env-gated compose-stack gate, the
+  Phase 5 live-test convention); `mcp==2.1.1` added to both orchestration
+  requirement sets (client version aligned with the contract suite; locks
+  recompiled).
+
+Verification (commands = `make orchestration-stack-test` /
+`make orchestration-test` / `make review-schemas-test` /
+`docker build -q -f orchestration/Dockerfile .`):
+
+- orchestration **43 passed** with `ORCH_TEST_STORY_URL` set (38
+  deterministic + 5 stack tests against the real compose story MCP); plain
+  target **38 passed, 5 skipped**.
+- review-schemas **154** (baseline unchanged).
+- Docker image builds (new mcp dependency included).
+
+Independent read-only review (fresh subagent, snapshot `/tmp/pi-review.*`):
+**Ready to proceed**. Important fixed in-session: malformed client
+`X-Correlation-Id` caused an unenveloped 500 on error paths — middleware now
+validates and mints a replacement (+ regression test). Minors fixed
+in-session: probe docstring (initialize-only, not list_tools);
+`health_probe_timeout_seconds` setting added (was hardcoded); non-404 tool
+errors now honor `error.retryable` for the retry hint instead of always
+retryable.
+
+Gotchas learned:
+
+- `mcp==2.1.1` `streamable_http_client` yields **2** values `(read, write)`,
+  not 3 — the 3-tuple unpack is a newer SDK API.
+- The streamable client wraps exceptions raised inside the session in a
+  (possibly nested) `ExceptionGroup` on teardown; the wrapper unwraps to the
+  first leaf via `except*` + `_first_leaf` before retry classification.
+- Strict `ErrorBody` requires a `uuid.UUID` instance for `correlation_id`
+  (JSON string round-trip needs explicit coercion when parsing tool errors).
+- `run-migrations.sh`'s docker fallback can hit a startup race ("server
+  closed the connection unexpectedly") on the first psql contact after
+  `pg_isready` succeeds — a retry clears it (observed twice). Candidate
+  small fix next increment.
+
+Increment 1 verdict: **green**. Next: increment 2 (flow 1 — session
+creation + browse/history read paths; live gate on main PC).

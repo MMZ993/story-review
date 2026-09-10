@@ -43,6 +43,9 @@ class Settings:
     facilitator_timeout_seconds: int = 120
     facilitator_attempts: int = 2
     lease_ttl_seconds: int = int(_LEASE_TTL.total_seconds())
+    #: /health probe budget per downstream (observability.md specifies no
+    #: value; 5 s keeps /health fast under full load).
+    health_probe_timeout_seconds: int = 5
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "Settings":
