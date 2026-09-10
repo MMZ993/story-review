@@ -1,10 +1,8 @@
-"""App-skeleton tests: config loads strictly from the environment and the
-health scaffolding answers (downstream reachability flags land in increment 1).
-"""
+"""Config loading tests (health/stories coverage lives in
+ test_stories_api.py / test_stack_stories.py from increment 1)."""
 
 from __future__ import annotations
 
-import httpx
 import pytest
 
 
@@ -36,14 +34,3 @@ def test_settings_read_env(monkeypatch):
     assert settings.request_deadline_seconds == 300
     assert settings.short_call_timeout_seconds == 60
     assert settings.facilitator_timeout_seconds == 120
-
-
-async def test_health_scaffolding():
-    from orchestration.main import create_app
-
-    app = create_app()
-    transport = httpx.ASGITransport(app=app)  # type: ignore[arg-type]
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "ok"

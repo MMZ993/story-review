@@ -8,15 +8,16 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-13 (session 34 — Item D callback-completion entry in
-future-extensions; marker added to HANDOFF).
+Last updated: 2026-09-13 (session 34 — Phase 6 increment 1 green: MCP client
+wrapper, stories endpoints, real /health; review Ready to proceed; commit
+pending owner approval).
 
 ## Where we are
 
-- **Phase 6 — Orchestration (FastAPI): OPEN, increment 0 GREEN** (session 33;
-  detail in Runbook 12). Plan `docs-local/plans/phase-6-orchestration.md`
-  (increments 0–5), decisions **D15** settled. **Next: increment 1** (MCP
-  client wrapper + stories endpoints + real /health).
+- **Phase 6 — Orchestration (FastAPI): OPEN, increments 0–1 GREEN** (sessions
+  33–34; detail in Runbook 12). Plan `docs-local/plans/phase-6-orchestration.md`
+  (increments 0–5), decisions **D15** settled. **Next: increment 2** (flow 1 —
+  session creation + read paths + live gate).
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -33,6 +34,23 @@ future-extensions; marker added to HANDOFF).
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 34 (2026-09-13, main PC — Phase 6 increment 1 + Item D doc; local
+Docker only — throwaway Postgres + compose local stack, no cloud actions,
+Cloud SQL STOPPED throughout):
+- Increment 1 per plan: `mcp_client.py` (streamable-HTTP wrapper, 60 s/3
+  attempts, half-jittered 1 s/2 s backoff, retryable-code classification,
+  remaining-deadline clamping with 5 s reserve, attempt-never-started rule),
+  stories router (list/detail, orchestration-side title filter, 404/503
+  envelopes), correlation middleware + validation-error normalization, real
+  `/health` (story/artifact/report probe flags), Makefile
+  `orchestration-stack-test` env-gated compose gate, `mcp==2.1.1` in locks.
+- Verification: orchestration **43** (stack) / **38+5s** (plain);
+  review-schemas 154 baseline; image builds. Review: **Ready to proceed**;
+  Important (malformed correlation id → 500) and 3 minors fixed in-session.
+- Also: Item D (callbacks/observability completion) added to
+  future-extensions and committed (`7b2a06a`) with a HANDOFF marker (Phase 8
+  sub-item). Evidence + gotchas: Runbook 12 increment 1.
 
 Session 33 (2026-09-13, main PC — Phase 6 increment 0; local Docker only, no
 cloud actions, Cloud SQL STOPPED throughout):
@@ -97,7 +115,8 @@ after changes):
   mcp-story **67**, mcp-artifact **32**, mcp-report **34**, compose contract
   **20**, agent-kit **82**, agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **19** (increment 0); live gates: business/engineering/synthesis
+  facilitator adapter **3+1s**, orchestration **38+5s / 43 stack** (increments
+  0–1); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11).
 - Per-session verification evidence (commands, counts, review verdicts,
   gotchas): append-only in the runbooks — Runbook 11 §0–4 + completion
@@ -109,6 +128,8 @@ after changes):
 
 - Phase 6 increments 0–5 per the plan (Runbook 12 tracks progress).
 - Deferred review minors (fix in Phase 6 where natural, else later):
+  - Session 34: run-migrations.sh docker fallback startup race (first psql
+    contact can fail after pg_isready; add a small retry).
   - Session 33: run-migrations.sh passes credentialed DATABASE_URL in argv
     (revisit before Phase 8 Cloud SQL runs; PGPASSWORD/env alternative).
   - Session 28: named-but-unmapped local deps in pyprojects; adapter generic
@@ -137,12 +158,12 @@ after changes):
 
 ## Next Steps
 
-1. Commit session 33 (orchestration increment 0 + Runbook 12 + HANDOFF) —
-   explicit paths, on owner approval; owner push (main ahead 3 + this commit).
-2. **Phase 6 increment 1** (next session): MCP client wrapper
-   (timeouts/retries/deadline clamping), `GET /api/v1/stories[/{id}]`, real
-   `/health` with downstream flags; deterministic tests against the compose
-   `local` stack.
+1. Commit session 34 (orchestration increment 1 + Runbook 12 + HANDOFF) —
+   explicit paths, on owner approval; owner push.
+2. **Phase 6 increment 2** (next session): flow 1 — session creation
+   (idempotency claim → story run → reviewers fan-out → synthesis →
+   facilitator opening turn) + sessions read paths; deterministic fake-agent
+   tests + live gate on main PC.
 
 ## Important Notes
 
