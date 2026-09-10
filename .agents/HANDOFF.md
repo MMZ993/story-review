@@ -8,9 +8,8 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-13 (session 33 — Phase 6 increment 0 green: orchestration package,
-migrations, asyncpg repository, idempotency/lease primitives; review Ready to
-proceed; commit pending owner approval).
+Last updated: 2026-09-13 (session 34 — Item D callback-completion entry in
+future-extensions; marker added to HANDOFF).
 
 ## Where we are
 
@@ -123,6 +122,12 @@ after changes):
     `mcp_*_service_url` audiences → `home.tfvars` (Runbook 10 §5 gotcha).
   - Someday-minor: one-line RENDER_FAILED retryability clarification in
     docs/design/observability.md (atomic docs commit + frozen cherry-pick).
+- **Item D (future-extensions) — callback/observability completion**: do not
+  lose track of it. It is required design completion (evaluation.md callback
+  requirement); plan its facilitator-first slice as an explicit sub-item of
+  the **Phase 8** plan (Phase 8 already owns observability wiring). No Phase 6
+  replan; the 50%/75% context-length policy is safe to defer — Phase 6 live
+  gates are short turns.
 - D9 deferred items: dataset fidelity/trimming decision; metadata
   semantic/display classification.
 - Optional: fix broken glab git-credential helper path (cosmetic); tighten
