@@ -1,16 +1,16 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-12 (session 28 CLOSED — Phase 5 increments
-  0–2 complete: skeletons/prompts, business reviewer, engineering
-  reviewer; both live Vertex gates PASS; owner push pending).
+Last updated: 2026-09-12 (session 29 CLOSED — Phase 5 increment
+  3 complete: synthesis agent + adapter; live Vertex gate PASS;
+  owner push pending).
 
 ## Where we are
 
-- Phase: **5 — Agents (ADK) + local adapters — OPEN, increments 0–2 of 4
+- Phase: **5 — Agents (ADK) + local adapters — OPEN, increments 0–3 of 4
   COMPLETE**. Plan at `docs-local/plans/phase-5-agents.md`; invocation
   contract frozen in the plan appendix; D13 + D13 amendment 1 + D14
-  recorded. Remaining: increment 3 (synthesis), increment 4 (facilitator +
+  recorded. Remaining: increment 4 (facilitator +
   `local-agents` compose profile + example-interaction walkthrough).
 - Phase 4 **COMPLETE and CLOSED** (session 26, 2026-09-11): independent
   completion review Ready-to-close; D10 amendment 7 recorded (azure/
@@ -28,6 +28,29 @@ Last updated: 2026-09-12 (session 28 CLOSED — Phase 5 increments
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 29 (2026-09-12, main PC — Phase 5 increment 3; no infra actions;
+Cloud SQL stayed STOPPED):
+- **Increment 3 COMPLETE — synthesis agent + adapter**: serving-safe
+  mirrors for `SynthesisReport`/`ConflictItem`/`ArtifactReference` in
+  `agent_kit.llm_output` (fixed-key `MirrorSynthesisInputs` so the model
+  cannot invent dict keys; min-1 conflict refs enforced serving-side);
+  `agent_kit.synthesis_input` (frozen request pairs + renderer + assembly
+  checks incl. inputs-echo) and `agent_kit.synthesis_adapter` (single-turn
+  run + FastAPI shell); `agents/synthesis` agent builder; thin adapter
+  binding in `deploy/compose/adapters/synthesis/`; Makefile
+  `synthesis-adapter-test` / `synthesis-live-test`.
+- **Live Vertex gate PASS**: hidden-conflict case (two zero-finding
+  reviews with contradicting claims → ≥1 conflict citing both sides, zero
+  merged findings) + single-perspective-re-review pairing. Evidence and
+  gotchas in Runbook 11 §3.
+- Two live-gate discoveries fixed: strict `UtcDatetime` rejects ISO
+  strings in python mode → raw-body `model_validate_json` at the shell and
+  for the model reply; conflict refs with zero findings → evidence-driven
+  prompt iteration (D13-6): refs may cite a short claim phrase when the
+  review has no findings (schemas.md refs are `ShortText`, so prompt now
+  aligns with schema).
+- Cost: ~8 real gemini-2.5-flash calls — negligible.
 
 Session 28 (2026-09-12, main PC — code + live Vertex gates; no infra
 actions; Cloud SQL stayed STOPPED):
@@ -513,6 +536,20 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 29:
+- Deterministic suites at close: agent-kit **38** (14 new), agents
+  skeleton **3×4**, synthesis adapter **7 passed + 2 skipped** (live
+  correctly skipped without gate env), business adapter **6+2 skipped**,
+  engineering adapter **7+1 skipped**; regression review-schemas **154**;
+  `git diff --check` clean; identifier check clean (gotcha reconfirmed:
+  `ado.env` must be sourced alongside `home.env` or `$ADO_ORG` empty
+  matches everything).
+- Live Vertex gate (main PC, ADC): synthesis **9 passed**.
+- Increment-3 independent read-only subagent review: **Ready to proceed**,
+  0 Critical/Important, 3 Minor — 1 fixed same session (stale comment);
+  deferred minors added to the list below (run-loop duplication with
+  reviewer core; mirror min/max refs asymmetry documentation).
+
 Session 28:
 - Deterministic suites at close: agent-kit **24**, agents skeleton **3×4**,
   business adapter **6 passed + 2 skipped** (live correctly skipped without
@@ -731,31 +768,27 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Owner push**: main ahead 6 (`0df717b`, `8887e56`, `ad60c21`,
-   `6c11058`, `99501a6`, `a99814b`). No `docs/` changes — no frozen
-   cherry-pick needed.
-2. **Phase 5 increment 3 (synthesis)**: agent + adapter; input = two
-   latest artifacts (one per perspective, each ReviewReport +
-   ArtifactReference, same run); typed SynthesisReport (needs a serving-
-   safe mirror for SynthesisReport/ConflictItem per D13 amendment 1);
-   required real-model case: hidden-conflict scenario (zero per-perspective
-   findings, contradiction flagged). Test harness assembles pairs incl.
-   single-perspective-re-review pairing.
-3. **Phase 5 increment 4 (facilitator)**: session-scoped interface,
+1. **Owner push**: main ahead 2 (`8f4fe5d`, `35be8a6`). No `docs/`
+   changes — no frozen cherry-pick needed.
+2. **Phase 5 increment 4 (facilitator)**: session-scoped interface,
    DatabaseSessionService on compose Postgres, McpToolset to story+artifact
    servers, typed FacilitatorTurnOutput + bounded corrective re-prompts
    (DELEGATION_VALIDATION on exhaustion), `local-agents` compose profile,
    Makefile wiring, example-interaction.md walkthrough as the live gate.
 4. Optional hardening (later increments or Phase 6): the three deferred
-   review minors above; move `mcp_*_service_url` audiences into
+   review minors from session 28; two deferred synthesis-review minors
+   (extract shared single-turn run loop from `run_reviewer`/
+   `run_synthesis`; document mirror refs min/max asymmetry in the
+   docstring); move `mcp_*_service_url` audiences into
    `home.tfvars` (session-25 runbook gotcha).
 5. Someday-minor: one-line clarification of RENDER_FAILED retryability
    phrasing in docs/design/observability.md (atomic docs commit + frozen
    cherry-pick if done).
 
-Session-28 commits (owner push pending): `0df717b` (skeletons + prompts),
+Session-28 commits (owner pushed): `0df717b` (skeletons + prompts),
    `8887e56` (D14 + runbook 11), `ad60c21`/`6c11058` (increment 1),
-   `99501a6`/`a99814b` (increment 2).
+   `99501a6`/`a99814b` (increment 2). Session-29 commits (owner push
+   pending): `8f4fe5d` (increment 3), `35be8a6` (runbook + handoff).
 
 ## Important Notes
 

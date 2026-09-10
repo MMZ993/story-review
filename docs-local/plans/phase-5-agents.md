@@ -161,6 +161,12 @@ Recorded outcomes are in `docs-local/local-decisions.md` (D13).
 
 ### 3. Synthesis (local + live gate)
 
+- Status: COMPLETE (2026-09-12). Serving-safe SynthesisReport/ConflictItem
+  mirrors, `agent_kit.synthesis_input` + `synthesis_adapter`, agent builder,
+  adapter + Makefile targets; live Vertex gate PASS (hidden-conflict +
+  single-perspective-re-review pairing). Review: Ready to proceed. Evidence
+  and gotchas in Runbook 11 §3.
+
 - `prompts/synthesis.md`: input is always the two latest artifacts (one per
   perspective) — pairing is orchestration's job in Phase 6; the Phase 5 test
   harness assembles pairs, including the single-perspective-re-review pairing.
