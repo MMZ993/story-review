@@ -37,7 +37,9 @@ async def _insert(pool: asyncpg.Pool, sql: str, *args) -> None:
         except asyncpg.PostgresError as exc:
             # 23xxx = integrity constraint violation class (unique, check, FK).
             if exc.sqlstate and exc.sqlstate.startswith("23"):
-                raise ConstraintViolation(str(exc)) from exc
+                raise ConstraintViolation(
+                    str(exc), getattr(exc, "constraint_name", None)
+                ) from exc
             raise
 
 
@@ -77,6 +79,26 @@ async def create_story_run(pool: asyncpg.Pool, record: StoryRunRecord) -> None:
         record.created_at,
         record.updated_at,
     )
+
+
+async def create_story_run_or_get(
+    pool: asyncpg.Pool, record: StoryRunRecord
+) -> StoryRunRecord:
+    """Insert-or-reuse for flow replay convergence.
+
+    A same-id conflict (idempotent-key replay of a partially completed
+    flow) returns the existing row; the one-active-run-per-story partial
+    index still raises ConstraintViolation (constraint name preserved)
+    for the API layer to map to STORY_SESSION_ACTIVE.
+    """
+    try:
+        await create_story_run(pool, record)
+        return record
+    except ConstraintViolation:
+        existing = await get_story_run(pool, record.story_run_id)
+        if existing is not None and existing.story_id == record.story_id:
+            return existing
+        raise
 
 
 async def update_story_run_state(pool: asyncpg.Pool, record: StoryRunRecord) -> None:
@@ -131,12 +153,25 @@ async def create_session(pool: asyncpg.Pool, record: SessionRecord) -> None:
     )
 
 
-async def get_session(pool: asyncpg.Pool, session_id: str) -> SessionRecord | None:
-    row = await _fetchrow(
-        pool, "select * from sessions where session_id = $1", session_id
-    )
-    if row is None:
-        return None
+async def create_session_or_get(
+    pool: asyncpg.Pool, record: SessionRecord
+) -> SessionRecord:
+    """Insert-or-reuse: a same-run conflict on idempotent replay returns
+    the persisted session (exactly one session per story run)."""
+    try:
+        await create_session(pool, record)
+        return record
+    except ConstraintViolation:
+        existing = await _fetchrow(
+            pool, "select * from sessions where story_run_id = $1",
+            record.story_run_id,
+        )
+        if existing is not None:
+            return _session_from_row(existing)
+        raise
+
+
+def _session_from_row(row) -> SessionRecord:
     return SessionRecord(
         session_id=row["session_id"],
         story_run_id=row["story_run_id"],
@@ -153,6 +188,49 @@ async def get_session(pool: asyncpg.Pool, session_id: str) -> SessionRecord | No
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )
+
+
+async def get_session(pool: asyncpg.Pool, session_id: str) -> SessionRecord | None:
+    row = await _fetchrow(
+        pool, "select * from sessions where session_id = $1", session_id
+    )
+    if row is None:
+        return None
+    return _session_from_row(row)
+
+
+async def list_sessions(
+    pool: asyncpg.Pool,
+    *,
+    limit: int,
+    before: tuple[object, str] | None = None,
+) -> tuple[list[SessionRecord], bool]:
+    """One keyset page ordered by (updated_at desc, session_id desc).
+
+    `before` is the previous page's last (updated_at datetime, session_id)
+    key; returns the page and whether more rows follow it.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "select * from sessions "
+            "where (updated_at, session_id) < ($1::timestamptz, $2::text) "
+            "or $1::timestamptz is null "
+            "order by updated_at desc, session_id desc limit $3",
+            before[0] if before else None,
+            before[1] if before else None,
+            limit + 1,
+        )
+    more = len(rows) > limit
+    return [_session_from_row(row) for row in rows[:limit]], more
+
+
+async def touch_session(pool: asyncpg.Pool, session_id: str) -> None:
+    """Bump updated_at (pagination freshness after a persisted turn)."""
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "update sessions set updated_at = now() where session_id = $1",
+            session_id,
+        )
 
 
 # --- turns ----------------------------------------------------------------
@@ -181,6 +259,21 @@ async def create_turn(pool: asyncpg.Pool, record: TurnRecord) -> None:
     )
 
 
+async def create_turn_or_get(
+    pool: asyncpg.Pool, record: TurnRecord
+) -> TurnRecord:
+    """Insert-or-reuse: exactly one TurnRecord per (session, turn number);
+    replay convergence returns the persisted authoritative record."""
+    try:
+        await create_turn(pool, record)
+        return record
+    except ConstraintViolation:
+        existing = await get_turn(pool, record.session_id, record.turn_number)
+        if existing is not None:
+            return existing
+        raise
+
+
 async def get_turn(
     pool: asyncpg.Pool, session_id: str, turn_number: int
 ) -> TurnRecord | None:
@@ -192,6 +285,10 @@ async def get_turn(
     )
     if row is None:
         return None
+    return _turn_from_row(row)
+
+
+def _turn_from_row(row) -> TurnRecord:
     return TurnRecord(
         session_id=row["session_id"],
         turn_number=row["turn_number"],
@@ -214,6 +311,18 @@ async def get_turn(
         created_at=row["created_at"],
         completed_at=row["completed_at"],
     )
+
+
+async def list_turns(
+    pool: asyncpg.Pool, session_id: str
+) -> list[TurnRecord]:
+    """All turns of a session, ordered by turn number (history replay)."""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "select * from turns where session_id = $1 order by turn_number",
+            session_id,
+        )
+    return [_turn_from_row(row) for row in rows]
 
 
 # --- agent runs -----------------------------------------------------------
@@ -242,6 +351,20 @@ async def create_agent_run(pool: asyncpg.Pool, record: AgentRunRecord) -> None:
         record.started_at,
         record.finished_at,
     )
+
+
+async def create_agent_run_or_get(
+    pool: asyncpg.Pool, record: AgentRunRecord
+) -> AgentRunRecord:
+    """Insert-or-reuse for replay convergence (deterministic agent-run ids)."""
+    try:
+        await create_agent_run(pool, record)
+        return record
+    except ConstraintViolation:
+        existing = await get_agent_run(pool, record.agent_run_id)
+        if existing is not None:
+            return existing
+        raise
 
 
 async def get_agent_run(

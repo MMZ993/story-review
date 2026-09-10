@@ -13,6 +13,10 @@ def test_settings_require_mandatory_env(monkeypatch):
         "ORCH_ARTIFACT_URL",
         "ORCH_REPORT_URL",
         "ORCH_BUCKET",
+        "ORCH_BUSINESS_URL",
+        "ORCH_ENGINEERING_URL",
+        "ORCH_SYNTHESIS_URL",
+        "ORCH_FACILITATOR_URL",
     ):
         monkeypatch.delenv(name, raising=False)
     from orchestration.config import Settings
@@ -27,6 +31,10 @@ def test_settings_read_env(monkeypatch):
     monkeypatch.setenv("ORCH_ARTIFACT_URL", "http://artifact:8080/mcp")
     monkeypatch.setenv("ORCH_REPORT_URL", "http://report:8080/mcp")
     monkeypatch.setenv("ORCH_BUCKET", "artifacts-local")
+    monkeypatch.setenv("ORCH_BUSINESS_URL", "http://business:8080")
+    monkeypatch.setenv("ORCH_ENGINEERING_URL", "http://engineering:8080")
+    monkeypatch.setenv("ORCH_SYNTHESIS_URL", "http://synthesis:8080")
+    monkeypatch.setenv("ORCH_FACILITATOR_URL", "http://facilitator:8080")
     import orchestration.config as config
 
     settings = config.Settings.from_env()

@@ -151,3 +151,127 @@ Gotchas learned:
 
 Increment 1 verdict: **green**. Next: increment 2 (flow 1 — session
 creation + browse/history read paths; live gate on main PC).
+
+## Increment 2 — flow 1: session creation + read paths (2026-09-13)
+
+Local Docker only (throwaway Postgres; compose stack not required for the
+deterministic tier); no cloud actions; Cloud SQL STOPPED throughout.
+
+What was implemented (per plan increment 2):
+
+- `orchestration/agent_clients.py`: frozen Phase 5 adapter-contract mirrors
+  (ReviewerInvocation / SynthesisInvocation / FacilitatorInvocation +
+  result dataclasses — orchestration cannot import agent_kit without the
+  ADK) and the policy-wrapped HTTP clients: short calls 60 s / 3 attempts
+  with half-jittered 1 s / 2 s backoff (reviewers, synthesis), facilitator
+  120 s / 2 attempts with fixed 5 s backoff; retry only on connection /
+  timeout / retryable 5xx envelope (malformed 5xx bodies count as
+  retryable); 4xx-class envelopes never retried; per-attempt timeout
+  clamped to the remaining deadline minus the 5 s reserve; backoff is not
+  slept past the point where the next attempt cannot fit.
+- `orchestration/flows.py` (flow 1): idempotency claim → `get_story` →
+  deterministic story_run/session ids → story-artifact save → parallel
+  reviewer fan-out (sibling cancelled on first failure) → review saves +
+  AgentRunRecords → synthesis (both perspective pairs) → save + record →
+  session record → facilitator opening turn (turn-1 invariants asserted:
+  `invoke=none`, no resolutions → structured 422 `DELEGATION_VALIDATION`)
+  → TurnRecord → canonical `CreateSessionResponse` persisted + 201.
+  Crash/replay convergence: `story_run_id`, `session_id`, `agent_run_id`
+  derived by uuid5 from the client Idempotency-Key (the `run-`/`sess-`
+  patterns pin only lowercase hex), the same key reused for every
+  `save_artifact` (dedup scope is (run, type, key)), and insert-or-get on
+  every durable row; an in_progress claim left by a crashed holder is
+  taken over (convergent re-run).
+- `orchestration/sessions_api.py`: `POST /api/v1/sessions` (Idempotency-Key
+  header required, UUID v4 enforced → 422), `GET /api/v1/sessions`
+  (keyset pagination on (updated_at desc, session_id desc), opaque base64
+  cursor; naive cursor timestamps → 422), `GET
+  /api/v1/sessions/{session_id}` (SessionDetail: turns + server-side
+  artifact fetch via `list_artifacts`; unknown session 404;
+  `*_NOT_FOUND` tool errors map 404).
+- `orchestration/db.py` + main.py: app-owned asyncpg pool (lifespan;
+  injectable for tests), `/health` gains the database flag (deferred from
+  increment 1).
+- records_store: `ConstraintViolation.constraint` preserved;
+  insert-or-get for story run (active-run conflict still raises for
+  `STORY_SESSION_ACTIVE` 409), session, turn, agent run; `list_sessions`
+  keyset query; `list_turns`; `touch_session`.
+- config: 4 mandatory adapter URLs (`ORCH_{BUSINESS,ENGINEERING,SYNTHESIS,
+  FACILITATOR}_URL`); runtime requirements gain `httpx` (locks recompiled).
+- Tests: `tests/fakes.py` (in-process fake agent clients + an
+  artifact-MCP seam fake with real dedup/versioning semantics),
+  `test_agent_clients.py` (transport policy), `test_create_session_flow.py`
+  (success + durable state, replay side-effect-free, partial-failure
+  recovery via key replay, crashed in_progress takeover, active-session
+  409, key-reuse 409, unknown story 404, missing key 422, delegating
+  opening turn 422, non-v4 key 422, synthesis/facilitator input assembly),
+  `test_sessions_read.py` (list order/limit/cursor, detail, 404, bad limit,
+  naive cursor 422), `test_flow1_live.py` (env-gated live gate).
+- Makefile `orchestration-flow1-live-test` (throwaway Postgres + compose
+  stack env; needs `make agents-compose-up`).
+
+Verification (commands = `make orchestration-test` / `make
+review-schemas-test` / `docker build -q -f orchestration/Dockerfile .`):
+
+- orchestration **59 passed, 6 skipped** (5 stack tests without compose +
+  the live gate) — deterministic tier incl. the new flow/read tests.
+- review-schemas **154** (baseline unchanged); Docker image builds.
+- Live gate (main PC): **PASS** — `make agents-compose-up` (stack healthy
+  on 8101–8114) + flow-1 live run: one real session creation on story-07
+  over compose HTTP with real Vertex calls — 201 with a schema-valid
+  `CreateSessionResponse`, 4 `AgentRunRecord`s, detail/list read paths
+  verified, and a same-key replay returning the stored canonical response
+  (1 passed in 79.63 s ≈ 4 model calls, trial credits).
+
+Independent read-only review (fresh subagent, snapshot `/tmp/pi-review.*`):
+**Needs fixes first** → all fixes applied in-session, re-verified green:
+
+- Important: naive cursor datetime could escape as an unenveloped 500 →
+  timezone-aware check → 422 (+ regression test); opening-turn
+  `invoke=none` now asserted in orchestration (structured 422, not a
+  pydantic 500) (+ test); synthesis AgentRunRecord input_references now
+  list both perspective references (per-run input/output reference
+  lists); malformed adapter 5xx bodies are retryable, not terminal.
+- Important (reviewer could not locate the deterministic flow tests in the
+  snapshot — they exist as `tests/test_create_session_flow.py` /
+  `test_sessions_read.py`, all green).
+- Minors fixed: fan-out sibling cancellation; backoff deadline clamp;
+  Idempotency-Key UUID v4 enforcement; `*_NOT_FOUND` → 404 in
+  `_run_artifacts`; dead test code removed.
+- Live-gate fixes (found only against the real adapters): HTTP clients
+  posted to the adapter base URL without the `/invoke` / `/turn` route
+  (404 → malformed-body 503), and adapter response payloads with JSON
+  string datetimes must be parsed via `model_validate_json` (nested
+  `SynthesisReport.inputs` references) — the deterministic tier could
+  not catch either (fakes hand over Python objects); both fixed and the
+  deterministic suite re-run green.
+
+Deferred minors (recorded): mirror models weaker than the frozen agent_kit
+validators (add facilitator turn/message agreement when increment 3
+assembles turn inputs); AgentRunRecord started/finished timing fidelity
+(stamp before invoke when increment 3 generalizes recording); facilitator
+run output_references = synthesis reference (produces no artifact);
+opening-turn ADK-session duplication in the crash window is tolerated
+(model cost, never state) — increment 3's invocation-ID reconciliation
+must cover the opening turn too.
+
+Gotchas learned:
+
+- Strict-mode models reject JSON string datetimes: every payload crossing
+  the MCP/JSON seam must go through `model_validate_json(json.dumps(...))`
+  — same rule as increment 0's jsonb round-trips, now also on the
+  replay path (canonical response) and adapter error envelopes
+  (correlation_id needs explicit UUID coercion).
+- asyncpg binds `$1::timestamptz` only from tz-aware datetimes — cursor
+  decoding must validate tzinfo or a DataError 500 escapes.
+- Row-value keyset pagination direction: next page rows are strictly
+  *smaller* than the cursor key — `(updated_at, session_id) < ($1, $2)`.
+- reviewer AgentRunRecords reference the session FK — the session row must
+  be inserted before any agent-run persistence.
+- run-migrations.sh docker-fallback startup race observed twice more
+  (4 observations total; new variant: "database system is starting up"
+  after pg_isready) — the small-retry fix is now clearly due before
+  Phase 8; retries cleared it each time.
+
+Increment 2 verdict: **green** — deterministic tier 59 passed / 6
+skipped; live gate PASS. Next: increment 3 (flow 2 — dialogue turns).

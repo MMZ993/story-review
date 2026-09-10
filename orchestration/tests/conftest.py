@@ -11,8 +11,28 @@ import os
 
 import asyncpg
 import pytest
+import httpx
+
+from orchestration.config import Settings
 
 DSN = os.environ.get("ORCH_TEST_DB_DSN")
+
+
+def make_settings(**overrides) -> Settings:
+    """Deterministic-tier settings (fake transports; no network)."""
+    values = dict(
+        db_dsn="postgresql://x",
+        story_url="http://story:8080/mcp",
+        artifact_url="http://artifact:8080/mcp",
+        report_url="http://report:8080/mcp",
+        bucket="artifacts-local",
+        business_url="http://business:8080",
+        engineering_url="http://engineering:8080",
+        synthesis_url="http://synthesis:8080",
+        facilitator_url="http://facilitator:8080",
+    )
+    values.update(overrides)
+    return Settings(**values)
 
 
 def _require_dsn() -> str:

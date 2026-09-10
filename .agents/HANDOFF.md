@@ -8,16 +8,20 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-13 (session 34 — Phase 6 increment 1 green: MCP client
-wrapper, stories endpoints, real /health; review Ready to proceed; commit
-pending owner approval).
+Last updated: 2026-09-13 (session 35 — Phase 6 increment 2 GREEN:
+flow 1 + read paths + agent clients; review findings fixed; live gate
+PASS over compose + real Vertex).
 
 ## Where we are
 
-- **Phase 6 — Orchestration (FastAPI): OPEN, increments 0–1 GREEN** (sessions
-  33–34; detail in Runbook 12). Plan `docs-local/plans/phase-6-orchestration.md`
-  (increments 0–5), decisions **D15** settled. **Next: increment 2** (flow 1 —
-  session creation + read paths + live gate).
+- **Phase 6 — Orchestration (FastAPI): OPEN, increments 0–2 implemented**
+  (sessions 33–35; detail in Runbook 12). Increment 2 green:
+  deterministic tier **59 passed / 6 skipped**, independent review
+  findings fixed, **live gate PASS** (one real session creation over
+  compose + real Vertex incl. replay; ≈4 model calls). Plan `docs-local/plans/phase-6-orchestration.md`
+  (increments 0–5), decisions **D15** settled. **Next: increment 3**
+  (flow 2 — dialogue turns, lease + gate
+  precedence; reconciliation must cover the opening turn too).
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -34,6 +38,33 @@ pending owner approval).
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 35 (2026-09-13, main PC — Phase 6 increment 2; local Docker only
+(throwaway Postgres; deterministic tier needs no compose), no cloud
+actions, Cloud SQL STOPPED throughout):
+- Implemented flow 1 per plan: `agent_clients.py` (frozen Phase 5 contract
+  mirrors + observability-policy HTTP clients: short 60/3 jittered,
+  facilitator 120/2 + 5 s, deadline clamping, 4xx never retried),
+  `flows.py` (idempotency claim → get_story → uuid5-derived run/session
+  ids → idempotent artifact saves with the client key → parallel reviewer
+  fan-out with sibling cancellation → synthesis → facilitator opening
+  turn with turn-1 assertions → TurnRecord + canonical response),
+  `sessions_api.py` (POST/GET/GET detail, keyset cursor pagination),
+  `db.py` pool lifecycle + /health database flag, records_store
+  insert-or-get/list/touch additions, 4 adapter URLs in config, httpx in
+  runtime locks, Makefile `orchestration-flow1-live-test`.
+- Verification: orchestration **59 passed / 6 skipped**; review-schemas
+  **154**; image builds. Independent read-only review: 4 Importants +
+  several minors — all fixed in-session (naive-cursor 500, opening-turn
+  assertion, synthesis audit input refs, malformed-5xx retryability,
+  fan-out cancellation, backoff clamp, v4 key check, NOT_FOUND 404);
+  deferred minors recorded in the runbook.
+- Live gate run and **PASS** (owner approval in chat): real session
+  creation on story-07 — 201 schema-valid `CreateSessionResponse`, 4
+  AgentRunRecords, read paths, same-key replay (79.6 s). Two live-only
+  fixes folded in: adapter route paths (`/invoke`, `/turn`) missing on
+  the HTTP clients; adapter-response strict-JSON datetime parsing.
+  Evidence + gotchas: Runbook 12 increment 2.
 
 Session 34 (2026-09-13, main PC — Phase 6 increment 1 + Item D doc; local
 Docker only — throwaway Postgres + compose local stack, no cloud actions,
@@ -115,9 +146,10 @@ after changes):
   mcp-story **67**, mcp-artifact **32**, mcp-report **34**, compose contract
   **20**, agent-kit **82**, agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **38+5s / 43 stack** (increments
-  0–1); live gates: business/engineering/synthesis
-  adapters + facilitator walkthrough all PASS (Runbook 11).
+  facilitator adapter **3+1s**, orchestration **59+6s** (increments 0–2);
+  live gates: business/engineering/synthesis
+  adapters + facilitator walkthrough all PASS (Runbook 11);
+  orchestration flow-1 live gate PASS (Runbook 12).
 - Per-session verification evidence (commands, counts, review verdicts,
   gotchas): append-only in the runbooks — Runbook 11 §0–4 + completion
   review for Phase 5; Runbook 10 for Phase 4; earlier phases in 03–09.
@@ -158,12 +190,10 @@ after changes):
 
 ## Next Steps
 
-1. Commit session 34 (orchestration increment 1 + Runbook 12 + HANDOFF) —
-   explicit paths, on owner approval; owner push.
-2. **Phase 6 increment 2** (next session): flow 1 — session creation
-   (idempotency claim → story run → reviewers fan-out → synthesis →
-   facilitator opening turn) + sessions read paths; deterministic fake-agent
-   tests + live gate on main PC.
+1. **Phase 6 increment 3** (next session): flow 2 — dialogue turns
+   (lease+claim coupling, gate precedence, delegation execution;
+   reconciliation covers the opening turn too).
+2. Owner push (main) when ready.
 
 ## Important Notes
 
