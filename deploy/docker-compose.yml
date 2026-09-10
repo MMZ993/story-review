@@ -114,3 +114,88 @@ services:
     ports:
       - "127.0.0.1:${REPORT_PORT:-8103}:8080"
     profiles: ["local"]
+
+  # --- local-agents profile (Phase 5 increment 4) ----------------------
+  # Four ADK agent adapters behind the frozen invocation interfaces, plus
+  # the PostgreSQL session backend for the facilitator (DatabaseSessionService;
+  # runtime state only — D13-5). Vertex AI is the sole external dependency:
+  # the host's gcloud ADC file is bind-mounted read-only (local-only; no SA
+  # keys). The profile extends the `local` MCP stack — bring both up:
+  #   make agents-compose-up
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: facilitator
+      POSTGRES_PASSWORD: facilitator
+      POSTGRES_DB: facilitator
+    # Runtime state only (sessions); no host port needed.
+    profiles: ["local-agents"]
+
+  business-reviewer-adapter:
+    # Host-uid user so the read-only ADC bind mount stays readable; the
+    # image's `USER nobody` is overridden at runtime for this profile only.
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    build:
+      context: ..
+      dockerfile: deploy/compose/adapters/Dockerfile
+      args:
+        SLUG: business-reviewer
+    environment: &adapter-env
+      GOOGLE_GENAI_USE_VERTEXAI: "true"
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-europe-west4}
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/adc/application_default_credentials.json
+    volumes: &adapter-volumes
+      # Local-only ADC mount (read-only); never present in any deployment.
+      - ${HOME}/.config/gcloud/application_default_credentials.json:/tmp/adc/application_default_credentials.json:ro
+    ports:
+      - "127.0.0.1:${BUSINESS_REVIEWER_PORT:-8111}:8080"
+    profiles: ["local-agents"]
+
+  engineering-reviewer-adapter:
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    build:
+      context: ..
+      dockerfile: deploy/compose/adapters/Dockerfile
+      args:
+        SLUG: engineering-reviewer
+    environment: *adapter-env
+    volumes: *adapter-volumes
+    ports:
+      - "127.0.0.1:${ENGINEERING_REVIEWER_PORT:-8112}:8080"
+    profiles: ["local-agents"]
+
+  synthesis-adapter:
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    build:
+      context: ..
+      dockerfile: deploy/compose/adapters/Dockerfile
+      args:
+        SLUG: synthesis
+    environment: *adapter-env
+    volumes: *adapter-volumes
+    ports:
+      - "127.0.0.1:${SYNTHESIS_PORT:-8113}:8080"
+    profiles: ["local-agents"]
+
+  facilitator-adapter:
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    build:
+      context: ..
+      dockerfile: deploy/compose/adapters/Dockerfile
+      args:
+        SLUG: facilitator
+    depends_on:
+      - story
+      - artifact
+      - postgres
+    environment:
+      <<: *adapter-env
+      FACILITATOR_STORY_URL: http://story:8080/mcp
+      FACILITATOR_ARTIFACT_URL: http://artifact:8080/mcp
+      FACILITATOR_DB_URL: postgresql+asyncpg://facilitator:facilitator@postgres:5432/facilitator
+    volumes: *adapter-volumes
+    ports:
+      - "127.0.0.1:${FACILITATOR_PORT:-8114}:8080"
+    profiles: ["local-agents"]
