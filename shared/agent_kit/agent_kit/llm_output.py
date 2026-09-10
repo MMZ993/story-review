@@ -12,7 +12,7 @@ the normal structured-error path.
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MirrorFinding(BaseModel):
@@ -38,3 +38,47 @@ class ServingSafeReviewReport(BaseModel):
     questions_for_po: list[str]
     based_on_extra_context: str | None = None
     previous_review_version: int | None = None
+
+
+class MirrorArtifactReference(BaseModel):
+    """Serving-safe mirror of `review_schemas.ArtifactReference`."""
+
+    artifact_id: str
+    story_run_id: str
+    type: str
+    perspective: str | None = None
+    version: int
+    created_at: str
+    content_type: str
+    checksum_sha256: str
+    is_latest: bool = False
+
+
+class MirrorConflictItem(BaseModel):
+    """Serving-safe mirror of `review_schemas.ConflictItem`."""
+
+    id: str
+    description: str
+    business_refs: list[str] = Field(min_length=1)
+    engineering_refs: list[str] = Field(min_length=1)
+    needs_po_clarification: bool
+
+
+class MirrorSynthesisInputs(BaseModel):
+    """Serving-safe mirror of the `SynthesisReport.inputs` dict: fixed
+    `business`/`engineering` keys so the model cannot invent key names."""
+
+    business: MirrorArtifactReference
+    engineering: MirrorArtifactReference
+
+
+class ServingSafeSynthesisReport(BaseModel):
+    """Serving-safe mirror of `review_schemas.SynthesisReport`."""
+
+    story_id: str
+    summary: str
+    merged_findings: list[MirrorFinding]
+    conflicts: list[MirrorConflictItem]
+    questions_for_po: list[str]
+    resolved_from_previous: list[str]
+    inputs: MirrorSynthesisInputs

@@ -11,9 +11,11 @@ You have no tools; everything you need is in the two input reviews.
   they are.
 - **Conflicts**: business/engineering contradictions — including the case
   where both reviews are individually positive but their *claims contradict
-  each other*. Every conflict cites at least one finding ID from each side
-  (`business_refs`, `engineering_refs`) and states whether it
-  `needs_po_clarification`.
+  each other*. Every conflict cites at least one supporting locator from each
+  review in `business_refs` / `engineering_refs`: the finding ID when a
+  finding supports it, or a short identifying phrase of the supporting claim
+  (e.g. `"summary: free reservation release"`) when that review has no
+  findings. State whether the conflict `needs_po_clarification`.
 - `questions_for_po`: the union of questions that still block a verdict,
   plus your own clarification requests arising from conflicts.
 - `resolved_from_previous`: finding IDs from earlier rounds that this pair
