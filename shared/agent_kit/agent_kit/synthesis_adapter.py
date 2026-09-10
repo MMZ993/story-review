@@ -10,8 +10,6 @@ in `deploy/compose/adapters/synthesis` is a thin binding of this core.
 
 from __future__ import annotations
 
-import json
-
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -59,10 +57,6 @@ async def run_synthesis(
         for part in event.content.parts if event.content else []:
             if part.text:
                 final_text += part.text
-    try:
-        payload = json.loads(final_text)
-    except (json.JSONDecodeError, TypeError) as exc:
-        raise SynthesisOutputParseError(f"model reply is not JSON: {exc}") from exc
     try:
         return SynthesisReport.model_validate_json(final_text)
     except ValidationError as exc:

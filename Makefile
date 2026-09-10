@@ -313,8 +313,8 @@ facilitator-live-test: ## Phase 5 exit gate: example-interaction walkthrough ove
 agents-compose-up: ## Local stack incl. the four agent adapters (`local` + `local-agents` profiles)
 	[ -f deploy/env/.env ] || cp deploy/env/.env.example deploy/env/.env
 	@grep -q '^GOOGLE_CLOUD_PROJECT=..*' deploy/env/.env || { \
-		echo "ERROR: set GOOGLE_CLOUD_PROJECT in deploy/env/.env (adapter containers need the Vertex project)" >&2; exit 2; } \
-	|| [ -f $$HOME/.config/gcloud/application_default_credentials.json ] || { \
+		echo "ERROR: set GOOGLE_CLOUD_PROJECT in deploy/env/.env (adapter containers need the Vertex project)" >&2; exit 2; }
+	@[ -f $$HOME/.config/gcloud/application_default_credentials.json ] || { \
 		echo "ERROR: ADC file not found at \$$HOME/.config/gcloud (adapter containers mount it read-only)" >&2; exit 2; }
 	cd deploy && HOST_UID=$$(id -u) HOST_GID=$$(id -g) docker compose --profile local --profile local-agents --env-file env/.env up -d --build
 
