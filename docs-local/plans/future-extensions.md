@@ -138,11 +138,78 @@ checkpointing, and resume semantics.
 - Whether Item A must land first (recommended — the whole point of the long
   run is automated result assessment).
 
+## Item D — Callback and observability completion (Phase 6/8 remediation)
+
+**Status: proposed. This is required design completion, not an optional product
+extension.**
+
+### Motivation
+
+`docs/source/evaluation.md` requires callbacks for a chosen purpose. The
+implemented facilitator has one ADK `before_tool_callback`: it prevents
+out-of-lineage artifact reads and orchestration-only story-source overrides.
+The broader callback design in `docs/design/observability.md` remains
+unimplemented: before/after tool and model telemetry, post-response
+conversation-length monitoring, after-agent typed-output and
+validation-event recording, and FastAPI turn/loop application events.
+
+### Scope (sketch)
+
+- Keep facilitator tool-call authorization in
+  `shared/agent_kit/agent_kit/facilitator_adapter.py`; extend its ADK callback
+  seam with content-safe before/after tool telemetry (metadata, status, and
+  duration only).
+- Add reusable callback helpers in `shared/agent_kit/agent_kit/`, injected by
+  agent builders, for model latency/token measurements. Apply the
+  post-response context-length policy to the facilitator: warn at 50%; at 75%
+  create and validate the required typed conversation summary before replacing
+  older history.
+- Add after-agent handling for typed-output validation and
+  delegation-validation events. The existing corrective re-prompt loop remains
+  responsible for bounded recovery; callbacks record the outcome rather than
+  parse reply prose.
+- Add FastAPI application events in the Phase 6 session/turn service, not in
+  ADK callbacks, to persist facilitator turn counts and emit gate/park events.
+- Emit structured events with the observability correlation fields and without
+  prompt, tool capability, story, or artifact content.
+
+### Exit criteria
+
+- Unit tests prove each configured callback is attached and emits the expected
+  content-safe structured event.
+- Facilitator tests cover 50% warning, 75% validated-summary success, and
+  summary-validation failure without loss of original history.
+- An integration/evaluation trace contains paired before/after facilitator MCP
+  tool events, model latency/token data, an after-agent validation event, and a
+  FastAPI loop/gate event.
+- `docs/quality/requirements-coverage.md` can move the callback row from
+  designed to implemented/verified only after the evidence is recorded.
+
+### Cost
+
+Local deterministic callback tests have no model cost. Facilitator integration
+and evaluation evidence uses the existing Vertex AI test budget.
+
+### Design notes / decisions needed
+
+- Decide whether the reusable model callbacks attach to all four agents from
+  Phase 6, or the facilitator first with the remaining agents completed in
+  Phase 8 observability wiring. Recommendation: use the facilitator first
+  because it owns the persistent conversation; use all agents for latency and
+  token telemetry once the shared helper is proven.
+- Confirm the ADK callback API and event/token fields against the pinned
+  `google-adk` version before implementation; do not invent callback
+  signatures.
+- Keep the FastAPI turn/loop events separate from ADK callbacks, exactly as
+  `docs/design/observability.md` specifies.
+
 ## Proposed ordering
 
-1. Item A lands as a Phase 9 amendment (small, needed by C).
-2. Phase 10 (web interface) after Phase 9 — independent of A/C.
-3. Phase 11 (full integration run) last, after A and a green Phase 9 — it
+1. Item D is planned with the active Phase 6/Phase 8 work before the Phase 9
+   evaluation gate; it closes an existing technical requirement.
+2. Item A lands as a Phase 9 amendment (small, needed by C).
+3. Phase 10 (web interface) after Phase 9 — independent of A/C.
+4. Phase 11 (full integration run) last, after A and a green Phase 9 — it
    consumes everything and is the final proof.
 
 Open question for the owner: whether the web interface (B) or the full
