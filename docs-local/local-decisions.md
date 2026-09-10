@@ -465,3 +465,41 @@ Evidence-driven changes recorded after Phase 5 increment 4:
 Tool use under `output_schema` was verified empirically (Runbook 11 §4):
 ADK 2.8.0 + gemini-2.5-flash invoke function tools before producing the
 structured reply — the facilitator's read-only MCP toolsets are live.
+
+## D15 — Orchestration packaging, persistence, and test seams (2026-09-13)
+
+Owner decisions at Phase 6 opening (all six plan items approved in chat,
+2026-09-13; plan: `docs-local/plans/phase-6-orchestration.md`):
+
+1. **Packaging**: `orchestration/` as a uv package (`orchestration` 0.1.0,
+   FastAPI + uvicorn, own `requirements.in`/`lock`), root-context Dockerfile
+   per repository-layout.md, wired into the compose `local` profile.
+2. **Persistence**: hand-written ordered SQL migrations in
+   `deploy/cloud-sql/migrations/` + `run-migrations.sh` (per
+   repository-layout.md), consumed by a thin asyncpg repository module —
+   **no ORM**; schemas.md database constraints enforced in SQL and the
+   repository, lease/claim semantics via conditional updates.
+3. **Test seams (extends D13)**: deterministic orchestration tests use
+   in-process fake agent clients implementing the frozen Phase 5 adapter
+   invocation interface (scripted, schema-valid typed outputs /
+   ErrorEnvelopes) so gates, leases, idempotency, delegation branching,
+   deadline clamping, and reconciliation are truth-table testable without
+   model cost or flakiness. LLM behavior is never scripted (D13 intact) —
+   only orchestration's downstream agent seam is faked (same logic as
+   MockTransport for the Azure source and fake-gcs for the artifact
+   server). MCP servers are never faked (cheap, deterministic, real
+   compose services). Real-adapter + real-Vertex live gates stay main-PC
+   only; prompt/agent quality stays with live gates and Phase 9.
+4. **Idempotency**: per-route key + request fingerprint + stored canonical
+   response (`CanonicalOperationResult`, never signed URLs; replays
+   regenerate them) as a DB claim row acquired with the lease
+   (in-progress → completed); in-progress state recoverable after a crash.
+5. **Signed URLs locally**: fake-gcs signed-URL emulation verified
+   empirically at increment 4; fallback is an unsigned fake-gcs object URL
+   in the same `ReportDownload` shape, recorded then as a local-only
+   substitution (to be settled empirically, not pre-decided).
+6. **Facilitator reconciliation**: the ambiguous-timeout invocation-ID
+   check (agents.md § Session and invocation semantics) is implemented
+   against the local adapter's Postgres session backend; mechanism
+   confirmed against the actual adapter interface at increment 3, any
+   divergence raised with the owner before coding around it.

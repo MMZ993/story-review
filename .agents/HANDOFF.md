@@ -1,9 +1,8 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-12 (session 31 — Phase 5 close-out:
-  completion review Ready-to-close, Important fix applied, phase marked
-  COMPLETE; owner push pending).
+Last updated: 2026-09-13 (session 32 — Phase 6 opened: plan + D15 +
+  Runbook 12; owner push pending).
 
 ## Where we are
 
@@ -30,6 +29,30 @@ Last updated: 2026-09-12 (session 31 — Phase 5 close-out:
   pushes (`main` + `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 32 (2026-09-13, main PC — Phase 6 opening; docs-only, no cloud
+  actions, Cloud SQL untouched/STOPPED):
+- Read the Phase 6 design set in full before drafting (api-contract, data-flow,
+  schemas HTTP/records/MCP sections, observability, agents session semantics,
+  repository-layout).
+- **Phase 6 plan written**: `docs-local/plans/phase-6-orchestration.md` —
+  increments 0–5 (0 packaging+persistence+idempotency/lease primitives;
+  1 MCP client wrapper + stories/health; 2 flow 1 session creation; 3 flow 2
+  turns + gates + reconciliation; 4 flows 3+4 finalization/reports/
+  po_accepted; 5 exit-gate integration suite + review), live gates per
+  agent-touching increment, risks, out-of-scope.
+- **D15 recorded** (all six increment-0 owner decisions approved in chat):
+  orchestration/ uv package + compose wiring; ordered SQL migrations +
+  asyncpg repository (no ORM); fake in-process agent clients for the
+  deterministic tier (D13 extension — LLM behavior never scripted, MCP
+  servers never faked) with real-adapter live gates main-PC only; DB
+  idempotency claim + stored canonical response (never signed URLs);
+  fake-gcs signed-URL emulation verified empirically at increment 4;
+  facilitator reconciliation against the local adapter's Postgres session
+  backend, mechanism confirmed at increment 3.
+- **Runbook 12 opened**: `docs-local/runbooks/12-orchestration.md` (increment 0
+  decisions-settled status).
+- Nothing committed yet (plan + runbook + D15 uncommitted; owner decides when).
 
 Session 31 (2026-09-12, main PC — Phase 5 close-out; local only, no
 cloud actions, Cloud SQL untouched):
@@ -841,12 +864,12 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Owner push**: session-31 close-out commit (Makefile guard fix +
-   synthesis dead-code fix + docs-local close-out). No `docs/` changes —
-   no frozen cherry-pick needed.
-2. **Phase 6 opening** (next session): write the Phase 6 plan
-   (orchestration — FastAPI per docs/design/api-contract.md), open
-   Runbook 12.
+1. **Owner push**: session-31 close-out commits (`be88783`, `c07f84a`) — main
+   is ahead 2; session-32 files (phase-6 plan, Runbook 12, D15, this HANDOFF
+   update) commit when the owner asks and push after.
+2. **Phase 6 increment 0**: packaging skeleton + SQL migrations + asyncpg
+   repository + idempotency-claim/turn-lease primitives, test-first per the
+   plan (D15 settled — no open decisions).
 3. Optional hardening (later increments or Phase 6): the three deferred
    review minors from session 28; deferred synthesis-review minors
    (extract shared single-turn run loop from `run_reviewer`/
