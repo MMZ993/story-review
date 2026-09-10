@@ -1,18 +1,19 @@
 # HANDOFF — living project state
 
 Linked from AGENTS.md; updated at every phase transition and material progress
-Last updated: 2026-09-12 (session 30 — Phase 5 increment
-  4 COMPLETE: facilitator + local-agents profile; exit gate PASS;
-  owner push pending).
+Last updated: 2026-09-12 (session 31 — Phase 5 close-out:
+  completion review Ready-to-close, Important fix applied, phase marked
+  COMPLETE; owner push pending).
 
 ## Where we are
 
-- Phase: **5 — Agents (ADK) + local adapters — all increments 0–4 of 4
-  COMPLETE**; the Phase 5 exit gate (example-interaction walkthrough,
-  development-plan criterion) PASSED in session 30. Remaining: Phase 5
-  close-out (completion review, development-plan status, owner push).
-  Plan at `docs-local/plans/phase-5-agents.md`; D13 + amendments + D14 +
-  D14 amendment 1 recorded.
+- Phase: **6 — Orchestration (FastAPI)** — next to open (plan to be
+  written). **Phase 5 COMPLETE and CLOSED** (session 31, 2026-09-12):
+  all increments 0–4 green, exit gate PASS (session 30), independent
+  completion review **Ready-to-close** with 1 Important (dead Makefile
+  ADC guard) fixed same session; development-plan updated; Runbook 11
+  has the completion-review section. D13 + amendments + D14 + amendment 1
+  recorded.
 - Phase 4 **COMPLETE and CLOSED** (session 26, 2026-09-11): independent
   completion review Ready-to-close; D10 amendment 7 recorded (azure/
   Secret-Manager wiring deferred to Phase 8); development-plan updated.
@@ -30,8 +31,23 @@ Last updated: 2026-09-12 (session 30 — Phase 5 increment
 
 ## Previous Session Summary
 
+Session 31 (2026-09-12, main PC — Phase 5 close-out; local only, no
+cloud actions, Cloud SQL untouched):
+- Owner pushed main (was ahead 3) — clean at session start.
+- **Phase 5 completion review** (independent read-only subagent over
+  `67e7523..6b1e3bc`): **Ready-to-close** — all five increments plan-
+  adherent and evidenced, exit criterion satisfied on Runbook 11
+  evidence, no scope creep, no identifier leaks.
+- **Important fix**: `agents-compose-up` ADC fail-fast guard was dead
+  code (short-circuit made the file check unreachable) — split into two
+  checks, error path re-verified.
+- **Minor fix**: removed dead `json.loads` + unused import in
+  `agent_kit.synthesis_adapter.run_synthesis`.
+- Development-plan.md: Phase 5 marked COMPLETE; Runbook 11 completion-
+  review section added; HANDOFF phase transition to Phase 6.
+
 Session 30 (2026-09-12, main PC — Phase 5 increment 4; local Docker only;
-Cloud SQL STOPPED throughout):
+  Cloud SQL STOPPED throughout):
 - **Increment 4 COMPLETE — facilitator + `local-agents` profile**:
   serving-safe `FacilitatorTurnOutput` mirrors; `agent_kit.facilitator_input`
   (typed turn request + renderer + opening-turn rules) and
@@ -569,6 +585,15 @@ iteration. T1 baseline column: 7/7.
 
 ## Verification and Review
 
+Session 31:
+- Completion review verdict **Ready-to-close** (findings in Runbook 11
+  completion-review section); Important + one Minor fixed same session.
+- Post-fix suites green: agent-kit **82**, synthesis adapter **7+2s**,
+  facilitator **3+1s**, business adapter **6+2s**, engineering adapter
+  **7+1s**; `git diff --check` clean; `make -n agents-compose-up` OK and
+  ADC-guard error path verified (exit 2 before docker).
+- No environment actions; Cloud SQL untouched.
+
 Session 30:
 - Deterministic suites at close: agent-kit **82** (26 new), agents
   skeleton **4×4**, facilitator adapter **3 passed + 1 skipped**;
@@ -816,18 +841,23 @@ cross-checks, test-first red/green, review findings fixed).
 
 ## Next Steps
 
-1. **Owner push**: main ahead 3 (`e583a71`, `7b844d6`, `ff38a39`). No
-   `docs/` changes — no frozen cherry-pick needed.
-2. **Phase 5 close-out** (next session): independent completion review
-   over the whole phase, mark Phase 5 COMPLETE in development-plan.md,
-   Runbook 11 wrap-up, HANDOFF phase transition to Phase 6 (orchestration).
-4. Optional hardening (later increments or Phase 6): the three deferred
-   review minors from session 28; two deferred synthesis-review minors
+1. **Owner push**: session-31 close-out commit (Makefile guard fix +
+   synthesis dead-code fix + docs-local close-out). No `docs/` changes —
+   no frozen cherry-pick needed.
+2. **Phase 6 opening** (next session): write the Phase 6 plan
+   (orchestration — FastAPI per docs/design/api-contract.md), open
+   Runbook 12.
+3. Optional hardening (later increments or Phase 6): the three deferred
+   review minors from session 28; deferred synthesis-review minors
    (extract shared single-turn run loop from `run_reviewer`/
    `run_synthesis`; document mirror refs min/max asymmetry in the
-   docstring); move `mcp_*_service_url` audiences into
+   docstring); session-31 deferred minors — align reviewer shell to
+   explicit `model_validate_json` (strict `UtcDatetime` gotcha), generic
+   handler retryable-mapping of 400-class model errors,
+   `_STORY_PATTERN` introspection brittleness, `extra_context` unbounded
+   vs `Text`; move `mcp_*_service_url` audiences into
    `home.tfvars` (session-25 runbook gotcha).
-5. Someday-minor: one-line clarification of RENDER_FAILED retryability
+4. Someday-minor: one-line clarification of RENDER_FAILED retryability
    phrasing in docs/design/observability.md (atomic docs commit + frozen
    cherry-pick if done).
 

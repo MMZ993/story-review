@@ -83,7 +83,7 @@ Cloud Run via Makefile target and answers a smoke call.
 
 Cost: Cloud Run (min 0) + GCS for smoke tests; minimal.
 
-## Phase 5 — Agents — planned
+## Phase 5 — Agents — COMPLETE (sessions 27–31; increments 0–4 all green, exit gate (example-interaction walkthrough over compose HTTP) PASS, completion review 2026-09-12 Ready-to-close — 1 Important Makefile ADC-guard fix applied same session; plan in plans/phase-5-agents.md, evidence in runbooks/11-agents.md)
 
 Scope: business-reviewer and engineering-reviewer → synthesis → facilitator, in that
 order. Prompts in `prompts/`, config.yaml per agent, local ADK adapters in compose
