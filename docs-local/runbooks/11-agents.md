@@ -156,3 +156,66 @@ increment-1 pattern re-bound (thin binding + one new prompt-distinctness
 test); threshold per development-rules not met.
 
 Cost so far this session: 5 real flash calls total (2+2+1).
+
+## Increment 3 — synthesis
+
+**Status: COMPLETE (2026-09-12). Live Vertex gate PASS.**
+
+- `shared/agent_kit`: `synthesis_input.py` (frozen synthesis request
+  `SynthesisRequest` — business/engineering pairs, each `ReviewReport` +
+  `ArtifactReference`, both references from one story run, both reports of
+  one story; message renderer embeds references verbatim so the model can
+  echo them in `inputs`; `SynthesisResponse` + `assemble_synthesis_response`
+  story-id and inputs-echo checks) and `synthesis_adapter.py` (single-turn
+  run + FastAPI shell, error mapping reused from `agent_kit.adapter`).
+  `llm_output.py` gained the serving-safe mirrors for
+  `SynthesisReport`/`ConflictItem`/`ArtifactReference` (D13 amendment 1).
+- `agents/synthesis/synthesis/agent.py` — ADK builder, serving-safe mirror
+  `output_schema`; strict `SynthesisReport` validates at the boundary.
+- `deploy/compose/adapters/synthesis/` — thin binding + deterministic tests
+  + live Vertex tests; Makefile `synthesis-adapter-test` /
+  `synthesis-live-test`.
+
+Checks (main PC): agent-kit **38** (14 new: mirrors + synthesis input),
+agents 3×4, synthesis adapter **7 passed + 2 skipped** deterministic /
+**live gate 9 passed** (~16 s): hidden-conflict case (two zero-finding
+reviews with contradicting claims → ≥1 conflict citing both sides, zero
+merged findings) and the single-perspective-re-review pairing (engineering
+version 2 + unchanged business v1; inputs echoed correctly). Regression:
+review-schemas **154**, business adapter 6+2s, engineering adapter 7+1s,
+`git diff --check` clean.
+
+Increment-3 independent review (read-only subagent, 2026-09-12):
+**Ready to proceed** — 0 Critical/Important, 3 Minor. Fixed same session:
+stale "business-reviewer" comment in the synthesis tests requirements.in.
+Deferred minors (HANDOFF): (a) `run_synthesis` duplicates the reviewer
+single-turn run loop (~30 lines; extraction candidate for a later
+increment), (b) mirror keeps min-1 conflict refs but drops the max-100 caps
+(deliberate serving-safe asymmetry, could be documented in the docstring).
+
+Gotchas learned:
+
+- **Strict `UtcDatetime` rejects ISO strings in python mode**: the first
+  request/response payloads failed because `ArtifactReference.created_at`
+  arrives as an ISO string over HTTP but `StrictModel` forbids coercion.
+  Fix: the synthesis shell validates the raw body with
+  `model_validate_json` (JSON mode parses datetimes even under strict);
+  the run validates the model reply the same way. Test fixtures must use
+  python `datetime` objects for python-mode validation and ISO strings for
+  the wire.
+- **Model invents dict key names**: with `inputs` mirrored as
+  `dict[str, MirrorArtifactReference]` the model produced
+  `business_review`/`engineering_review` keys. Fix: mirror `inputs` as a
+  fixed-key model (`MirrorSynthesisInputs`) so the schema itself pins the
+  key names; also enforced min-1 conflict refs serving-side (minItems is
+  serving-compatible, unlike maxItems).
+- **Conflict refs with zero findings**: the hidden-conflict scenario has
+  zero per-perspective findings, but the prompt demanded finding IDs in
+  `business_refs`/`engineering_refs` — the model then dropped the conflict
+  entirely. Evidence-driven prompt iteration (allowed by D13-6): refs now
+  accept a short identifying phrase of the supporting claim when the review
+  has no findings. `ConflictItem` refs are `ShortText` in schemas.md, so
+  this aligns the prompt with the schema, not against it.
+
+Cost this session: ~8 real flash calls total (three failing live iterations
++ one clean pass) — negligible.
