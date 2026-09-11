@@ -25,7 +25,7 @@ capstone_project/
 ├── dataset/
 │   ├── stories/*.json
 │   └── expected/*.json                # evaluation judge only
-├── tui/
+├── webui/                              # minimal web client (static HTML/JS served by a small FastAPI app)
 ├── tests/
 │   ├── {unit,contract,integration}/
 │   └── evaluation/{config.yaml,...}     # pinned judge model/settings and runner

@@ -9,7 +9,7 @@
 | Deployment | Agent Engine for the four agents; Cloud Run for MCP services and FastAPI |
 | LLM backend | Vertex AI (`GOOGLE_GENAI_USE_VERTEXAI=true`) |
 | API layer | FastAPI + Pydantic strict schemas |
-| Interface | TUI first; optional Web UI later, both calling the same FastAPI service |
+| Interface | Simple Web UI (minimal chat MVP: story picker with preview, dialogue, report download) calling the FastAPI service. Design change from "TUI first" 2026-09-11 (D16) |
 | Tooling | All tools exposed through MCP servers |
 | Prompts | UTF-8 static data in `prompts/`, loaded once at startup, never inline code |
 | Model configuration | Versioned per agent in `agents/<agent>/config.yaml`; immutable for one deployment |
