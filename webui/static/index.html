@@ -25,12 +25,30 @@
 
       <!-- Story picker (increment 1) -->
       <section id="picker-view" class="view" aria-label="Story picker">
-        <p>Story picker arrives in increment 1.</p>
+        <div class="picker-header">
+          <h2>choose a story</h2>
+          <button id="confirm-story" type="button">start review session</button>
+          <p id="picker-status" role="status"></p>
+        </div>
+        <details id="story-picker" class="story-picker" open>
+          <summary id="story-summary">stories (0)</summary>
+          <input id="story-filter" type="search" placeholder="filter stories…" aria-label="Filter stories by title" />
+          <ul id="story-list" class="story-list"></ul>
+        </details>
+        <div id="story-preview" class="story-preview" aria-live="polite">hover a story to preview it</div>
       </section>
 
       <!-- Session chat view (increment 2) -->
       <section id="session-view" class="view" aria-label="Session" hidden>
+        <p id="session-header" class="session-header"></p>
         <ol id="messages" class="messages"></ol>
+        <form id="composer" class="composer">
+          <textarea id="turn-input" rows="2" placeholder="message to the reviewers…"></textarea>
+          <button id="send-turn" type="submit">send</button>
+          <button id="accept-turn" type="button" hidden>accept &amp; finalize</button>
+        </form>
+        <div id="session-actions"></div>
+        <div id="report-links" class="report-links"></div>
         <div id="status" role="status"></div>
       </section>
     </main>

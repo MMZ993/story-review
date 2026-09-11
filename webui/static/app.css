@@ -53,8 +53,151 @@ body {
   margin-right: 20%;
 }
 
+.message-meta {
+  font-size: 0.78rem;
+  color: #666;
+  background: #f8f8f8;
+}
+
+.session-header {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+#messages {
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.composer {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.composer textarea {
+  flex: 1;
+  resize: vertical;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.composer button {
+  align-self: flex-end;
+}
+
 #status {
   min-height: 1.25rem;
   font-size: 0.85rem;
   color: #555;
+}
+
+/* Story picker (increment 1): header, foldable list, full-width preview */
+
+.picker-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.picker-header h2 {
+  margin: 0;
+}
+
+.story-picker {
+  margin-top: 0.75rem;
+}
+
+.story-picker summary {
+  cursor: pointer;
+}
+
+#story-filter {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0.5rem 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.story-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  max-height: 18rem;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+.story-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.story-row input {
+  flex: 0 0 auto;
+}
+
+.story-row label {
+  min-width: 0;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.story-row label:hover,
+.story-row input:checked + label {
+  background: #eef;
+}
+
+.story-empty {
+  padding: 0.5rem;
+  color: #777;
+  font-size: 0.85rem;
+}
+
+.story-preview {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  min-height: 12rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: #f6f6f6;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.story-preview h3 {
+  margin: 0 0 0.5rem;
+}
+
+#picker-status {
+  font-size: 0.85rem;
+  color: #555;
+  margin: 0;
+}
+
+/* Increment 3: end-state controls and report links */
+
+.report-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+#session-actions {
+  margin-top: 0.5rem;
 }
