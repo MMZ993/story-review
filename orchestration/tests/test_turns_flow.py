@@ -104,10 +104,10 @@ async def create_session(client) -> dict:
     return response.json()
 
 
-def dialogue_client(pool, settings, artifact):
+def dialogue_client(pool, settings, artifact, report=None):
     """Flow-1 client (opening facilitator fake); tests swap the
     facilitator for their scripted one after creating the session."""
-    return flow_client(settings, pool, artifact, make_agents())
+    return flow_client(settings, pool, artifact, make_agents(), report=report)
 
 
 async def create_session_with(client, facilitator=None) -> dict:
@@ -335,36 +335,59 @@ async def test_park_beats_synthesis_at_turn_10(pool, settings, artifact):
     assert replay.json() == body
 
 
-async def test_finalize_gate_is_increment4_gap(pool, settings, artifact):
-    """open_issues empty + invoke none evaluates to finalize; finalization
-    itself is increment 4, so the turn is answered with a retryable 503
-    and nothing is persisted (documented increment-3 gap)."""
+async def test_open_issues_empty_finalize_completes(pool, settings, artifact):
+    """open_issues empty + invoke none evaluates to finalize: flow 3 runs
+    synchronously in the same response — finalized-review artifact saved,
+    report rendered per requested format, session completed, report
+    downloads present."""
     facilitator = ScriptedFacilitator(
         [dialogue_output("none", open_issues=[])]
     )
-    client = dialogue_client(pool, settings, artifact)
+    from .fakes import FakeReportMcp
+
+    report = FakeReportMcp(artifact)
+    client = dialogue_client(pool, settings, artifact, report=report)
     session = await create_session_with(client, facilitator)
 
     response = await post_turn(client, session["session_id"])
-    assert response.status_code == 503, response.text
-    error = response.json()["error"]
-    assert error["retryable"] is True
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["outcome"] == "finalize"
+    assert body["state"] == "completed"
+    assert [entry["format"] for entry in body["report"]] == ["md"]
+    assert body["report"][0]["signed_url"].startswith("https://")
+    assert len(report.render_calls) == 1
     async with pool.acquire() as conn:
-        turn = await conn.fetchrow(
-            "select * from turns where session_id = $1 and turn_number = 2",
+        row = await conn.fetchrow(
+            "select state, report_references, final_review_reference "
+            "from sessions where session_id = $1",
             session["session_id"],
         )
-        assert turn is None
-        state = await conn.fetchval(
-            "select state from sessions where session_id = $1",
-            session["session_id"],
-        )
-        assert state == "active"
+        assert row["state"] == "completed"
+        assert len(json.loads(row["report_references"])) == 1
+        assert row["final_review_reference"] is not None
+    # finalized-review artifact content carries the acceptance state
+    saved = [
+        call
+        for call in artifact.save_calls
+        if call["type"] == "finalized-review"
+    ]
+    assert len(saved) == 1
+    assert saved[0]["content"]["po_accepted"] is False
+    assert saved[0]["content"]["remaining_open_issues"] == []
+
+    # completed session is read-only for further turns
+    again = await post_turn(client, session["session_id"], key=KEY_OTHER)
+    assert again.status_code == 409
+    assert again.json()["error"]["code"] == "SESSION_READ_ONLY"
 
 
-async def test_po_accepted_is_increment4_gap(pool, settings, artifact):
+async def test_po_accepted_finalizes_without_facilitator(pool, settings, artifact):
     facilitator = ScriptedFacilitator([])
-    client = dialogue_client(pool, settings, artifact)
+    from .fakes import FakeReportMcp
+
+    report = FakeReportMcp(artifact)
+    client = dialogue_client(pool, settings, artifact, report=report)
     session = await create_session_with(client, facilitator)
 
     response = await post_turn(
@@ -372,9 +395,35 @@ async def test_po_accepted_is_increment4_gap(pool, settings, artifact):
         session["session_id"],
         payload={"message": None, "po_accepted": True},
     )
-    assert response.status_code == 503, response.text
-    assert response.json()["error"]["retryable"] is True
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["outcome"] == "finalize"
+    assert body["state"] == "completed"
+    assert body["facilitator_reply"] is None and body["delegation"] is None
     assert facilitator.calls == []
+    # explicit acceptance keeps the open issues in the final review
+    saved = [
+        call
+        for call in artifact.save_calls
+        if call["type"] == "finalized-review"
+    ]
+    assert saved[0]["content"]["po_accepted"] is True
+    assert saved[0]["content"]["remaining_open_issues"] == [
+        "Which rate limit applies?",
+        "Business value unclear",
+    ]
+    async with pool.acquire() as conn:
+        count = await conn.fetchval(
+            "select facilitator_turn_count from sessions where session_id = $1",
+            session["session_id"],
+        )
+        turn = await conn.fetchrow(
+            "select * from turns where session_id = $1 and turn_number = 2",
+            session["session_id"],
+        )
+    assert count == 1  # acceptance never increments the facilitator count
+    assert turn is not None and turn["po_accepted"] is True
+    assert turn["outcome"] == "finalize"
 
 
 # --- lease, validation, errors ----------------------------------------------

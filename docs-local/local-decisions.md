@@ -541,3 +541,33 @@ Owner decisions at increment 3 opening (approved in chat):
    ("non-retryable ... retry a new request, not the same turn") is honored
    by the code-specific client rule: wait for the hint, then submit a new
    request/key (not an idempotent replay). No schema change needed.
+
+### D15 amendment 2 — increment-4 settled decisions (2026-09-13, session 37)
+
+1. **Signed URLs locally (D15-5, settled empirically)**: fake-gcs-server
+   runs `-scheme both` — HTTPS (container 4443 → host
+   `${FAKE_GCS_HTTPS_PORT:-9026}`, `-public-host` matching) serves the
+   signed download path without signature validation; HTTP (container
+   8000 → host `${FAKE_GCS_PORT:-9025}`) keeps the artifact/report
+   servers and contract tests untouched. Orchestration signs V4 URLs via
+   google-cloud-storage and rewrites the host to
+   `ORCH_GCS_PUBLIC_URL`; the local signer is a committed throwaway RSA
+   key (explicitly not a secret) because ambient ADC user credentials
+   cannot sign. Local-only substitution: download clients relax TLS
+   verification (self-signed fake-gcs certificate); the
+   `ReportDownload.signed_url` `HttpsUrl` shape made the previously
+   contemplated unsigned-HTTP fallback impossible. Without
+   `ORCH_GCS_PUBLIC_URL` the signer uses ambient credentials against
+   real GCS (Phase 8 wiring, re-verify there).
+2. **Finalizing sessions and turn keys**: a same-key retry of a turn
+   whose flow 3 failed retryably resumes flow 3 directly from the
+   durable finalize turn record (no facilitator, no duplicate turn —
+   data-flow.md §2 "resumes flow 3 directly"); a new key on a
+   parked/completed/finalizing session is 409 `SESSION_READ_ONLY`, and
+   its just-inserted claim row is deleted so a retry of that key cannot
+   arrive as an in-progress takeover. `SESSION_READ_ONLY` therefore also
+   covers `finalizing` for new turn requests (finalize endpoint is the
+   sanctioned recovery path) — envelope code unchanged.
+3. **Signed-URL TTL**: 15 minutes (`ORCH_SIGNED_URL_TTL_SECONDS`,
+   default 900) — observability.md/api-contract prescribe no value;
+   recorded here as the chosen constant.

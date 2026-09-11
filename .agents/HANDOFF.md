@@ -8,20 +8,23 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-13 (session 35 — Phase 6 increment 2 GREEN:
-flow 1 + read paths + agent clients; review findings fixed; live gate
-PASS over compose + real Vertex).
+Last updated: 2026-09-13 (session 37 — Phase 6 increment 4 GREEN: flows
+3+4 finalization, reports, PO acceptance; review findings fixed; live
+gate PASS over compose + real Vertex).
 
 ## Where we are
 
-- **Phase 6 — Orchestration (FastAPI): OPEN, increments 0–2 implemented**
-  (sessions 33–35; detail in Runbook 12). Increment 2 green:
-  deterministic tier **59 passed / 6 skipped**, independent review
-  findings fixed, **live gate PASS** (one real session creation over
-  compose + real Vertex incl. replay; ≈4 model calls). Plan `docs-local/plans/phase-6-orchestration.md`
-  (increments 0–5), decisions **D15** settled. **Next: increment 3**
-  (flow 2 — dialogue turns, lease + gate
-  precedence; reconciliation must cover the opening turn too).
+- **Phase 6 — Orchestration (FastAPI): OPEN, increments 0–4 implemented**
+  (sessions 33–37; detail in Runbook 12). Increment 4 green:
+  deterministic tier **90 passed / 8 skipped**, independent review
+  findings fixed (incl. a focused re-review Ready to proceed), **live
+gate PASS** (full session creation → po_accepted synchronous finalize
+→ fresh report URLs → downloaded report bytes over the signed fake-gcs
+HTTPS URL). D15 amendment 2 recorded (signed-URL settlement, finalizing
+session turn-key semantics, 15-min signed-URL TTL). Plan
+`docs-local/plans/phase-6-orchestration.md` (increments 0–5).
+  **Next: increment 5** (exit gate — full integration suite over
+  compose + independent phase-close review).
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -38,6 +41,43 @@ PASS over compose + real Vertex).
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 37 (2026-09-13, main PC — Phase 6 increment 4; local Docker
+(compose stack recomposed with the dual-scheme fake-gcs for the live
+gate; throwaway Postgres for the deterministic tier), real Vertex via
+adapters for the live gate only, no cloud actions, Cloud SQL STOPPED
+throughout):
+- Implemented flows 3+4 per plan: `finalization.py` (flow-3 core:
+  finalizing marker → deterministic finalized-review artifact → render
+  per format → atomic completed+refs+canonical transaction;
+  retryable-keeps-finalizing / non-retryable-rolls-back-to-active),
+  gate-finalize + po_accepted wiring in `turns_flow.py` (acceptance
+  bypasses facilitator, no count increment, synchronous finalize in one
+  TurnResponse; same-key retry resumes flow 3; rejected new keys
+  release their claim row), `finalize_api.py` (POST /finalize
+  four-state table incl. under-lease re-read; GET /report
+  REPORT_NOT_READY), completed SessionDetail reports,
+  `signed_urls.py` (V4 HTTPS signed URLs, committed throwaway local
+  signer, host rewrite to ORCH_GCS_PUBLIC_URL, warm-up at startup),
+  `records_store.update_session` reference fields,
+  `idempotency.release`, google-cloud-storage dep, compose fake-gcs
+  `-scheme both` wiring, Makefile `orchestration-finalize-live-test`.
+- **D15 amendment 2 recorded** (D15-5 settled empirically: fake-gcs
+  dual-scheme HTTPS signed-URL path works; HttpsUrl shape made the
+  unsigned-HTTP fallback impossible; finalizing turn-key semantics;
+  15-min URL TTL).
+- Verification: orchestration **90+8s**; review-schemas 154; agent-kit
+  86; facilitator adapter 3+1s; agents 4×4; compose contract 20; image
+  builds. Independent review: 4 Importants (artifact-save classification,
+  IN_PROGRESS read-only bypass, finalizing same-key re-execution,
+  finalize TOCTOU) + minors — **all fixed in-session** (findings +
+  fixes in Runbook 12); focused re-review Ready to proceed.
+- Live gate run and **PASS** (owner approval in chat): full session
+  creation → po_accepted synchronous finalize → fresh report URLs →
+  downloaded report bytes over signed fake-gcs HTTPS (63 s, ≈4 model
+  calls). Live-only fixes: live env filter dropped
+  ORCH_LIVE_GCS_PUBLIC_URL (signer fell back to ADC); jsonb string len
+  in an assertion; the compose stack had gone down and was re-upped.
 
 Session 36 (2026-09-13, main PC — Phase 6 increment 3; local Docker
 (compose stack for the live gate; throwaway Postgres for the
@@ -183,10 +223,10 @@ after changes):
   mcp-story **67**, mcp-artifact **32**, mcp-report **34**, compose contract
   **20**, agent-kit **86**, agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **77+7s** (increments 0–3);
+  facilitator adapter **3+1s**, orchestration **90+8s** (increments 0–4);
   live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
-  orchestration flow-1 and flow-2 live gates PASS (Runbook 12).
+  orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12).
 - Per-session verification evidence (commands, counts, review verdicts,
   gotchas): append-only in the runbooks — Runbook 11 §0–4 + completion
   review for Phase 5; Runbook 10 for Phase 4; earlier phases in 03–09.
@@ -227,10 +267,10 @@ after changes):
 
 ## Next Steps
 
-1. **Phase 6 increment 4** (next session): flows 3+4 — finalization,
-   reports, PO acceptance; removes the two increment-3 finalize gaps
-   (retryable-503 branches, their tests, and the D15-amendment-1 gap
-   note).
+1. **Phase 6 increment 5** (next session): exit gate — integration
+   suite over compose covering flows 1–4, gate outcomes, park-at-10,
+   PO-acceptance path, idempotent retries, lease contention; independent
+   phase-close review; phase marked COMPLETE in development-plan.md.
 2. Owner push (main) when ready.
 
 ## Important Notes
@@ -258,9 +298,11 @@ after changes):
   `infra/envs/ado.env`), project `story-review` (Agile), ids 5–55,
   conventions in Runbook 08; re-export needs `$ADO_PAT` (`rest-verify`) or
   az fallback.
+- Throwaway-postgres startup race now 8 observations (Runbook 12);
+  run-migrations.sh small-retry fix stays due before Phase 8 cloud runs.
 - **Local stack**: `make agents-compose-up` (local + local-agents profiles;
   needs host ADC); `compose-contract-test` needs `compose-up` first.
-  Increment-3 live gate left the stack running — `agents-compose-down`
+  Increment-4 live gate left the stack running — `agents-compose-down`
   when done with it.
 - **Keep private** until final review; GitHub mirror pending (owner).
 - Repo layout/plans/runbooks index: `docs-local/development-plan.md` and

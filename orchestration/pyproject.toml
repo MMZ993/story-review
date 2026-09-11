@@ -9,6 +9,7 @@ dependencies = [
     "uvicorn>=0.31",
     "asyncpg>=0.30",
     "review-schemas",
+    "google-cloud-storage>=2.14",
 ]
 
 [tool.hatch.build.targets.wheel]

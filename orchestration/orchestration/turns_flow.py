@@ -9,10 +9,12 @@ one TurnResponse.
 Gate precedence (evaluated before the response is sent): park at
 facilitator turn 10; continue whenever a synthesis was produced this turn;
 finalize only when `open_issues` is empty and `invoke` = none — otherwise
-continue. Increment-3 scope decision (owner-approved): the two finalize
-paths (`po_accepted`, gate outcome finalize) continue into flow 3, which
-lands in increment 4 — until then both are answered with a retryable 503
-and persist no turn state.
+continue. Both finalize paths (the gate outcome and an explicit
+`po_accepted` client action, which skips the facilitator and delegated
+work entirely and never increments `facilitator_turn_count`) continue
+synchronously into flow 3 (see `finalization`) while retaining the turn
+lock, answering with one TurnResponse whose `report` carries the signed
+downloads.
 """
 
 from __future__ import annotations
@@ -28,12 +30,21 @@ from review_schemas.facilitator import ResolutionItem
 from review_schemas.records import TurnRecord
 from review_schemas.synthesis import SynthesisReport
 
-from . import flows, idempotency, lease, lineage, records_store, turn_execution
+from . import (
+    finalization,
+    flows,
+    idempotency,
+    lease,
+    lineage,
+    records_store,
+    turn_execution,
+)
 from .agent_clients import AgentSet, FacilitatorInvocation
 from .api_errors import ApiError, make_error
 from .config import Settings
 from .errors import SessionLocked
 from .mcp_client import McpClient
+from .signed_urls import ReportSigner
 
 ROUTE = "POST /api/v1/sessions/{}/turns"
 
@@ -58,29 +69,15 @@ def evaluate_gate(
     return "continue"
 
 
-def _finalize_gap(correlation_id: str) -> ApiError:
-    """Increment-3 boundary: finalization is increment 4 (flow 3)."""
-    return ApiError(
-        503,
-        make_error(
-            "UPSTREAM_UNAVAILABLE",
-            "the turn reached finalization, which is not implemented in "
-            "this increment (increment 4 wires flow 3); retry the same "
-            "request with the same Idempotency-Key once finalization is "
-            "deployed",
-            correlation_id,
-            retryable=True,
-        ),
-    )
-
-
 async def run_turn(
     pool: asyncpg.Pool,
     settings: Settings,
     *,
     story_client: McpClient,
     artifact_client: McpClient,
+    report_client: McpClient,
     agents: AgentSet,
+    signer: ReportSigner,
     session_id: str,
     payload: dict,
     key: uuid.UUID,
@@ -98,7 +95,9 @@ async def run_turn(
             settings,
             story_client=story_client,
             artifact_client=artifact_client,
+            report_client=report_client,
             agents=agents,
+            signer=signer,
             session_id=session_id,
             payload=payload,
             key=key,
@@ -114,7 +113,9 @@ async def _execute(
     *,
     story_client: McpClient,
     artifact_client: McpClient,
+    report_client: McpClient,
     agents: AgentSet,
+    signer: ReportSigner,
     session_id: str,
     payload: dict,
     key: uuid.UUID,
@@ -126,23 +127,94 @@ async def _execute(
     )
     if claim.outcome is idempotency.ClaimOutcome.REPLAY:
         assert claim.canonical_response is not None
-        return await _response_from_canonical(pool, claim.canonical_response)
+        return await _response_from_canonical(pool, claim.canonical_response, signer)
 
     session = await records_store.get_session(pool, session_id)
     assert session is not None
-    if session.state in ("parked", "completed"):
-        # new key on a read-only session (park + completion are stored
+    if session.state == "finalizing":
+        # same-key retry of a turn whose flow 3 failed retryably resumes
+        # flow 3 directly (data-flow.md §2); a new key is rejected and its
+        # fresh claim row released so it cannot later masquerade as a
+        # legitimate IN_PROGRESS takeover
+        if claim.outcome is not idempotency.ClaimOutcome.IN_PROGRESS:
+            await idempotency.release(pool, ROUTE, session_id, key)
+            raise _read_only(correlation_id, session.state)
+        turns = await records_store.list_turns(pool, session_id)
+        assert turns and turns[-1].outcome == "finalize", (
+            "finalizing session without its finalize turn record"
+        )
+        synthesis_reference = await _latest_synthesis(
+            artifact_client, session, deadline_of(settings), correlation_id
+        )
+        return await _finalize_and_respond(
+            pool,
+            settings,
+            artifact_client=artifact_client,
+            report_client=report_client,
+            signer=signer,
+            session=session,
+            turn=turns[-1],
+            turns=turns,
+            synthesis_reference=synthesis_reference,
+            facilitator_turn_count=None,
+            key=key,
+            correlation_id=correlation_id,
+            deadline=deadline_of(settings),
+        )
+    if session.state != "active":
+        # a new key on a read-only session (park + completion are stored
         # atomically with the canonical response, so a same-key retry of
-        # the parking turn always hits the REPLAY branch above)
-        raise _read_only(correlation_id)
-    if payload["po_accepted"]:
-        # finalize path (flow 3) — increment 4
-        raise _finalize_gap(correlation_id)
+        # the parking turn always hits the REPLAY branch above); the
+        # rejected claim row is released so a later retry of this key
+        # starts clean
+        await idempotency.release(pool, ROUTE, session_id, key)
+        raise _read_only(correlation_id, session.state)
     deadline = time.monotonic() + settings.request_deadline_seconds
-    message = payload["message"]
-
     turns = await records_store.list_turns(pool, session_id)
     turn_number = (turns[-1].turn_number if turns else 0) + 1
+
+    if payload["po_accepted"]:
+        # explicit client action: bypass facilitator and delegated work,
+        # persist the acceptance, and finalize synchronously (flow 3)
+        turn = await records_store.create_turn_or_get(
+            pool,
+            TurnRecord(
+                session_id=session_id,
+                turn_number=turn_number,
+                correlation_id=uuid.UUID(correlation_id),
+                state="succeeded",
+                po_message=None,
+                po_accepted=True,
+                facilitator_reply=None,
+                delegation=None,
+                resolutions=[],
+                outcome="finalize",
+                produced_artifacts=[],
+                created_at=_now(),
+                completed_at=_now(),
+            ),
+        )
+        turns = await records_store.list_turns(pool, session_id)
+        synthesis_reference = await _latest_synthesis(
+            artifact_client, session, deadline, correlation_id
+        )
+        return await _finalize_and_respond(
+            pool,
+            settings,
+            artifact_client=artifact_client,
+            report_client=report_client,
+            signer=signer,
+            session=session,
+            turn=turn,
+            turns=turns,
+            synthesis_reference=synthesis_reference,
+            facilitator_turn_count=None,
+            key=key,
+            correlation_id=correlation_id,
+            deadline=deadline,
+        )
+
+    message = payload["message"]
     facilitator_turn = session.facilitator_turn_count + 1
     assert facilitator_turn <= PARK_TURN, "active sessions cannot exceed turn 10"
 
@@ -232,10 +304,6 @@ async def _execute(
         synthesis_produced=synthesis_produced,
         delegation=delegation,
     )
-    if outcome == "finalize":
-        # flow 3 continues here once increment 4 lands
-        raise _finalize_gap(correlation_id)
-
     turn = await records_store.create_turn_or_get(
         pool,
         TurnRecord(
@@ -254,6 +322,29 @@ async def _execute(
             completed_at=_now(),
         ),
     )
+    if outcome == "finalize":
+        # flow 3 continues synchronously, retaining the turn lock; the
+        # facilitator count is durable from the turn record onward so a
+        # crash mid-flow-3 cannot lose it
+        await records_store.update_session(
+            pool, session_id, facilitator_turn_count=facilitator_turn
+        )
+        turns = await records_store.list_turns(pool, session_id)
+        return await _finalize_and_respond(
+            pool,
+            settings,
+            artifact_client=artifact_client,
+            report_client=report_client,
+            signer=signer,
+            session=session,
+            turn=turn,
+            turns=turns,
+            synthesis_reference=synthesis_reference,
+            facilitator_turn_count=facilitator_turn,
+            key=key,
+            correlation_id=correlation_id,
+            deadline=deadline,
+        )
     return await _persist_and_respond(
         pool,
         session_id,
@@ -264,6 +355,11 @@ async def _execute(
         resolutions,
         facilitator_turn_count=facilitator_turn,
     )
+
+
+def deadline_of(settings: Settings) -> float:
+    """Fresh end-to-end deadline for a request body under execution."""
+    return time.monotonic() + settings.request_deadline_seconds
 
 
 def _stamped_resolutions(drafts, turn_number: int):
@@ -279,6 +375,102 @@ def _stamped_resolutions(drafts, turn_number: int):
         )
         for draft in drafts
     ]
+
+
+async def _latest_synthesis(
+    artifact_client: McpClient, session, deadline: float, correlation_id: str
+):
+    """The run's latest synthesis reference (final review input)."""
+    references = await lineage.list_run_artifacts(
+        artifact_client, session.story_run_id, deadline, correlation_id
+    )
+    return lineage.latest(references, "synthesis", None, correlation_id)
+
+
+async def _finalize_and_respond(
+    pool: asyncpg.Pool,
+    settings: Settings,
+    *,
+    artifact_client: McpClient,
+    report_client: McpClient,
+    signer: ReportSigner,
+    session,
+    turn: TurnRecord,
+    turns,
+    synthesis_reference,
+    facilitator_turn_count: int | None,
+    key: uuid.UUID,
+    correlation_id: str,
+    deadline: float,
+) -> TurnResponse:
+    """Continue a finalizing turn into flow 3 and answer with the
+    request's single response (report downloads included).
+
+    The durable turn record exists before any downstream work, so a
+    crash mid-flow-3 leaves a recoverable `finalizing` session with its
+    acceptance state; the finalize endpoint resumes from there."""
+    result = await finalization.run_flow3(
+        pool,
+        settings,
+        artifact_client=artifact_client,
+        report_client=report_client,
+        session=session,
+        turns=turns,
+        key=key,
+        correlation_id=correlation_id,
+        synthesis_reference=synthesis_reference,
+        deadline=deadline,
+    )
+    canonical = CanonicalTurnResult(
+        session_id=session.session_id,
+        turn_number=turn.turn_number,
+        outcome="finalize",
+        state="completed",
+        facilitator_reply=turn.facilitator_reply,
+        issues=turn.delegation.open_issues if turn.delegation else [],
+        delegation=turn.delegation,
+        synthesis=synthesis_reference,
+        report_references=result.report_references,
+    )
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await records_store.update_session(
+                pool,
+                session.session_id,
+                state="completed",
+                facilitator_turn_count=facilitator_turn_count,
+                final_review_reference=result.final_review_reference,
+                report_references=result.report_references,
+                conn=conn,
+            )
+            await idempotency.complete(
+                pool, ROUTE, session.session_id, key,
+                canonical.model_dump(mode="json"), conn=conn,
+            )
+    return _turn_response(canonical, resolutions=turn.resolutions, signer=signer)
+
+
+def _turn_response(
+    canonical: CanonicalTurnResult, *, resolutions, signer: ReportSigner
+) -> TurnResponse:
+    """The single response for one canonical turn result; report URLs
+    are always generated fresh (they expire)."""
+    return TurnResponse(
+        session_id=canonical.session_id,
+        turn_number=canonical.turn_number,
+        outcome=canonical.outcome,
+        state=canonical.state,
+        facilitator_reply=canonical.facilitator_reply,
+        issues=canonical.issues,
+        delegation=canonical.delegation,
+        resolutions=resolutions,
+        synthesis=canonical.synthesis,
+        report=(
+            signer.downloads(canonical.report_references)
+            if canonical.report_references
+            else []
+        ),
+    )
 
 
 async def _persist_and_respond(
@@ -341,26 +533,15 @@ async def _persist_and_respond(
 
 
 async def _response_from_canonical(
-    pool: asyncpg.Pool, canonical: dict
+    pool: asyncpg.Pool, canonical: dict, signer: ReportSigner
 ) -> TurnResponse:
     """Rebuild the single response from the stored canonical result;
-    resolutions come from the authoritative TurnRecord."""
+    resolutions come from the authoritative TurnRecord, report URLs are
+    regenerated fresh."""
     result = CanonicalTurnResult.model_validate_json(json.dumps(canonical))
-    assert not result.report_references, "finalize replays arrive in increment 4"
     turn = await records_store.get_turn(pool, result.session_id, result.turn_number)
     assert turn is not None, "completed claim without its turn record"
-    return TurnResponse(
-        session_id=result.session_id,
-        turn_number=result.turn_number,
-        outcome=result.outcome,
-        state=result.state,
-        facilitator_reply=result.facilitator_reply,
-        issues=result.issues,
-        delegation=result.delegation,
-        resolutions=turn.resolutions,
-        synthesis=result.synthesis,
-        report=[],
-    )
+    return _turn_response(result, resolutions=turn.resolutions, signer=signer)
 
 
 def _not_found(correlation_id: str) -> ApiError:
@@ -372,13 +553,17 @@ def _not_found(correlation_id: str) -> ApiError:
     )
 
 
-def _read_only(correlation_id: str) -> ApiError:
+def _read_only(correlation_id: str, state: str = "parked/completed") -> ApiError:
+    hint = (
+        "the finalize endpoint recovers it"
+        if state == "finalizing"
+        else "start a new session on the same story instead"
+    )
     return ApiError(
         409,
         make_error(
             "SESSION_READ_ONLY",
-            "the session is parked or completed; start a new session on "
-            "the same story instead",
+            f"the session is {state} and accepts no dialogue turns; {hint}",
             correlation_id,
             retryable=False,
         ),

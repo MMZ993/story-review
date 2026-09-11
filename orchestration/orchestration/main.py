@@ -18,12 +18,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from review_schemas.api import HealthDependency, HealthResponse
 
-from . import db, sessions_api, stories, turns_api
+from . import db, finalize_api, sessions_api, stories, turns_api
 from .agent_clients import AgentSet, default_agent_set
 from .api_errors import ApiError, make_error
 from .config import Settings
 from .health import Downstream, dependencies_state
 from .mcp_client import McpClient
+from .signed_urls import ReportSigner
 
 
 def create_app(
@@ -33,6 +34,7 @@ def create_app(
     artifact_client: McpClient | None = None,
     report_client: McpClient | None = None,
     agents: AgentSet | None = None,
+    signer: ReportSigner | None = None,
     pool: asyncpg.Pool | None = None,
 ) -> FastAPI:
     """Build the orchestration app; tests may inject settings, clients,
@@ -65,6 +67,8 @@ def create_app(
         resolved.report_url, resolved
     )
     app.state.agents = agents or default_agent_set(resolved)
+    app.state.signer = signer or ReportSigner.from_settings(resolved)
+    app.state.signer.warm_up()
     app.state.pool = pool
 
     @app.middleware("http")
@@ -102,6 +106,7 @@ def create_app(
     app.include_router(stories.router)
     app.include_router(sessions_api.router)
     app.include_router(turns_api.router)
+    app.include_router(finalize_api.router)
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:
