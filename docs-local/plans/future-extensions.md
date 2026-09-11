@@ -218,3 +218,57 @@ and evaluation evidence uses the existing Vertex AI test budget.
 
 Open question for the owner: whether the web interface (B) or the full
 integration run (C) matters more for the capstone demo — this sets 10 vs 11.
+
+## Item E — Issue-identifier lifecycle: reopened disposition / consistency check (design change)
+
+**Recorded: 2026-09-15, Phase 7 increment-3 live gate (session 42). Owner
+decision: implement as a design change, deferred past Phase 7.**
+
+### Motivation
+
+The increment-3 live gate (story-02 acceptance) exposed a self-contradictory
+finalized review: issues B-1/B-2 appeared both in "Resolutions" (resolved,
+turn 2) and in "Remaining open issues". Root cause: the facilitator
+**re-used resolved issue identifiers for new concerns** at turn 3
+("formalize into acceptance criteria") without emitting a re-open
+resolution. Both artifact sections are deterministic and faithful to their
+sources (`aggregate_resolutions` = latest recorded disposition per issue;
+`remaining_open_issues` = latest delegation open list), and the contract
+permits the overlap — `ResolutionItem.disposition ∈ {resolved, accepted,
+unresolved}` has no `reopened`, and `FinalizedReview` does not forbid a
+resolved id also appearing in `remaining_open_issues`. The defect is
+data-level, produced by agent behavior and preserved by design.
+
+### Scope (sketch)
+
+- `docs/design/schemas.md` design change + schema version, then shared
+  review_schemas + orchestration work. Two candidate mechanisms (decide
+  during design):
+  1. add a `reopened` disposition the facilitator must emit when a
+     previously resolved issue reappears in `delegation.open_issues`
+     (aggregation then reflects the regression), or
+  2. an orchestration-side consistency check at turn/stamp time: a resolved
+     id re-appearing in `open_issues` is re-mapped to a fresh id (or the
+     turn rejected as a facilitator contract violation).
+- Facilitator prompt rule in either case: issue identifiers are immutable;
+  a regressed concern gets a new id.
+- Rendering: the report's Resolutions table must show the final disposition
+  per issue without contradiction.
+
+### Exit criteria
+
+- Schema/design updated in `docs/` (+ frozen-branch cherry-pick), shared
+  review_schemas validators + tests, orchestration stamping/aggregation
+  updated with tests.
+- A live acceptance-with-open-issues session produces a finalized review
+  whose Resolutions and Remaining-open sections are mutually consistent.
+
+### Cost
+
+Local deterministic tests only; one live gate session for evidence.
+
+### Design notes / decisions needed
+
+- Mechanism choice (1 vs 2 above); whether `reopened` also needs to appear
+  in `TurnResponse`/meta surfaces; backward compatibility of stored
+  TurnRecords (no migration expected — dispositions are per-turn data).

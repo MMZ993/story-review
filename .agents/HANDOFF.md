@@ -8,19 +8,31 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-15 (session 40 — Phase 7 increment 0 COMPLETE:
-webui skeleton + same-origin /api proxy per D17 amendment 1; browser gate
-PASS; review findings fixed in-session. Prior: session 39 — docs-only —
-D16: Phase 7 client changed from TUI to a minimal Web UI).
+Last updated: 2026-09-15 (session 42 — Phase 7 increments 2 + 3 COMPLETE:
+chat view (dialogue turns, session resume) + park/acceptance/finalize/
+report download; browser gates PASS incl. full story-02 arc to a downloaded
+report; design defect found → **future-extensions Item E** (owner: address
+next session). Prior: session 41 — increment 1; session 40 — increment 0.)
 
 ## Where we are
 
 - **Phase 6 — Orchestration (FastAPI): COMPLETE and CLOSED**
   (sessions 32–38; detail in Runbook 12, decisions D15 + amendments
   1–3). All gates green; live integration suite PASS (3 passed in 367 s).
-- **Phase 7 (Web UI) in progress** — increment 0 COMPLETE (session 40,
-  Runbook 13 + D17 amendment 1). Next: increment 1 (story picker +
-  session creation).
+- **Phase 7 (Web UI) in progress** — increments 0–3 COMPLETE (sessions
+  40–42, Runbook 13 + D17 amendment 1). Remaining: increment 4 (exit
+  gate — example-interaction walkthrough end-to-end + close). The live
+  story-02 session was accepted/completed at the increment-3 gate;
+  story-01/04/06 sessions remain active in the compose Postgres (no UI
+  way to park them until increment 4's walkthrough or server-side).
+- **Next session: future-extensions Item E first** (owner decision,
+  2026-09-15): issue-identifier lifecycle — reopened disposition or
+  orchestration-side consistency check when a resolved id reappears in
+  open_issues; docs/ design change + schema version + shared
+  review_schemas + orchestration work (full item in
+  `docs-local/plans/future-extensions.md`). Found at the increment-3
+  gate: facilitator re-used resolved ids B-1/B-2 for new concerns →
+  self-contradictory finalized review (resolved + remaining-open).
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -37,6 +49,72 @@ D16: Phase 7 client changed from TUI to a minimal Web UI).
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+Session 42 (2026-09-15, main PC — Phase 7 increments 2 + 3; local Docker
+stack up throughout, no cloud actions, Cloud SQL STOPPED):
+- **Increment 2 (chat view, dialogue turns, session resume)**:
+  `api.js` gained `fetchSession`/`postTurn` with per-session pending
+  idempotency keys (`pending:turn:{id}`, persisted before fetch, 503
+  same-key retry, definitive 409/404/422; `po_accepted:true` carries no
+  message) via a shared `postWithIdempotentKey` core; new `chat.js`
+  session-view controller (history replay from SessionDetail, PO
+  plain-text right / facilitator sanitized-markdown left + meta line,
+  optimistic PO bubble, single in-flight turn, SESSION_LOCKED retry hint);
+  `app.js` boot resumes `localStorage["session:id"]` (404 → clear →
+  picker). Gate PASS on a substituted story: the owner's browser held a
+  **story-02** session, not the planned story-04 — gated identically
+  (3 dialogue turns, issues 10→7→4, synthesis v1→v3, reload-resume).
+- **Increment 3 (park / acceptance / finalize / report download)**:
+  `fetchReport`/`finalizeRetry` (key scope `pending:finalize:{id}`);
+  rendering extracted to `messages.js`; accept-and-finalize control
+  (confirm dialog), parked view with restart-on-same-story (picker
+  preselect; listeners single-wired — double-wiring bug caught in
+  implementation), finalizing retry control, completed view with report
+  links + regeneration. Gate PASS: story-02 accepted from the browser →
+  synchronous finalize → both report formats downloaded over signed
+  fake-gcs HTTPS (`:9026`, cert warning accepted); reload persisted +
+  regenerate produced fresh URLs. Park view jsdom-tested only — live
+  park folds into the increment-4 walkthrough.
+- **Design defect found at the gate → future-extensions Item E** (owner
+  decision: address next session): turn-3 facilitator delegation re-used
+  resolved ids (B-1/B-2) for new concerns without a re-open resolution →
+  self-contradictory finalized review (aggregate_resolutions vs
+  remaining_open_issues both faithful; contract permits the overlap —
+  no `reopened` disposition, no FinalizedReview consistency rule).
+  Item E written into `docs-local/plans/future-extensions.md` with scope
+  sketch + open design decisions; webui/orchestration unchanged.
+- jsdom gotchas recorded in Runbook 13: events must come from the jsdom
+  window; `confirm` undefined on the node global.
+
+Session 41 (2026-09-15, main PC — Phase 7 increment 1; local Docker stack
+up throughout, no cloud actions, Cloud SQL STOPPED):
+- Implemented the story picker + session creation per the Phase 7 plan:
+  `webui/static/api.js` (fresh API client per D17-3: uuidv4
+  Idempotency-Key persisted under `pending:create-session` before the
+  fetch, 503 same-key retry with bounded attempts + backoff, error-envelope
+  normalization, injectable fetch/storage/sleep for tests; body carries
+  `requested_formats:["md","pdf"]`), picker UI in `app.js`/`index.html`/
+  `app.css` (list + client-side search filter, hover/focus cached preview
+  via detail GET rendered with the sanitized markdown renderer, confirm →
+  POST /sessions with "reviewing…" spinner, session id persisted under
+  `session:id` for increment-2 resume), 13 new vitest tests
+  (test-first, `webui/tests/frontend/api.test.js`).
+- Contract details caught live: `CreateSessionResponse` is flat
+  (`session_id`/`state`, not nested); story rows key on `story_id`;
+  409 active-story code is `STORY_SESSION_ACTIVE`.
+- Layout iterated on owner feedback (three rounds, final version
+  delegated to a gpt-5.6-terra subagent per owner request): header row
+  with confirm button, foldable `<details>` list with live
+  "stories (N) — selected: <title>" summary, compact inline radio rows,
+  full-width preview below.
+- **Browser gate PASS**: real flow-1 session on story-04 created from
+  the browser (durable `sess-0e9c…` confirmed via proxy GET), reload +
+  same story → 409 with the active-session hint. Two live-gate bugs
+  fixed in-session: error path wrote to a hidden element; hint matched
+  the wrong error code. Evidence + gotchas in Runbook 13 increment 1.
+- Verification: `make webui-test` pytest **11 + vitest 15** (13 new);
+  compose contract **20**; webui image rebuilt/redeployed four times
+  (static files are baked into the image).
+
 
 Session 40 (2026-09-15, main PC — Phase 7 increment 0; local Docker
 compose stack up (incl. orchestration + webui as new compose services), no
@@ -289,16 +367,20 @@ and the git log.
 Baseline (latest green run of every suite — re-verify against these counts
 after changes):
 
-- review-schemas **154**, ado-wire **7**, dataset **36**, mcp-ingress **7**,
+- review-schemas **154** (unchanged since session 40 — not re-run, no schema changes), ado-wire **7**, dataset **36**, mcp-ingress **7**,
   mcp-story **67**, mcp-artifact **32**, mcp-report **34**, compose contract
   **20** (re-run green after the compose additions, session 40), agent-kit
   **86**, agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
   facilitator adapter **3+1s**, orchestration **90+8s** (increments 0–4);
-  **webui 11+2 vitest** (session 40); live gates: business/engineering/synthesis
+  **webui 11 + vitest 42** (session 42: +9 turn tests, +8 chat-view, +3
+  finalize/report, +5 end-state = 27 new since session 41); compose
+  contract **20** (re-run green, session 42); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
-  webui increment-0 browser gate PASS (Runbook 13).
+  webui browser gates PASS: increment 0 reachability, increment 1 picker +
+  creation + 409 path, increment 2 dialogue turns + resume, increment 3
+  acceptance → finalize → report download (Runbook 13).
 - Per-session verification evidence (commands, counts, review verdicts,
   gotchas): append-only in the runbooks — Runbook 11 §0–4 + completion
   review for Phase 5; Runbook 10 for Phase 4; earlier phases in 03–09.
@@ -338,16 +420,26 @@ after changes):
 
 ## Next Steps
 
-1. Owner push `main` + `docs/initial-frozen` (commits on main pending,
-   incl. sessions 38–40 work).
-2. **Phase 7 (Web UI) increment 1 — story picker + session creation**:
-   browsing view (GET /api/v1/stories, hover preview via detail GET),
-   confirm → POST /api/v1/sessions with fresh Idempotency-Key, 5-min
-   spinner, error envelopes, 409 handling; vitest for the state machine;
-   live gate = one real session from the browser (stack is already up).
-3. Commit session-40 work when the owner asks (webui/ + Makefile +
+1. **Next session: future-extensions Item E** (owner decision): design
+   change for issue-identifier lifecycle — `reopened` disposition vs
+   orchestration-side consistency check (re-map/reject when a resolved id
+   reappears in `delegation.open_issues`); docs/ design change + frozen
+   cherry-pick + shared review_schemas schema version + orchestration
+   work; facilitator prompt rule (ids immutable). Read Item E in
+   `docs-local/plans/future-extensions.md` first.
+2. **Phase 7 increment 4 (exit gate + close)** after Item E (or
+   interleaved if the owner prefers): owner-driven example-interaction
+   walkthrough end-to-end from the browser (story pick → dialogue arc →
+   park or accept → report download; idempotency replay mid-flow; live
+   park verification — deferred from increment 3), all regression
+   suites, independent read-only review of the phase diff, Phase 7
+   COMPLETE in development-plan.md, Runbook 13 completion review.
+3. Owner push `main` + `docs/initial-frozen` (commits on main pending,
+   incl. sessions 38–42 work).
+4. Commit sessions 40–42 work when the owner asks (webui/ + Makefile +
    compose + .gitignore + docs-local bundle incl. Runbook 13, D17
-   amendment 1, and this HANDOFF).
+   amendment 1, future-extensions Item E, and this HANDOFF); identifier
+   check after the last commit.
 
 ## Important Notes
 
@@ -376,11 +468,15 @@ after changes):
   az fallback.
 - Throwaway-postgres startup race now 8 observations (Runbook 12);
   run-migrations.sh small-retry fix stays due before Phase 8 cloud runs.
-- **Local stack is UP** (session 40): orchestration (:8130) + webui
-  (:8120) now compose services; orchestration uses the separate
-  `orchestration` database in the compose postgres (created + migrated
-  2026-09-15; `createdb` is one-time). `agents-compose-down` when done.
-  `compose-contract-test` needs `compose-up` first.
+- **Local stack is UP** (since session 40): orchestration (:8130) + webui
+  (:8120) compose services; orchestration uses the separate
+  `orchestration` database in the compose postgres. Compose Postgres
+  now holds 4 sessions: story-02 **completed** (increment-3 gate),
+  story-01/-04/-06 still **active** (no UI park until increment 4;
+  they hold those stories' active-session slots). `agents-compose-down`
+  when done. `compose-contract-test` needs `compose-up` first.
+  Signed fake-gcs URLs point at `https://127.0.0.1:9026` (self-signed
+  cert — accept the browser warning; recorded in Runbook 13).
 - **Keep private** until final review; GitHub mirror pending (owner).
 - Repo layout/plans/runbooks index: `docs-local/development-plan.md` and
   the per-phase plans under `docs-local/plans/`.
