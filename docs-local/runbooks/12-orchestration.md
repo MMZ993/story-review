@@ -490,3 +490,99 @@ Gotchas learned:
 - A single scripted retryable `render_report` failure is swallowed by
   the client's 3-attempt retry policy — failure scripting must exhaust
   the policy (3 entries) to reach the 503 path.
+
+## Increment 5 — exit gate: live integration suite + phase close (session 38)
+
+Design (D15 amendment 3): `orchestration/tests/integration/` — fully live
+over the compose stack (real MCP servers + four agent adapters + real
+Vertex; throwaway migrated Postgres), run via
+`make orchestration-integration-test`. Model-dependent behavior is
+steered through the PO message and asserted on observable outcomes
+only; scripted truth-table coverage stays in the deterministic tier.
+
+- `conftest.py` — shared live fixture (full app, real McpClients +
+  default agent set, ASGI HTTP; `ORCH_LIVE_GCS_PUBLIC_URL` read from
+  `os.environ` directly — the increment-4 gotcha).
+- `helpers.py` — env gate (`live_env`), fresh v4 keys, flow-1/flow-2
+  request helpers.
+- `test_flow_arc_live.py` (story-07, md+pdf): flows 1–4 arc — creation,
+  same-key replay (identical), key-reuse different body 409
+  `IDEMPOTENCY_KEY_REUSED`, second active session 409
+  `STORY_SESSION_ACTIVE`, detail + keyset pagination reads, re-review
+  dialogue turn 2 + its same-key replay, steered gate finalize (bounded
+  4-attempt loop) → completed with both report references, report-byte
+  downloads over the signed fake-gcs HTTPS URLs, completed-session
+  finalize-endpoint replay (fresh URLs, no writes), GET /report, and
+  read-only 409 afterwards.
+- `test_park_at_ten_live.py` (story-05): steering-kept-open dialogue
+  turns 2–9 `continue`, turn 10 `park`/`parked`; parked session is
+  read-only (turn 409 `SESSION_READ_ONLY`, finalize 409, history
+  readable).
+- `test_lease_contention_live.py` (story-06): slow delegating turn in
+  flight; concurrent fresh-key turn rejected 409 `SESSION_LOCKED` with
+  `retry_after_seconds >= 1` before any work; only turn 2 durable
+  afterwards.
+
+Commands:
+
+```
+make orchestration-test               # 90 passed / 11 skipped (3 new live skips)
+make orchestration-integration-test   # live gate (below)
+```
+
+Live gate (owner approved the full-live scope in chat): **PASS** —
+`make orchestration-integration-test`: **3 passed in 366.95 s**. All
+three scenarios green in one run: flows 1–4 arc (creation, replays,
+key-reuse/active-session 409s, reads, re-review turn + replay, steered
+gate finalize on the first steering turn → completed with md+pdf report
+references, report-byte downloads over signed fake-gcs HTTPS, finalize
+endpoint replay, GET /report, read-only 409), park-at-10 (turns 2–9
+continue under steering, turn 10 parked, read-only enforcement), lease
+contention (concurrent fresh-key turn 409 SESSION_LOCKED with retry
+hint while the delegating turn was in flight; only turn 2 durable).
+
+Regression suites after increment 5: orchestration 90+11s (3 new live
+skips collected in the plain run); review-schemas 154; agent-kit 86;
+business 6+2s; engineering 7+1s; synthesis 7+2s; facilitator 3+1s;
+compose contract 20. Phase-close review: see below.
+
+Gotchas learned:
+
+- **Two live iterations failed on test-side assumptions, not service
+  bugs** (both fixed before the passing run): (1) with exactly one
+  session, `next_cursor` is null (no more rows) and httpx serializes
+  `params={"cursor": None}` as an **empty string** `cursor=`, which
+  `ShortText` (min_length 1) correctly rejects → 422 "invalid limit or
+  cursor"; the test now follows the cursor only when non-null. (2) the
+  completed-session finalize replay regenerates **fresh** signed URLs
+  by design, so replay bodies are not byte-identical (expires_at
+  differs); the test now compares durable references/formats instead.
+- Throwaway-postgres startup race observed once more (9 observations
+  total; first gate attempt died on "test Postgres not ready", clean
+  retry); the small-retry fix in run-migrations.sh stays due before
+  Phase 8 cloud runs.
+- The steered gate finalize fired on the **first** steering turn both
+  runs — the facilitator prompt's contract-based output (open_issues,
+  invoke) is reliably steerable through the PO message.
+- Gate runtime ≈ 6 minutes for all three scenarios (~35–40 model
+  calls), well inside the D15-amendment-3 estimate.
+
+### Phase-close review (session 38)
+
+Independent read-only subagent review of the phase diff (9aaa45a..worktree,
+focus on increment 5 + phase coherence against the plan exit criteria and
+api-contract/data-flow/schemas): **Ready to close** — no Critical or
+Important findings. Coverage table confirmed all six exit criteria
+covered across the live suite + deterministic tier + increment gates.
+Minors fixed in-session:
+
+- M1: the plan's literal increment-5 scope lists "PO-acceptance path"
+  among the suite items; the suite's `post_turn` helper always sends
+  `po_accepted=false`. **PO-acceptance live coverage lives in the
+  increment-4 gate** (`tests/test_finalize_live.py`, session 37 PASS) —
+  recorded here as the explicit home of that coverage rather than
+  duplicating the arc in the exit-gate suite.
+- M2: lease-contention test now documents its 2 s timing assumption
+  (in-process lease acquisition; premature completion would fail loudly).
+- M3 (not fixed, harmless): the live fixture does not close the asyncpg
+  pool if client setup fails before yield — throwaway container only.
