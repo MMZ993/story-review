@@ -317,6 +317,7 @@ async def _execute(
             facilitator_reply=facilitator.output.reply,
             delegation=delegation,
             resolutions=resolutions,
+            new_issues=list(facilitator.output.new_issues),
             outcome=outcome,
             produced_artifacts=([synthesis_reference] if synthesis_produced else []),
             created_at=_now(),

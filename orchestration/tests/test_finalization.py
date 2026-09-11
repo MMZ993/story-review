@@ -270,6 +270,81 @@ async def test_non_retryable_render_failure_rolls_back_to_active(
     assert retry.json()["outcome"] == "finalize"
 
 
+async def test_malformed_synthesis_content_rolls_back_to_active(
+    pool, settings, artifact
+):
+    """D19: the catalog's synthesis fetch classifies malformed artifact
+    content as a deterministic validation failure — non-retryable, rolled
+    back to active."""
+    client, _ = finalize_client(pool, settings, artifact)
+    facilitator = ScriptedFacilitator([])
+    session = await create_session_with(client, facilitator)
+    artifact.corrupt_synthesis = True
+
+    failed = await post_turn(
+        client,
+        session["session_id"],
+        payload={"message": None, "po_accepted": True},
+    )
+    assert failed.status_code == 503, failed.text
+    assert failed.json()["error"]["retryable"] is False
+    assert "malformed synthesis" in failed.json()["error"]["message"]
+    async with pool.acquire() as conn:
+        state = await conn.fetchval(
+            "select state from sessions where session_id = $1",
+            session["session_id"],
+        )
+    assert state == "active"
+
+
+async def test_issue_catalog_assembled_from_synthesis_and_turns(
+    pool, settings, artifact
+):
+    """D19: the saved finalized review carries the issue catalog —
+    synthesis findings (B-1/E-1 from the fake synthesis) plus the
+    facilitator-minted descriptor stamped in the turn record."""
+    from review_schemas import IssueDraft
+
+    client, report = finalize_client(pool, settings, artifact)
+    facilitator = ScriptedFacilitator(
+        [
+            dialogue_output(
+                "none",
+                open_issues=["B-1", "F-1"],
+                new_issues=[
+                    IssueDraft(
+                        issue="F-1",
+                        title="Fraud handling",
+                        description="chargeback flow undefined",
+                    )
+                ],
+            )
+        ]
+    )
+    session = await create_session_with(client, facilitator)
+
+    dialogue = await post_turn(client, session["session_id"], key=KEY_TURN)
+    assert dialogue.status_code == 200, dialogue.text
+    accepted = await post_turn(
+        client,
+        session["session_id"],
+        key=KEY_OTHER,
+        payload={"message": None, "po_accepted": True},
+    )
+    assert accepted.status_code == 200, accepted.text
+
+    saved = [
+        call for call in artifact.save_calls if call["type"] == "finalized-review"
+    ]
+    catalog = {e["issue"]: e for e in saved[0]["content"]["issues"]}
+    assert set(catalog) >= {"B-1", "E-1", "F-1"}
+    assert catalog["B-1"]["source"] == "synthesis"
+    assert catalog["B-1"]["severity"] == "minor"
+    assert catalog["F-1"]["source"] == "facilitator"
+    assert catalog["F-1"]["title"] == "Fraud handling"
+    assert set(saved[0]["content"]["remaining_open_issues"]) == {"B-1", "F-1"}
+
+
 async def test_contradictory_final_state_rolls_back_to_active(
     pool, settings, artifact
 ):

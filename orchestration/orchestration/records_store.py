@@ -17,7 +17,11 @@ import json
 
 import asyncpg
 
-from review_schemas.facilitator import DelegationDecision, ResolutionItem
+from review_schemas.facilitator import (
+    DelegationDecision,
+    IssueDraft,
+    ResolutionItem,
+)
 from review_schemas.records import (
     AgentRunRecord,
     SessionRecord,
@@ -285,8 +289,8 @@ async def create_turn(pool: asyncpg.Pool, record: TurnRecord) -> None:
         pool,
         "insert into turns (session_id, turn_number, correlation_id, state, "
         "po_message, po_accepted, facilitator_reply, delegation, resolutions, "
-        "outcome, produced_artifacts, created_at, completed_at) "
-        "values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+        "new_issues, outcome, produced_artifacts, created_at, completed_at) "
+        "values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
         record.session_id,
         record.turn_number,
         record.correlation_id,
@@ -296,6 +300,7 @@ async def create_turn(pool: asyncpg.Pool, record: TurnRecord) -> None:
         record.facilitator_reply,
         _dumps(record.delegation),
         _dumps(record.resolutions),
+        _dumps(record.new_issues),
         record.outcome,
         _dumps(record.produced_artifacts),
         record.created_at,
@@ -349,6 +354,10 @@ def _turn_from_row(row) -> TurnRecord:
         resolutions=[
             ResolutionItem.model_validate(item)
             for item in json.loads(row["resolutions"])
+        ],
+        new_issues=[
+            IssueDraft.model_validate(item)
+            for item in json.loads(row["new_issues"] or "[]")
         ],
         outcome=row["outcome"],
         produced_artifacts=_refs(row["produced_artifacts"]),

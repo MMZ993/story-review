@@ -73,14 +73,14 @@ def delegation() -> DelegationDecision:
     return DelegationDecision(
         invoke="both",
         extra_context="Check the rate limit against ops data.",
-        open_issues=["API limit unverified"],
+        open_issues=["B-1"],
         readiness="needs_work",
     )
 
 
 def resolution(turn_number: int = 2) -> ResolutionItem:
     return ResolutionItem(
-        issue="API limit unverified",
+        issue="B-1",
         disposition="resolved",
         explanation="Ops confirmed 100 rps.",
         turn_number=turn_number,

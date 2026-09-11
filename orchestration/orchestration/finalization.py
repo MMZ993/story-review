@@ -33,13 +33,14 @@ import pydantic
 from review_schemas.api import CanonicalReportResult, ReportResponse
 from review_schemas.facilitator import (
     FinalizedReview,
+    IssueEntry,
     ResolutionItem,
     latest_resolutions,
 )
 from review_schemas.mcp import RenderReportInput, RenderReportOutput
-from review_schemas.synthesis import ArtifactReference
+from review_schemas.synthesis import ArtifactReference, SynthesisReport
 
-from . import flows, idempotency, records_store
+from . import flows, idempotency, lineage, records_store
 from .api_errors import ApiError, make_error
 from .config import Settings
 from .errors import IdempotencyKeyReused
@@ -73,6 +74,156 @@ class FinalizationResult:
 
     final_review_reference: ArtifactReference
     report_references: list[ArtifactReference]
+
+
+def issue_catalog(synthesis_report: SynthesisReport, turns) -> list[IssueEntry]:
+    """D19: the finalized review's issue catalog — synthesis findings +
+    conflicts (title/description/severity from the latest synthesis) plus
+    the facilitator-minted drafts accumulated in the turn records
+    (synthesis wins on collision: minted ids re-describing a synthesis id
+    are ignored, per the no-re-description rule). First-seen order."""
+    entries: dict[str, IssueEntry] = {}
+    for finding in synthesis_report.merged_findings:
+        entries[finding.id] = IssueEntry(
+            issue=finding.id,
+            title=finding.title,
+            description=finding.description,
+            severity=finding.severity,
+            source="synthesis",
+        )
+    for conflict in synthesis_report.conflicts:
+        entries[conflict.id] = IssueEntry(
+            issue=conflict.id,
+            title=f"Conflict {conflict.id}",
+            description=conflict.description,
+            source="synthesis",
+        )
+    for turn in turns:
+        for draft in turn.new_issues:
+            entries.setdefault(
+                draft.issue,
+                IssueEntry(
+                    issue=draft.issue,
+                    title=draft.title,
+                    description=draft.description,
+                    source="facilitator",
+                ),
+            )
+    entries_list = list(entries.values())
+    if len(entries_list) > 400:
+        # never truncate into an opaque deferred validator failure — an
+        # oversized catalog is a deterministic defect with a clear message
+        raise ValueError(
+            f"issue catalog exceeds the 400-entry cap ({len(entries_list)})"
+        )
+    return entries_list
+
+
+def _build_final_review(
+    session,
+    *,
+    synthesis_reference: ArtifactReference,
+    synthesis_report: SynthesisReport,
+    turns,
+    deadline: float,
+    correlation_id: str,
+) -> FinalizedReview:
+    """Assemble the deterministic finalized review; a validation failure
+    is a deterministic defect (D18 backstop / D19 completeness) — mapped
+    to a non-retryable `FINAL_REVIEW_INVALID` (rolls back to `active`)."""
+    po_accepted, final_turn_number = acceptance_state(turns)
+    try:
+        catalog = issue_catalog(synthesis_report, turns)
+    except ValueError as failure:
+        raise FinalizationFailed(
+            ApiError(
+                503,
+                make_error(
+                    "FINAL_REVIEW_INVALID",
+                    f"invalid final state: {failure}",
+                    correlation_id,
+                    retryable=False,
+                ),
+            ),
+            retryable=False,
+        ) from failure
+    try:
+        return FinalizedReview(
+            story_id=session.story_id,
+            story_run_id=session.story_run_id,
+            synthesis_reference=synthesis_reference,
+            issues=catalog,
+            resolutions=aggregate_resolutions(turns),
+            remaining_open_issues=remaining_open_issues(
+                turns, po_accepted=po_accepted
+            ),
+            po_accepted=po_accepted,
+            final_turn_number=final_turn_number,
+            finalized_at=_now(),
+        )
+    except pydantic.ValidationError as failure:
+        raise FinalizationFailed(
+            ApiError(
+                503,
+                make_error(
+                    "FINAL_REVIEW_INVALID",
+                    f"invalid final state: {failure}",
+                    correlation_id,
+                    retryable=False,
+                ),
+            ),
+            retryable=False,
+        ) from failure
+
+
+async def _synthesis_report(
+    artifact_client: McpClient,
+    synthesis_reference: ArtifactReference,
+    *,
+    deadline: float,
+    correlation_id: str,
+) -> SynthesisReport:
+    """Fetch the latest synthesis content for the issue catalog;
+    classification per the flow-3 table: transport/deadline failures are
+    retryable, malformed artifact content is a deterministic validation
+    failure (non-retryable — same rule as malformed render output)."""
+    try:
+        return lineage.parse_content(
+            SynthesisReport,
+            await lineage.artifact_content(
+                artifact_client, synthesis_reference, deadline, correlation_id
+            ),
+        )
+    except pydantic.ValidationError as failure:
+        raise FinalizationFailed(
+            ApiError(
+                503,
+                make_error(
+                    "UPSTREAM_UNAVAILABLE",
+                    "malformed synthesis artifact content",
+                    correlation_id,
+                    retryable=False,
+                ),
+            ),
+            retryable=False,
+        ) from failure
+    except ApiError as error:
+        raise FinalizationFailed(
+            error, retryable=error.error.retryable
+        ) from error
+    except (McpTransportError, DeadlineExceededError, McpCallFailure) as failure:
+        raise FinalizationFailed(
+            ApiError(
+                503,
+                make_error(
+                    "UPSTREAM_UNAVAILABLE",
+                    "artifact MCP unavailable",
+                    correlation_id,
+                    retryable=True,
+                ),
+            ),
+            retryable=True,
+        ) from failure
 
 
 def aggregate_resolutions(turns) -> list[ResolutionItem]:
@@ -124,39 +275,24 @@ async def run_flow3(
     failure converges without duplicate side effects; durable completion
     stays with the caller's transaction.
     """
-    po_accepted, final_turn_number = acceptance_state(turns)
+    # mark finalizing first (idempotent retry routing) so a catalog-fetch
+    # failure leaves the retryable-finalizing state, not a stuck active
+    # session the finalize endpoint would reject
+    await records_store.update_session(pool, session.session_id, state="finalizing")
     try:
-        review = FinalizedReview(
-            story_id=session.story_id,
-            story_run_id=session.story_run_id,
-            synthesis_reference=synthesis_reference,
-            resolutions=aggregate_resolutions(turns),
-            remaining_open_issues=remaining_open_issues(
-                turns, po_accepted=po_accepted
-            ),
-            po_accepted=po_accepted,
-            final_turn_number=final_turn_number,
-            finalized_at=_now(),
+        synthesis_report = await _synthesis_report(
+            artifact_client,
+            synthesis_reference,
+            deadline=deadline,
+            correlation_id=correlation_id,
         )
-    except pydantic.ValidationError as failure:
-        # D18 backstop: a self-contradictory final state (a resolved/
-        # accepted issue still open without a later `reopened`) is a
-        # deterministic defect — never retried, rolls back to `active`
-        raise FinalizationFailed(
-            ApiError(
-                503,
-                make_error(
-                    "FINAL_REVIEW_INVALID",
-                    f"contradictory final state: {failure}",
-                    correlation_id,
-                    retryable=False,
-                ),
-            ),
-            retryable=False,
-        ) from failure
-    try:
-        await records_store.update_session(
-            pool, session.session_id, state="finalizing"
+        review = _build_final_review(
+            session,
+            synthesis_reference=synthesis_reference,
+            synthesis_report=synthesis_report,
+            turns=turns,
+            deadline=deadline,
+            correlation_id=correlation_id,
         )
         final_reference = await _save_final_review(
             artifact_client, session=session, review=review, key=key,

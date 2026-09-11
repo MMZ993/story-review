@@ -48,6 +48,7 @@ def dialogue_output(
     extra_context: str | None = None,
     reuse_previous: bool = False,
     resolutions: list | None = None,
+    new_issues: list | None = None,
 ) -> FacilitatorTurnOutput:
     """A schema-valid later-turn facilitator output (scripted per test)."""
     return FacilitatorTurnOutput(
@@ -56,10 +57,11 @@ def dialogue_output(
             invoke=invoke,
             extra_context=extra_context,
             reuse_previous=reuse_previous,
-            open_issues=open_issues if open_issues is not None else ["API limit unverified"],
+            open_issues=open_issues if open_issues is not None else ["B-1"],
             readiness="needs_work",
         ),
         resolutions=resolutions or [],
+        new_issues=new_issues or [],
     )
 
 
@@ -179,7 +181,7 @@ async def test_delegation_both_reruns_reviewers_and_synthesis(
     assert body["outcome"] == "continue"
     assert body["state"] == "active"
     assert body["delegation"]["invoke"] == "both"
-    assert body["issues"] == ["API limit unverified"]
+    assert body["issues"] == ["B-1"]
     # reviewers re-ran; synthesis re-ran; synthesis version bumped
     assert agents_holder["business-calls"] == 1
     assert agents_holder["engineering-calls"] == 1
@@ -256,7 +258,7 @@ async def test_resolutions_are_stamped_with_api_turn_number(
                 "none",
                 resolutions=[
                     ResolutionDraft(
-                        issue="API limit unverified",
+                        issue="B-1",
                         disposition="resolved",
                         explanation="Ops confirmed 100 rps.",
                     )
@@ -279,6 +281,52 @@ async def test_resolutions_are_stamped_with_api_turn_number(
 
 
 # --- gate truth table -------------------------------------------------------
+
+
+async def test_facilitator_new_issues_stamped_into_turn_record(
+    pool, settings, artifact
+):
+    """D19: facilitator-minted issue descriptors are persisted with the
+    turn (the catalog source at finalize)."""
+    from review_schemas import IssueDraft
+
+    facilitator = ScriptedFacilitator(
+        [
+            FacilitatorTurnOutput(
+                reply="New concern.",
+                delegation=DelegationDecision(
+                    invoke="none",
+                    open_issues=["B-1", "F-1"],
+                    readiness="needs_work",
+                ),
+                new_issues=[
+                    IssueDraft(
+                        issue="F-1",
+                        title="Fraud handling",
+                        description="chargeback flow undefined",
+                    )
+                ],
+            )
+        ]
+    )
+    client = dialogue_client(pool, settings, artifact)
+    session = await create_session_with(client, facilitator)
+
+    response = await post_turn(client, session["session_id"])
+    assert response.status_code == 200, response.text
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "select new_issues from turns where session_id = $1 and turn_number = 2",
+            session["session_id"],
+        )
+    stamped = json.loads(row["new_issues"])
+    assert stamped == [
+        {
+            "issue": "F-1",
+            "title": "Fraud handling",
+            "description": "chargeback flow undefined",
+        }
+    ]
 
 
 async def test_facilitator_request_carries_decision_state(
@@ -450,10 +498,7 @@ async def test_po_accepted_finalizes_without_facilitator(pool, settings, artifac
         if call["type"] == "finalized-review"
     ]
     assert saved[0]["content"]["po_accepted"] is True
-    assert saved[0]["content"]["remaining_open_issues"] == [
-        "Which rate limit applies?",
-        "Business value unclear",
-    ]
+    assert saved[0]["content"]["remaining_open_issues"] == ["B-1", "E-1"]
     async with pool.acquire() as conn:
         count = await conn.fetchval(
             "select facilitator_turn_count from sessions where session_id = $1",

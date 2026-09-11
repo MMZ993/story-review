@@ -53,6 +53,8 @@ from review_schemas.facilitator import (
     DelegationDecision,
     FacilitatorTurnOutput,
     FinalizedReview,
+    IssueDraft,
+    IssueEntry,
     ResolutionDraft,
     ResolutionItem,
 )

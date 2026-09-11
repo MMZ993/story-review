@@ -137,6 +137,14 @@ class TestTurnRecord:
         ok = self._record(state="succeeded", outcome="continue", completed_at=FIXED_TS)
         assert ok.outcome == "continue"
 
+    def test_new_issues_stamped_drafts_accepted(self):
+        ok = self._record(
+            new_issues=[
+                {"issue": "E-7", "title": "Perf", "description": "order < 5s"}
+            ]
+        )
+        assert ok.new_issues[0].issue == "E-7"
+
 
 class TestAgentRunRecord:
     def _record(self, **overrides) -> AgentRunRecord:

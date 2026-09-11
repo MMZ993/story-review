@@ -31,7 +31,11 @@ from review_schemas.base import (
     TurnOutcome,
     UtcDatetime,
 )
-from review_schemas.facilitator import DelegationDecision, ResolutionItem
+from review_schemas.facilitator import (
+    DelegationDecision,
+    IssueDraft,
+    ResolutionItem,
+)
 from review_schemas.synthesis import ArtifactReference
 
 
@@ -111,6 +115,7 @@ class TurnRecord(StrictModel):
     facilitator_reply: Text | None = None
     delegation: DelegationDecision | None = None
     resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=100)
+    new_issues: list[IssueDraft] = Field(default_factory=list, max_length=100)
     outcome: TurnOutcome | None = None
     produced_artifacts: list[ArtifactReference] = Field(
         default_factory=list,
