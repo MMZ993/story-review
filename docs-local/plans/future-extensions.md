@@ -221,8 +221,10 @@ integration run (C) matters more for the capstone demo — this sets 10 vs 11.
 
 ## Item E — Issue-identifier lifecycle: reopened disposition / consistency check (design change)
 
-**Recorded: 2026-09-15, Phase 7 increment-3 live gate (session 42). Owner
-decision: implement as a design change, deferred past Phase 7.**
+**Recorded: 2026-09-15, Phase 7 increment-3 live gate (session 42). Resolved
+2026-09-16 as owner decision D18 — mechanism: `reopened` disposition + adapter-side
+consistency check + `decision_state` turn-request extension; see
+`docs-local/local-decisions.md` D18. Implementation pending.**
 
 ### Motivation
 
