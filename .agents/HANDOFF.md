@@ -8,28 +8,19 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-11 (session 39 — docs-only — D16: Phase 7
-client changed from TUI to a minimal Web UI; docs/ design change
-applied and cherry-picked to docs/initial-frozen; development-plan,
-future-extensions Item B superseded, HANDOFF updated. Prior: session
-38 — Phase 6 COMPLETE and CLOSED: increment 5 exit gate — live
-integration suite over compose PASS (3 passed in 367 s); phase-close
-review Ready-to-close, 2 minors fixed in-session; phase marked
-COMPLETE in development-plan).
+Last updated: 2026-09-15 (session 40 — Phase 7 increment 0 COMPLETE:
+webui skeleton + same-origin /api proxy per D17 amendment 1; browser gate
+PASS; review findings fixed in-session. Prior: session 39 — docs-only —
+D16: Phase 7 client changed from TUI to a minimal Web UI).
 
 ## Where we are
 
 - **Phase 6 — Orchestration (FastAPI): COMPLETE and CLOSED**
   (sessions 32–38; detail in Runbook 12, decisions D15 + amendments
-  1–3). Increment 5 (exit gate) green: deterministic tier
-  **90 passed / 11 skipped**; **live integration suite PASS**
-  (`make orchestration-integration-test`, 3 passed in 367 s — flows 1–4
-  arc, park-at-10, lease contention, all over compose + real Vertex per
-  D15 amendment 3); phase-close review Ready-to-close (2 minors fixed
-  in-session; PO-acceptance live coverage explicitly lives in the
-  increment-4 gate). All regression suites green.
-  **Next: Phase 7 (Web UI, minimal chat MVP — design change
-  D16, TUI dropped)**.
+  1–3). All gates green; live integration suite PASS (3 passed in 367 s).
+- **Phase 7 (Web UI) in progress** — increment 0 COMPLETE (session 40,
+  Runbook 13 + D17 amendment 1). Next: increment 1 (story picker +
+  session creation).
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -46,6 +37,34 @@ COMPLETE in development-plan).
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 40 (2026-09-15, main PC — Phase 7 increment 0; local Docker
+compose stack up (incl. orchestration + webui as new compose services), no
+cloud actions, Cloud SQL STOPPED throughout):
+- **D17 amendment 1 recorded** (owner decision, chat): D17-1's "browser
+  calls orchestration directly" was unworkable (no CORS on orchestration,
+  D16 forbids adding it; no persistent orchestration endpoint existed).
+  The webui FastAPI app gains a **thin same-origin /api reverse proxy** to
+  `ORCHESTRATION_BASE_URL` (chosen for its fit to the GCP shape: one HTTPS
+  LB path-routes /api → orchestration); **orchestration became a compose
+  service** (`local-agents` profile, :8130) as the proxy target; browser
+  libs vendored as the libraries' real ESM dists (import map, no bundler).
+- Delivered `webui/` uv package 0.1.0 (config, app factory: /health,
+  static shell, /api pass-through proxy with no client timeout,
+  ORCHESTRATION_UNREACHABLE retryable 503, dot-segment guard), static shell
+  (index/app.js/app.css + carried-over markdown.js + vendored
+  dompurify/marked/remend), 11 pytest + 2 vitest, Dockerfile (dataset guard,
+  non-root), `make webui-test`, compose `webui` (:8120, local profile) +
+  `orchestration` (:8130, local-agents profile) services; Runbook 13 opened.
+- **Browser gate PASS** (owner-driven): page loads, "orchestration:
+  reachable" over the real /api/v1/stories read.
+- Two live gotchas fixed + recorded: compose-postgres namespace clash
+  (facilitator ADK `sessions` table) → separate `orchestration` database;
+  MCP SDK DNS-rebinding 421 on in-network Host headers → compose sets
+  `STORY/ARTIFACT/REPORT_SERVICE_URL` in-network URLs.
+- Review (read-only subagent): 1 Critical (5 s default httpx timeout would
+  503 live long turns) + 1 Important (raw /api/%2e%2e traversal escape) +
+  minors — **all fixed in-session**, evidence in Runbook 13.
 
 Session 39 (2026-09-11, main PC — docs-only replan; no cloud actions,
 no local Docker, Cloud SQL STOPPED throughout):
@@ -272,12 +291,14 @@ after changes):
 
 - review-schemas **154**, ado-wire **7**, dataset **36**, mcp-ingress **7**,
   mcp-story **67**, mcp-artifact **32**, mcp-report **34**, compose contract
-  **20**, agent-kit **86**, agents skeleton **4×4**, business adapter
+  **20** (re-run green after the compose additions, session 40), agent-kit
+  **86**, agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
   facilitator adapter **3+1s**, orchestration **90+8s** (increments 0–4);
-  live gates: business/engineering/synthesis
+  **webui 11+2 vitest** (session 40); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
-  orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12).
+  orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
+  webui increment-0 browser gate PASS (Runbook 13).
 - Per-session verification evidence (commands, counts, review verdicts,
   gotchas): append-only in the runbooks — Runbook 11 §0–4 + completion
   review for Phase 5; Runbook 10 for Phase 4; earlier phases in 03–09.
@@ -317,14 +338,16 @@ after changes):
 
 ## Next Steps
 
-1. Owner push `main` + `docs/initial-frozen` (5 commits on main
-   pending, incl. session 38 work).
-2. **Phase 7 (Web UI)** in progress: plan committed
-   (`docs-local/plans/phase-7-webui.md`, increments 0–4); **D17 settled**
-   (uv package static-only; vitest+jsdom; reuse from real source files only
-   — never generated bundles; localStorage persistence; owner-driven manual
-   browser gates). Next: open Runbook 13, start increment 0 (skeleton).
-   Scope per D16; starting point per D16-3.
+1. Owner push `main` + `docs/initial-frozen` (commits on main pending,
+   incl. sessions 38–40 work).
+2. **Phase 7 (Web UI) increment 1 — story picker + session creation**:
+   browsing view (GET /api/v1/stories, hover preview via detail GET),
+   confirm → POST /api/v1/sessions with fresh Idempotency-Key, 5-min
+   spinner, error envelopes, 409 handling; vitest for the state machine;
+   live gate = one real session from the browser (stack is already up).
+3. Commit session-40 work when the owner asks (webui/ + Makefile +
+   compose + .gitignore + docs-local bundle incl. Runbook 13, D17
+   amendment 1, and this HANDOFF).
 
 ## Important Notes
 
@@ -353,10 +376,11 @@ after changes):
   az fallback.
 - Throwaway-postgres startup race now 8 observations (Runbook 12);
   run-migrations.sh small-retry fix stays due before Phase 8 cloud runs.
-- **Local stack**: `make agents-compose-up` (local + local-agents profiles;
-  needs host ADC); `compose-contract-test` needs `compose-up` first.
-  Increment-4 live gate left the stack running — `agents-compose-down`
-  when done with it.
+- **Local stack is UP** (session 40): orchestration (:8130) + webui
+  (:8120) now compose services; orchestration uses the separate
+  `orchestration` database in the compose postgres (created + migrated
+  2026-09-15; `createdb` is one-time). `agents-compose-down` when done.
+  `compose-contract-test` needs `compose-up` first.
 - **Keep private** until final review; GitHub mirror pending (owner).
 - Repo layout/plans/runbooks index: `docs-local/development-plan.md` and
   the per-phase plans under `docs-local/plans/`.
