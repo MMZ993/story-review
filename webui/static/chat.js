@@ -24,9 +24,11 @@ let sessionId = null;
 let storyId = null;
 let inFlight = false;
 
-/** Host callbacks (app.js): stale-id fallback and parked-session restart. */
+/** Host callbacks (app.js): stale-id fallback, parked-session restart,
+ * and leave-session (back to the picker). */
 let onUnknownSession = null;
 let onRestartStory = null;
+let onLeaveSession = null;
 
 /**
  * Human-readable text for an API client failure: the error envelope's
@@ -90,7 +92,10 @@ function actionButton(id, label) {
 }
 
 /**
- * State-specific controls under #session-actions:
+ * State-specific controls under #session-actions, plus the persistent
+ * "choose another story" control (every state — it only drops the stored
+ * session id client-side; the session itself stays untouched server-side
+ * and resumable by creating a new browser session or via the API):
  * - parked: "start a new session on this story" (host decides the routing);
  * - finalizing: retry POST /finalize (503 render failures stay retryable);
  * - completed: regenerate the signed report URLs (GET /report).
@@ -115,6 +120,14 @@ function renderStateControls() {
     regenerate.addEventListener("click", regenerateReportLinks);
     actions.append(regenerate);
   }
+  const leave = actionButton("leave-session", "choose another story");
+  leave.addEventListener("click", () => {
+    if (inFlight && !globalThis.confirm?.("A turn is still processing — leave anyway? (it keeps running server-side)")) {
+      return;
+    }
+    onLeaveSession?.();
+  });
+  actions.append(leave);
 }
 
 /** POST /finalize retry: completes a finalizing session with report links. */
@@ -213,7 +226,8 @@ async function runTurn(post, optimisticPoBubble) {
  * Open (or resume) the session view: fetch the detail, replay history,
  * wire the composer and state controls. `onUnknownSession` fires on 404
  * (stale stored id); `onRestartStory(storyId)` fires when the owner
- * restarts a parked session on the same story. Returns true when the
+ * restarts a parked session on the same story; `onLeaveSession()` fires
+ * for "choose another story". Returns true when the
  * session view was opened.
  */
 export async function openSession(id, handlers = {}) {
@@ -226,6 +240,7 @@ export async function openSession(id, handlers = {}) {
 
   onUnknownSession = handlers.onUnknownSession ?? null;
   onRestartStory = handlers.onRestartStory ?? null;
+  onLeaveSession = handlers.onLeaveSession ?? null;
   sessionId = id;
   storyId = result.body.story_id;
   sessionState = result.body.state;
