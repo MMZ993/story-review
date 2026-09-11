@@ -1,0 +1,249 @@
+/**
+ * Session chat view controller (increments 2–3).
+ *
+ * Owns the session-view state machine: active (composer + accept control,
+ * exactly one in-flight logical request), parked (read-only history +
+ * restart-on-same-story), finalizing (finalize-retry control), completed
+ * (read-only history + report links with on-demand signed-URL
+ * regeneration). History replay comes from GET /sessions/{id} — the server
+ * is the sole source of truth after any reload.
+ *
+ * Side effects: DOM writes inside #session-view; all fetching goes through
+ * the api client (which owns idempotency-key persistence).
+ */
+
+import { fetchReport, fetchSession, finalizeRetry, postTurn } from "./api.js";
+import { appendFacilitatorTurn, appendPoMessage, renderHistory } from "./messages.js";
+
+const MAX_FACILITATOR_TURNS = 10;
+
+/** Session state driving the controls: only "active" accepts input. */
+let sessionState = "active";
+
+let sessionId = null;
+let storyId = null;
+let inFlight = false;
+
+/** Host callbacks (app.js): stale-id fallback and parked-session restart. */
+let onUnknownSession = null;
+let onRestartStory = null;
+
+/**
+ * Human-readable text for an API client failure: the error envelope's
+ * message when present, otherwise a generic status line.
+ */
+function describeError(result) {
+  return result.error?.message ?? `request failed (${result.status})`;
+}
+
+/** Show or clear the session status line (spinner/hints). */
+function setStatus(text) {
+  document.querySelector("#status").textContent = text ?? "";
+}
+
+/** Session header line: story, state, facilitator-turn budget. */
+function renderHeader(detail) {
+  document.querySelector("#session-header").textContent =
+    `${detail.story_id} — ${detail.state}` +
+    ` — facilitator turns ${detail.facilitator_turn_count}/${MAX_FACILITATOR_TURNS}` +
+    ` (${detail.session_id})`;
+}
+
+/** Refresh the header from the server (turn budget after a turn). */
+async function refreshHeader() {
+  const result = await fetchSession(sessionId);
+  if (result.ok) renderHeader(result.body);
+}
+
+/**
+ * Enable/disable the composer and accept control based on the session
+ * state; the in-flight guard keeps exactly one logical request running.
+ */
+function syncComposer() {
+  const active = sessionState === "active";
+  document.querySelector("#turn-input").disabled = !active || inFlight;
+  document.querySelector("#send-turn").disabled = !active || inFlight;
+  document.querySelector("#accept-turn").hidden = !active || inFlight;
+}
+
+/** Report links: one anchor per rendered format (signed URL as returned). */
+function renderReportLinks(reports) {
+  const container = document.querySelector("#report-links");
+  container.replaceChildren();
+  for (const entry of reports ?? []) {
+    const link = document.createElement("a");
+    link.href = entry.signed_url;
+    link.textContent = `download report (.${entry.format})`;
+    link.target = "_blank";
+    link.rel = "noopener";
+    container.append(link);
+  }
+}
+
+/** One button helper for the #session-actions container. */
+function actionButton(id, label) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = id;
+  button.textContent = label;
+  return button;
+}
+
+/**
+ * State-specific controls under #session-actions:
+ * - parked: "start a new session on this story" (host decides the routing);
+ * - finalizing: retry POST /finalize (503 render failures stay retryable);
+ * - completed: regenerate the signed report URLs (GET /report).
+ */
+function renderStateControls() {
+  const actions = document.querySelector("#session-actions");
+  actions.replaceChildren();
+
+  if (sessionState === "parked") {
+    setStatus("session parked — read-only");
+    const restart = actionButton("restart-story", "start a new session on this story");
+    restart.addEventListener("click", () => onRestartStory?.(storyId));
+    actions.append(restart);
+  } else if (sessionState === "finalizing") {
+    setStatus("session is finalizing — retry if it does not complete");
+    const retry = actionButton("retry-finalize", "retry finalize");
+    retry.addEventListener("click", runFinalizeRetry);
+    actions.append(retry);
+  } else if (sessionState === "completed") {
+    setStatus("session completed — read-only");
+    const regenerate = actionButton("regenerate-report", "regenerate report links");
+    regenerate.addEventListener("click", regenerateReportLinks);
+    actions.append(regenerate);
+  }
+}
+
+/** POST /finalize retry: completes a finalizing session with report links. */
+async function runFinalizeRetry() {
+  setStatus("finalizing… (rendering the report)");
+  const result = await finalizeRetry(sessionId);
+  if (result.ok) {
+    sessionState = "completed";
+    setStatus(null);
+    renderReportLinks(result.body.report);
+    renderStateControls();
+    refreshHeader();
+  } else {
+    setStatus(describeError(result));
+  }
+}
+
+/** GET /report: fresh signed URLs for a completed session. */
+async function regenerateReportLinks() {
+  setStatus("regenerating report links…");
+  const result = await fetchReport(sessionId);
+  if (result.ok) {
+    setStatus(null);
+    renderReportLinks(result.body.report);
+  } else {
+    setStatus(describeError(result));
+  }
+}
+
+/**
+ * Composer submit: exactly one in-flight logical turn. The PO message is
+ * rendered immediately (optimistic), then POST /turns runs with its own
+ * idempotency key (persisted by the api client). 409 SESSION_LOCKED gets
+ * the contract's retry hint (a NEW request after the lease expires).
+ */
+async function sendTurn(event) {
+  event.preventDefault();
+  if (inFlight) return;
+  const input = document.querySelector("#turn-input");
+  const message = input.value.trim();
+  if (!message) return;
+  await runTurn(() => postTurn(sessionId, { message }), message);
+  input.focus();
+}
+
+/**
+ * Accept-and-finalize button: explicit client action (guarded by a confirm
+ * dialog — acceptance bypasses the facilitator and completes the session).
+ */
+async function acceptReport() {
+  if (inFlight) return;
+  if (!globalThis.confirm?.("Accept the report and finalize this session?")) return;
+  await runTurn(() => postTurn(sessionId, { poAccepted: true }), "(accepted the report)");
+}
+
+/**
+ * Shared single-turn runner: optimistic PO bubble, in-flight guard,
+ * facilitator reply + outcome handling, error surfacing.
+ */
+async function runTurn(post, optimisticPoBubble) {
+  const input = document.querySelector("#turn-input");
+  inFlight = true;
+  input.value = "";
+  syncComposer();
+  appendPoMessage(document.querySelector("#messages"), optimisticPoBubble);
+  setStatus("processing… (this can take several minutes)");
+
+  const result = await post();
+
+  inFlight = false;
+  if (result.ok) {
+    setStatus(null);
+    sessionState = result.body.state;
+    if (result.body.facilitator_reply) {
+      appendFacilitatorTurn(document.querySelector("#messages"), result.body.facilitator_reply, {
+        issues: result.body.issues,
+        synthesis: result.body.synthesis,
+        outcome: result.body.outcome,
+        turnNumber: result.body.turn_number,
+      });
+    }
+    if (sessionState === "completed") renderReportLinks(result.body.report);
+    renderStateControls();
+    refreshHeader();
+  } else {
+    const lockedHint =
+      result.status === 409 && result.error?.code === "SESSION_LOCKED"
+        ? " (another request holds the turn lease — wait for it to finish or expire, then send a new message)"
+        : "";
+    setStatus(`${describeError(result)}${lockedHint}`);
+  }
+  syncComposer();
+}
+
+/**
+ * Open (or resume) the session view: fetch the detail, replay history,
+ * wire the composer and state controls. `onUnknownSession` fires on 404
+ * (stale stored id); `onRestartStory(storyId)` fires when the owner
+ * restarts a parked session on the same story. Returns true when the
+ * session view was opened.
+ */
+export async function openSession(id, handlers = {}) {
+  const result = await fetchSession(id);
+  if (!result.ok) {
+    if (result.status === 404 && handlers.onUnknownSession) handlers.onUnknownSession();
+    else setStatus(describeError(result));
+    return false;
+  }
+
+  onUnknownSession = handlers.onUnknownSession ?? null;
+  onRestartStory = handlers.onRestartStory ?? null;
+  sessionId = id;
+  storyId = result.body.story_id;
+  sessionState = result.body.state;
+
+  document.querySelector("#picker-view").hidden = true;
+  document.querySelector("#session-view").hidden = false;
+
+  renderHeader(result.body);
+  renderHistory(document.querySelector("#messages"), result.body.turns ?? []);
+  if (sessionState === "completed") renderReportLinks(result.body.reports);
+  renderStateControls();
+  syncComposer();
+
+  const composer = document.querySelector("#composer");
+  if (!composer.dataset.wired) {
+    composer.addEventListener("submit", sendTurn);
+    document.querySelector("#accept-turn").addEventListener("click", acceptReport);
+    composer.dataset.wired = "true";
+  }
+  return true;
+}
