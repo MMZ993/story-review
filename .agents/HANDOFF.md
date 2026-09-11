@@ -8,23 +8,23 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-13 (session 37 — Phase 6 increment 4 GREEN: flows
-3+4 finalization, reports, PO acceptance; review findings fixed; live
-gate PASS over compose + real Vertex).
+Last updated: 2026-09-13 (session 38 — Phase 6 COMPLETE and CLOSED:
+increment 5 exit gate — live integration suite over compose PASS (3
+passed in 367 s); phase-close review Ready-to-close, 2 minors fixed
+in-session; phase marked COMPLETE in development-plan).
 
 ## Where we are
 
-- **Phase 6 — Orchestration (FastAPI): OPEN, increments 0–4 implemented**
-  (sessions 33–37; detail in Runbook 12). Increment 4 green:
-  deterministic tier **90 passed / 8 skipped**, independent review
-  findings fixed (incl. a focused re-review Ready to proceed), **live
-gate PASS** (full session creation → po_accepted synchronous finalize
-→ fresh report URLs → downloaded report bytes over the signed fake-gcs
-HTTPS URL). D15 amendment 2 recorded (signed-URL settlement, finalizing
-session turn-key semantics, 15-min signed-URL TTL). Plan
-`docs-local/plans/phase-6-orchestration.md` (increments 0–5).
-  **Next: increment 5** (exit gate — full integration suite over
-  compose + independent phase-close review).
+- **Phase 6 — Orchestration (FastAPI): COMPLETE and CLOSED**
+  (sessions 32–38; detail in Runbook 12, decisions D15 + amendments
+  1–3). Increment 5 (exit gate) green: deterministic tier
+  **90 passed / 11 skipped**; **live integration suite PASS**
+  (`make orchestration-integration-test`, 3 passed in 367 s — flows 1–4
+  arc, park-at-10, lease contention, all over compose + real Vertex per
+  D15 amendment 3); phase-close review Ready-to-close (2 minors fixed
+  in-session; PO-acceptance live coverage explicitly lives in the
+  increment-4 gate). All regression suites green.
+  **Next: Phase 7 (TUI)**.
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -41,6 +41,30 @@ session turn-key semantics, 15-min signed-URL TTL). Plan
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 38 (2026-09-13, main PC — Phase 6 increment 5 + close; local
+Docker compose stack (real adapters + Vertex for the gate), throwaway
+Postgres, no cloud actions, Cloud SQL STOPPED throughout):
+- Owner decision **D15 amendment 3**: the exit-gate integration suite
+  runs **fully live** (real adapters + Vertex, incl. a real 10-turn
+  park arc) — ~35–50 model calls / 15–30 min accepted; model behavior
+  steered via PO message, asserted on observables only; scripted
+  truth-tables stay deterministic.
+- Implemented `orchestration/tests/integration/` (conftest live
+  fixture, helpers, flow-arc / park-at-10 / lease-contention tests) +
+  `make orchestration-integration-test` (incl.
+  ORCH_LIVE_GCS_PUBLIC_URL).
+- Verification: orchestration **90+11s** (3 new live skips); live gate
+  **PASS 3 passed in 366.95 s** after two test-side fixes (httpx sends
+  `cursor: None` as empty string → follow cursor only when non-null;
+  finalize replay regenerates fresh signed URLs → compare durable
+  references). Regressions: review-schemas 154, agent-kit 86, agents
+  4×4, business 6+2s, engineering 7+1s, synthesis 7+2s, facilitator
+  3+1s, compose contract 20. Phase-close review **Ready-to-close**;
+  M1 (PO-acceptance live coverage home documented) + M2 (timing
+  assumption comment) fixed in-session, M3 noted. Phase 6 marked
+  COMPLETE in development-plan.md. Throwaway-postgres race now 9
+  observations.
 
 Session 37 (2026-09-13, main PC — Phase 6 increment 4; local Docker
 (compose stack recomposed with the dual-scheme fake-gcs for the live
@@ -235,7 +259,6 @@ after changes):
 
 ## Remaining Tasks
 
-- Phase 6 increments 0–5 per the plan (Runbook 12 tracks progress).
 - Deferred review minors (fix in Phase 6 where natural, else later):
   - Session 34: run-migrations.sh docker fallback startup race (first psql
     contact can fail after pg_isready; add a small retry).
@@ -267,11 +290,10 @@ after changes):
 
 ## Next Steps
 
-1. **Phase 6 increment 5** (next session): exit gate — integration
-   suite over compose covering flows 1–4, gate outcomes, park-at-10,
-   PO-acceptance path, idempotent retries, lease contention; independent
-   phase-close review; phase marked COMPLETE in development-plan.md.
-2. Owner push (main) when ready.
+1. Commit session-38 work (see Important Notes; owner approval
+   pending), then owner push (main) when ready.
+2. **Phase 7 (TUI)** next session: plan first
+   (docs-local/plans/phase-7-tui.md) per the phase-plan pattern.
 
 ## Important Notes
 
