@@ -71,10 +71,7 @@ def opening_turn_output() -> FacilitatorTurnOutput:
         reply="Opening the review dialogue; two issues need PO input.",
         delegation=DelegationDecision(
             invoke="none",
-            open_issues=[
-                "Which rate limit applies?",
-                "Business value unclear",
-            ],
+            open_issues=["B-1", "E-1"],
             readiness="needs_work",
         ),
         resolutions=[],
@@ -173,6 +170,7 @@ class FakeArtifactMcp:
     def __init__(self) -> None:
         self.save_calls: list[dict] = []
         self.save_failures: list[ErrorBody] = []  # scripted, popped per save
+        self.corrupt_synthesis = False  # D19: malformed-content seam
         self._by_slot: dict[tuple[str, str, str], dict] = {}
         self._artifacts: dict[str, dict] = {}
 
@@ -248,6 +246,11 @@ class FakeArtifactMcp:
         return {"items": items, "total": len(items)}
 
     def _get(self, arguments: dict) -> dict:
+        if self.corrupt_synthesis:
+            # D19 test seam: serve malformed content for synthesis reads
+            artifact = self._artifacts.get(arguments["artifact_id"])
+            if artifact is not None and artifact["reference"]["type"] == "synthesis":
+                return {"reference": artifact["reference"], "content": "not json"}
         artifact = self._artifacts.get(arguments["artifact_id"])
         if artifact is None:
             raise McpCallFailure(

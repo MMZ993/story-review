@@ -229,3 +229,33 @@ def validate_turn_output(
                 "open_issues — a turn cannot settle and retain the same "
                 "issue; either drop it from open_issues or re-open it later"
             )
+    _validate_issue_descriptors(output, request)
+
+
+def _synthesis_issue_ids(request: FacilitatorRequest) -> set[str]:
+    """Ids born in the latest synthesis: findings (B-*/E-*) and
+    conflicts (C-*) — they already carry title/description there."""
+    return (
+        {finding.id for finding in request.synthesis_report.merged_findings}
+        | {conflict.id for conflict in request.synthesis_report.conflicts}
+    )
+
+
+def _validate_issue_descriptors(
+    output: FacilitatorTurnOutput, request: FacilitatorRequest
+) -> None:
+    """D19: every id the facilitator mints (not synthesis-born, not
+    previously seen in the decision state) must carry an IssueDraft on
+    the same turn it first appears in open_issues."""
+    known: set[str] = _synthesis_issue_ids(request)
+    if request.decision_state is not None:
+        known |= {item.issue for item in request.decision_state.resolutions}
+        known |= set(request.decision_state.open_issues)
+    described = {draft.issue for draft in output.new_issues}
+    for issue in output.delegation.open_issues:
+        if issue not in known and issue not in described:
+            raise FacilitatorTurnInvalid(
+                f"issue {issue} is newly minted — it needs an IssueDraft "
+                "(issue, title, description) in new_issues this turn; "
+                "synthesis-born ids must not be re-described"
+            )

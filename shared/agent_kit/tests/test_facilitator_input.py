@@ -334,7 +334,8 @@ class TestIdentifierLifecycleRule:
         validate_turn_output(output, self._request(decision_state()))
 
     def test_no_decision_state_skips_rule(self) -> None:
-        output = turn_output(open_issues=["B-1"])
+        # B-2 is synthesis-born, so no rule applies without decision state
+        output = turn_output(open_issues=["B-2"])
         validate_turn_output(output, self._request(None))
 
     def test_same_turn_resolved_id_still_open_is_rejected(self) -> None:
@@ -365,6 +366,54 @@ class TestIdentifierLifecycleRule:
             ],
         )
         validate_turn_output(output, self._request(decision_state()))
+
+
+class TestIssueDescriptorRule:
+    """D19 turn-context rule: an id the facilitator mints (not in the
+    synthesis findings/conflicts, not previously seen) must carry an
+    IssueDraft on the same turn it first appears in open_issues."""
+
+    def _request(self, state: DecisionState | None):
+        return request(
+            turn_number=3, po_message="New concern came up.", decision_state=state
+        )
+
+    def test_minted_id_without_descriptor_rejected(self) -> None:
+        output = turn_output(open_issues=["C-1", "F-1"])
+        with pytest.raises(FacilitatorTurnInvalid, match="F-1.*IssueDraft"):
+            validate_turn_output(output, self._request(decision_state()))
+
+    def test_minted_id_with_descriptor_passes(self) -> None:
+        from review_schemas import IssueDraft
+
+        output = FacilitatorTurnOutput(
+            reply="r",
+            delegation={"invoke": "none", "open_issues": ["C-1", "F-1"]},  # type: ignore[arg-type]
+            new_issues=[
+                IssueDraft(issue="F-1", title="Fraud", description="chargeback flow undefined")
+            ],
+        )
+        validate_turn_output(output, self._request(decision_state()))
+
+    def test_synthesis_born_id_needs_no_descriptor(self) -> None:
+        # B-2 is in the request's synthesis merged_findings and carries no
+        # decision-state disposition (fresh synthesis-born open id)
+        state = decision_state().model_copy(
+            update={"resolutions": [decision_state().resolutions[0]]}
+        )
+        output = turn_output(open_issues=["B-2"])
+        validate_turn_output(output, self._request(state))
+
+    def test_previously_minted_id_relisted_needs_no_new_descriptor(self) -> None:
+        state = decision_state().model_copy(deep=True)
+        state = state.model_copy(update={"open_issues": ["F-1"]})
+        output = turn_output(open_issues=["F-1"])
+        validate_turn_output(output, self._request(state))
+
+    def test_opening_turn_minted_id_requires_descriptor(self) -> None:
+        output = turn_output(open_issues=["B-2", "F-1"])
+        with pytest.raises(FacilitatorTurnInvalid, match="F-1"):
+            validate_turn_output(output, request(turn_number=1))
 
 
 class TestResponse:

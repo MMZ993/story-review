@@ -34,6 +34,16 @@ class Block:
 
 def document_blocks(content: FinalizedReview) -> list[Block]:
     """The canonical document structure for one finalized review."""
+    catalog = {entry.issue: entry for entry in content.issues}
+
+    def label(issue: str) -> str:
+        """Annotate an id with its catalog title when one exists (D19)."""
+        entry = catalog.get(issue)
+        return f"{issue} — {entry.title}" if entry is not None else issue
+
+    def source_word(source: str) -> str:
+        return "from synthesis" if source == "synthesis" else "raised by facilitator"
+
     blocks = [
         Block("title", f"Story Review Report — {content.story_id}"),
         Block("para", f"Story: {content.story_id}"),
@@ -45,14 +55,30 @@ def document_blocks(content: FinalizedReview) -> list[Block]:
             "para",
             f"PO acceptance: {'accepted' if content.po_accepted else 'not accepted'}",
         ),
-        Block("heading", "Resolutions"),
+        Block("heading", "Issues"),
     ]
+    if content.issues:
+        for entry in content.issues:
+            severity = (
+                f", {entry.severity}" if entry.severity is not None else ""
+            )
+            blocks.append(
+                Block(
+                    "bullet",
+                    f"{entry.issue} — {entry.title} "
+                    f"({source_word(entry.source)}{severity}): "
+                    f"{entry.description}",
+                )
+            )
+    else:
+        blocks.append(Block("para", "None."))
+    blocks.append(Block("heading", "Resolutions"))
     if content.resolutions:
         for index, item in enumerate(content.resolutions, start=1):
             blocks.append(
                 Block(
                     "numbered",
-                    f"{index}. {item.issue} — {item.disposition} "
+                    f"{index}. {label(item.issue)} — {item.disposition} "
                     f"(turn {item.turn_number}): {item.explanation}",
                 )
             )
@@ -60,7 +86,9 @@ def document_blocks(content: FinalizedReview) -> list[Block]:
         blocks.append(Block("para", "None."))
     blocks.append(Block("heading", "Remaining open issues"))
     if content.remaining_open_issues:
-        blocks.extend(Block("bullet", issue) for issue in content.remaining_open_issues)
+        blocks.extend(
+            Block("bullet", label(issue)) for issue in content.remaining_open_issues
+        )
     else:
         blocks.append(Block("para", "None."))
     return blocks

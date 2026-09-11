@@ -96,6 +96,15 @@ def finalized_review() -> dict:
                 "content_type": "application/json",
                 "checksum_sha256": "0" * 64,
             },
+            "issues": [
+                {
+                    "issue": "Missing business value statement",
+                    "title": "Missing business value statement",
+                    "description": "The story lacks an expected-uptake rationale.",
+                    "severity": "major",
+                    "source": "synthesis",
+                }
+            ],
             "resolutions": [
                 {
                     "issue": "Missing business value statement",

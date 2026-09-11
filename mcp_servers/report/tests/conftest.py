@@ -59,11 +59,21 @@ def synthesis_reference(run: str) -> ArtifactReference:
 
 
 def finalized_review(run: str, *, po_accepted: bool = True) -> FinalizedReview:
-    """A minimal valid FinalizedReview (normal readiness keeps no open issues)."""
+    """A minimal valid FinalizedReview (normal readiness keeps no open
+    issues); every referenced id carries a catalog entry (D19)."""
     return FinalizedReview(
         story_id="story-01",
         story_run_id=run,
         synthesis_reference=synthesis_reference(run),
+        issues=[
+            {
+                "issue": "Missing business value statement",
+                "title": "Missing business value statement",
+                "description": "The story lacks an expected-uptake rationale.",
+                "severity": "major",
+                "source": "synthesis",
+            }
+        ],
         resolutions=[
             {
                 "issue": "Missing business value statement",

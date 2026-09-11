@@ -36,6 +36,17 @@ class DelegationDecision(StrictModel):
 Disposition = Literal["resolved", "accepted", "unresolved", "reopened"]
 
 
+class IssueDraft(StrictModel):
+    """Facilitator-minted issue descriptor (D19): required whenever the
+    facilitator adds an issue id to `open_issues` that does not appear in
+    the latest synthesis findings/conflicts — synthesis-born ids already
+    carry title/description there; minted ids have no other home."""
+
+    issue: Text
+    title: Text
+    description: Text
+
+
 class ResolutionItem(StrictModel):
     """Stamped resolution: the durable form of a facilitator resolution.
 
@@ -83,6 +94,7 @@ class FacilitatorTurnOutput(StrictModel):
     reply: Text
     delegation: DelegationDecision
     resolutions: list[ResolutionDraft] = Field(default_factory=list, max_length=100)
+    new_issues: list[IssueDraft] = Field(default_factory=list, max_length=100)
 
     @model_validator(mode="after")
     def resolutions_are_final(self):
@@ -93,6 +105,34 @@ class FacilitatorTurnOutput(StrictModel):
                 raise ValueError("re-synthesis-only turns carry no resolution updates")
         return self
 
+    @model_validator(mode="after")
+    def new_issues_are_open(self):
+        # a descriptor exists only for ids actually on this turn's open
+        # list; one descriptor per id; re-synthesis-only turns carry none
+        described = [draft.issue for draft in self.new_issues]
+        if len(set(described)) != len(described):
+            raise ValueError("new_issues must be unique per issue id")
+        for issue in described:
+            if issue not in set(self.delegation.open_issues):
+                raise ValueError(
+                    f"new_issues describes an id not on this turn's open list: {issue}"
+                )
+        if self.delegation.invoke == "none" and self.delegation.reuse_previous:
+            if self.new_issues:
+                raise ValueError("re-synthesis-only turns carry no new issues")
+        return self
+
+
+class IssueEntry(StrictModel):
+    """One entry of the finalized review's issue catalog (D19): the
+    descriptive record behind every issue id the report references."""
+
+    issue: Text
+    title: Text
+    description: Text
+    severity: Literal["info", "minor", "major", "blocker"] | None = None
+    source: Literal["synthesis", "facilitator"]
+
 
 class FinalizedReview(StrictModel):
     """The immutable end state of one story run."""
@@ -100,6 +140,7 @@ class FinalizedReview(StrictModel):
     story_id: StoryId
     story_run_id: RunId
     synthesis_reference: ArtifactReference
+    issues: list[IssueEntry] = Field(default_factory=list, max_length=400)
     resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=200)
     remaining_open_issues: list[Text] = Field(default_factory=list, max_length=100)
     po_accepted: bool
@@ -115,6 +156,9 @@ class FinalizedReview(StrictModel):
             raise ValueError("final review requires this run's synthesis reference")
         if self.remaining_open_issues and not self.po_accepted:
             raise ValueError("normal readiness cannot retain open issues")
+        catalog_ids = [entry.issue for entry in self.issues]
+        if len(set(catalog_ids)) != len(catalog_ids):
+            raise ValueError("issue catalog entries must be unique per issue id")
         # D18 backstop: a resolved/accepted issue may only remain open if a
         # later `reopened` overrode it — otherwise the review is
         # self-contradictory and must not be finalized
@@ -128,6 +172,16 @@ class FinalizedReview(StrictModel):
                     "remaining open issue has a resolved/accepted latest "
                     f"disposition: {issue}"
                 )
+        # D19 completeness: every id the report references (resolutions,
+        # remaining open) must have a catalog entry — no bare unexplained
+        # identifiers can reach a rendered report
+        catalog = set(catalog_ids)
+        referenced = set(latest) | set(self.remaining_open_issues)
+        missing = referenced - catalog
+        if missing:
+            raise ValueError(
+                f"issues referenced without a catalog entry: {sorted(missing)}"
+            )
         return self
 
 

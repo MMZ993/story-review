@@ -73,7 +73,22 @@ class FakeSynthesis:
         report = SynthesisReport(
             story_id=request.business.report.story_id,
             summary="Merged review of both perspectives.",
-            merged_findings=[],
+            merged_findings=[
+                {
+                    "id": "B-1",
+                    "title": "Gap found",
+                    "description": "The story misses an important case.",
+                    "severity": "minor",
+                    "category": "completeness",
+                },
+                {
+                    "id": "E-1",
+                    "title": "Gap found",
+                    "description": "The story misses an important case.",
+                    "severity": "minor",
+                    "category": "completeness",
+                },
+            ],
             conflicts=[],
             questions_for_po=["Which rate limit applies?"],
             inputs={

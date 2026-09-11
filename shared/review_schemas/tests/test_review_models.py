@@ -15,6 +15,8 @@ from review_schemas.facilitator import (
     DelegationDecision,
     FacilitatorTurnOutput,
     FinalizedReview,
+    IssueDraft,
+    IssueEntry,
     ResolutionDraft,
     ResolutionItem,
     latest_resolutions,
@@ -358,6 +360,43 @@ class TestFacilitatorTurnOutput:
         )
         assert isinstance(turn.resolutions[0], ResolutionDraft)
 
+    def test_new_issues_describing_open_id_accepted(self):
+        turn = self._turn(
+            delegation={"open_issues": ["E-7"]},
+            new_issues=[
+                {"issue": "E-7", "title": "Perf", "description": "order < 5s"}
+            ],
+        )
+        assert turn.new_issues[0].issue == "E-7"
+
+    def test_new_issues_for_id_not_open_rejected(self):
+        with pytest.raises(ValidationError, match="not on this turn's open list"):
+            self._turn(
+                delegation={"open_issues": ["B-1"]},
+                new_issues=[
+                    {"issue": "E-7", "title": "Perf", "description": "order < 5s"}
+                ],
+            )
+
+    def test_duplicate_new_issues_rejected(self):
+        with pytest.raises(ValidationError, match="unique"):
+            self._turn(
+                delegation={"open_issues": ["E-7"]},
+                new_issues=[
+                    {"issue": "E-7", "title": "a", "description": "d"},
+                    {"issue": "E-7", "title": "b", "description": "d"},
+                ],
+            )
+
+    def test_reuse_only_turn_must_not_mint_issues(self):
+        with pytest.raises(ValidationError, match="no new issues"):
+            self._turn(
+                delegation={"reuse_previous": True, "open_issues": ["E-7"]},
+                new_issues=[
+                    {"issue": "E-7", "title": "a", "description": "d"}
+                ],
+            )
+
 
 class TestFinalizedReview:
     def _finalized(self, **overrides) -> FinalizedReview:
@@ -377,7 +416,25 @@ class TestFinalizedReview:
             "final_turn_number": 3,
             "finalized_at": FIXED_TS,
         }
-        return FinalizedReview.model_validate(payload | overrides)
+        merged = payload | overrides
+        # D19: every referenced id gets a catalog entry by default; tests
+        # that want the completeness failure strip the catalog explicitly
+        ids = {r["issue"] for r in merged.get("resolutions", [])} | set(
+            merged.get("remaining_open_issues", [])
+        )
+        merged.setdefault(
+            "issues",
+            [
+                {
+                    "issue": issue,
+                    "title": f"title {issue}",
+                    "description": "d",
+                    "source": "synthesis",
+                }
+                for issue in ids
+            ],
+        )
+        return FinalizedReview.model_validate(merged)
 
     def test_valid_finalized_review(self):
         final = self._finalized()
@@ -447,6 +504,73 @@ class TestFinalizedReview:
             resolutions=[], remaining_open_issues=["never-resolved"]
         )
         assert final.remaining_open_issues == ["never-resolved"]
+
+    def _with_catalog(self, final: FinalizedReview) -> FinalizedReview:
+        """Give every referenced id a catalog entry (D19 completeness)."""
+        ids = {i.issue for i in final.resolutions} | set(final.remaining_open_issues)
+        return final.model_copy(update={
+            "issues": [
+                IssueEntry(
+                    issue=issue, title=f"title {issue}", description="d",
+                    source="synthesis",
+                )
+                for issue in ids
+            ]
+        })
+
+    def test_referenced_id_without_catalog_entry_rejected(self):
+        payload = {
+            "story_id": STORY_ID,
+            "story_run_id": RUN_ID,
+            "synthesis_reference": artifact_reference("synthesis"),
+            "resolutions": [
+                {
+                    "issue": "i",
+                    "disposition": "resolved",
+                    "explanation": "e",
+                    "turn_number": 2,
+                }
+            ],
+            "po_accepted": True,
+            "final_turn_number": 3,
+            "finalized_at": FIXED_TS,
+        }
+        with pytest.raises(ValidationError, match="without a catalog entry"):
+            FinalizedReview.model_validate(payload)
+
+    def test_complete_catalog_accepted(self):
+        final = self._finalized(
+            resolutions=[
+                {
+                    "issue": "i",
+                    "disposition": "resolved",
+                    "explanation": "e",
+                    "turn_number": 2,
+                }
+            ],
+            remaining_open_issues=["E-7"],
+        )
+        validated = self._with_catalog(final)
+        assert {e.issue for e in validated.issues} == {"i", "E-7"}
+
+    def test_catalog_entries_without_references_are_allowed(self):
+        # the catalog may describe issues never dispositioned nor listed
+        final = self._with_catalog(self._finalized())
+        extra = final.model_copy(update={
+            "issues": [*final.issues, IssueEntry(
+                issue="B-9", title="t", description="d",
+                severity="major", source="facilitator",
+            )]
+        })
+        assert "B-9" in {e.issue for e in extra.issues}
+
+    def test_duplicate_catalog_entries_rejected(self):
+        final = self._with_catalog(self._finalized())
+        duplicated = final.model_copy(update={
+            "issues": [*final.issues, final.issues[0]]
+        })
+        with pytest.raises(ValidationError, match="unique"):
+            FinalizedReview.model_validate(duplicated.model_dump())
 
 
 class TestLatestResolutions:

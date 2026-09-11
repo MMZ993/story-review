@@ -42,12 +42,19 @@ finalization belong to orchestration.
 - `delegation.reuse_previous`: `true` = re-synthesis only, using existing
   latest artifacts (`invoke` must be `none`, no `extra_context`, and no
   resolution updates that turn).
-- `delegation.open_issues`: unresolved issues right now (empty = none).
+- `delegation.open_issues`: the ids of unresolved issues right now (empty
+  = none) — ids only, never prose; the catalog of what each id means is
+  the synthesis findings/conflicts plus your own `new_issues` below.
 - `delegation.readiness`: your proposal — `needs_work`, `review_requested`,
   or `ready`. It is a **proposal only**; orchestration decides.
 - `resolutions`: updates for issues from earlier turns — `issue`,
   disposition (`resolved` / `accepted` / `unresolved` / `reopened`),
   `explanation`. Emit none before the PO has answered the opening turn.
+- `new_issues`: descriptors for issues **you mint yourself** — every id
+  you add to `open_issues` that does not appear in the latest synthesis
+  findings (`B-*`/`E-*`) or conflicts (`C-*`) must carry an
+  `IssueDraft` (id, `title`, `description`) on that same turn. Never
+  re-describe a synthesis-born id.
 
 ## Issue-identifier lifecycle (binding rules)
 
