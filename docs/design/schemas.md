@@ -175,6 +175,7 @@ ErrorCode = Literal[
     "UPSTREAM_UNAVAILABLE",
     "RENDER_FAILED",
     "REPORT_RENDER_FAILED",
+    "FINAL_REVIEW_INVALID",
 ]
 
 
@@ -211,6 +212,7 @@ class ToolError(StrictModel):
 | Other state/idempotency conflicts | 409 | Do not retry unchanged input. |
 | `DEADLINE_EXCEEDED`, `UPSTREAM_UNAVAILABLE`, `REPORT_RENDER_FAILED` | 503 | Replay the same operation/key after the hint. |
 | `RENDER_FAILED` | MCP only | Orchestration applies the report retry policy. |
+| `FINAL_REVIEW_INVALID` | 503 | Non-retryable (D18): the finalized review is self-contradictory (a resolved/accepted issue remains open without a later `reopened`) — re-engage the dialogue (re-open or resolve the conflicting issue), then accept again. |
 
 ## Story, review, synthesis, and delegation models
 
@@ -408,7 +410,10 @@ class DelegationDecision(StrictModel):
 
 class ResolutionItem(StrictModel):
     issue: Text
-    disposition: Literal["resolved", "accepted", "unresolved"]
+    # `reopened`: a previously resolved/accepted issue regressed — emitted
+    # when the concern reappears in `open_issues`; latest disposition wins
+    # in aggregation, so a re-open overrides the earlier resolution
+    disposition: Literal["resolved", "accepted", "unresolved", "reopened"]
     explanation: Text
     turn_number: Annotated[int, Field(ge=1)]
 
@@ -418,7 +423,7 @@ class ResolutionDraft(StrictModel):
     when converting it into a `ResolutionItem`."""
 
     issue: Text
-    disposition: Literal["resolved", "accepted", "unresolved"]
+    disposition: Literal["resolved", "accepted", "unresolved", "reopened"]
     explanation: Text
 
 
@@ -459,6 +464,20 @@ class FinalizedReview(StrictModel):
             raise ValueError("final review requires this run's synthesis reference")
         if self.remaining_open_issues and not self.po_accepted:
             raise ValueError("normal readiness cannot retain open issues")
+        # deterministic backstop for issue-identifier lifecycle: a resolved or
+        # accepted issue may only remain open if a later `reopened` disposition
+        # overrode it (latest-wins aggregation); otherwise the review is
+        # self-contradictory and must not be finalized
+        latest = {item.issue: item for item in self.resolutions}
+        for issue in self.remaining_open_issues:
+            if latest.get(issue) is not None and latest[issue].disposition in (
+                "resolved",
+                "accepted",
+            ):
+                raise ValueError(
+                    "remaining open issue has a resolved/accepted latest "
+                    f"disposition: {issue}"
+                )
         return self
 
 
@@ -520,6 +539,14 @@ The opening facilitator turn must produce `invoke="none"`; orchestration asserts
 in addition to model validation. `readiness` is advisory and is deliberately ignored by
 the finalization gate, which uses `open_issues`, `invoke`, whether synthesis was
 produced this turn, explicit PO acceptance, and the turn cap.
+
+**Issue-identifier lifecycle.** Issue identifiers are immutable for one session: a
+regressed concern (a previously resolved/accepted issue reappearing in
+`open_issues`) must be re-opened with a `reopened` disposition on the same turn —
+never by silently re-using the resolved id as if it were still open, and never by
+issuing a new id for the same concern. The facilitator adapter enforces this as a
+turn-context rule (corrective re-prompt on violation), and `FinalizedReview` rejects a
+self-contradictory final state as the deterministic backstop.
 
 ## HTTP API models
 
