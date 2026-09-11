@@ -370,3 +370,53 @@ Park view: jsdom-tested only this increment — parking from the UI requires
 the facilitator's 10-turn gate (~7 more Vertex turns on the story-02
 session was judged not worth it); live park verification folds into the
 increment-4 exit walkthrough if the arc includes park.
+
+## Item E live gate — issue-identifier lifecycle (2026-09-16, session 43)
+
+Implementation session (D18): `reopened` disposition + shared
+`latest_resolutions` helper (review_schemas 0.5.0), `decision_state`
+turn-request extension rendered as "Current decision state", adapter
+identifier-lifecycle rule in `validate_turn_output` (incl. same-turn
+self-contradiction, review finding 1) via the corrective re-prompt loop,
+`FinalizedReview` backstop → new `FINAL_REVIEW_INVALID` (503
+non-retryable, rolls back to `active`), facilitator prompt rules. All
+deterministic suites green (review-schemas 161, agent-kit 98,
+orchestration 92+11s, facilitator-adapter 3+1s, webui 44); independent
+review Ready-to-proceed with findings fixed (D18 amendments 1–2).
+Commits: docs `592dd85` (frozen cherry-pick `7c8b9cf`), code `e58bb7a`,
+docs-local `0535b1c`.
+
+In-session UI addition (owner request, tested vitest 44): persistent
+"choose another story" control in the session view (every state, clears
+`session:id` only; in-flight confirm guard) — the resume boot previously
+had no way back to the picker.
+
+Live gate (owner-driven, compose stack rebuilt with the new
+orchestration/facilitator images; new code verified inside both images;
+result **PASS**):
+
+- New session on **story-09** (free story; 01/04/06 still hold active
+  slots, 02 completed). Turn 1: 10 open issues.
+- Turn 2 (PO clarifications: acceptance criteria, metrics, failure UX):
+  facilitator resolved B-1/B-2/B-3/E-4 — 10 → 6 open; delegation both;
+  turn meta consistent.
+- Turn 3 (withdrawal of the failure-UX clarification): facilitator
+  **re-opened B-3 and E-4** (explicitly, in the reply prose too), gave
+  newly identified concerns **fresh ids E-7/E-8/E-9** (no id reuse — the
+  prompt rule working), resolved C-1 as a consequence; open count back up
+  6 → 9(+). No 422 DELEGATION_VALIDATION — the model complied on the
+  first try with the decision-state context (the root-cause fix
+  demonstrably sufficient in this run).
+- Turn 4: PO acceptance with open issues → synchronous finalize, report
+  downloaded over signed fake-gcs HTTPS.
+- Report consistency **verified** (owner-pasted, verbatim below trimmed
+  to the decision rows): Resolutions shows `B-3 — reopened (turn 3)`,
+  `E-4 — reopened (turn 3)` (overriding turn-2 resolved), B-1/B-2/C-1
+  resolved; Remaining open lists B-3, B-4, E-1…E-9 — every remaining id
+  is never-resolved or reopened; **no resolved/accepted id remains
+  open**. The story-02 contradiction class is closed.
+
+Item E exit criteria: schema/design + frozen cherry-pick ✓, shared
+validators + tests ✓, orchestration stamping/aggregation ✓, live
+acceptance-with-open-issues consistent finalized review ✓ — **Item E
+closed**.

@@ -207,6 +207,59 @@ and evaluation evidence uses the existing Vertex AI test budget.
 - Keep the FastAPI turn/loop events separate from ADK callbacks, exactly as
   `docs/design/observability.md` specifies.
 
+## Item F — Live progress indication during session creation (Web UI)
+
+**Status: proposed (owner request, 2026-09-16, while waiting on a real
+flow-1 `POST /sessions` — currently a bare "reviewing story-XX…" spinner
+for up to 5 minutes).**
+
+### Motivation
+
+Flow 1 (session creation) runs business + engineering reviewers, synthesis,
+and the facilitator opening turn server-side in one synchronous request.
+The client shows nothing but a spinner; the owner cannot tell whether the
+app is reviewing, synthesizing, or stuck. The same applies to long dialogue
+turns ("processing… this can take several minutes").
+
+### Scope (sketch)
+
+- After story confirmation, instead of a dead spinner, show a progress view
+  of the selected story and the pipeline stages with the current one
+  marked: business reviewer → engineering reviewer → synthesis →
+  facilitator opening turn.
+- Preferred presentation (owner idea): reuse the chat view itself — render
+  the stages as **ephemeral placeholder messages** ("business reviewer is
+  reviewing…", "synthesis agent is synthesizing…") that change state while
+  running and are **replaced by the real facilitator message** when the
+  turn completes. The chat surface then doubles as the progress surface.
+- Same mechanism for dialogue turns with delegation: placeholder bubbles for
+  the invoked reviewers/synthesis while a turn is in flight.
+
+### Exit criteria
+
+- A live session creation shows stage-level progress in the chat view and
+  the placeholders are replaced by the real opening-turn message; a long
+  delegated turn shows reviewer/synthesis placeholders.
+
+### Cost
+
+Local only; no model-cost change (progress is transport/UI work).
+
+### Design notes / decisions needed
+
+- **The blocker is the API contract**: `POST /sessions` and `POST /turns`
+  are synchronous with no progress events. Options: (a) orchestration
+  persists a coarse stage marker on the session/turn and the UI polls an
+  existing read endpoint; (b) SSE/streaming progress (bigger contract
+  change); (c) purely client-side fake staging on timers (no truth —
+  rejected as dishonest). Needs a design decision in `docs/` (api-contract)
+  before implementation.
+- Which stages are observable server-side without new instrumentation:
+  reviewer/synthesis AgentRunRecords already exist per run — a stage could
+  be derived from them (option a) without touching the agents.
+- Placeholder messages must be clearly distinguishable from real turn
+  history on reload (history replay must not resurrect placeholders).
+
 ## Proposed ordering
 
 1. Item D is planned with the active Phase 6/Phase 8 work before the Phase 9
@@ -222,9 +275,11 @@ integration run (C) matters more for the capstone demo — this sets 10 vs 11.
 ## Item E — Issue-identifier lifecycle: reopened disposition / consistency check (design change)
 
 **Recorded: 2026-09-15, Phase 7 increment-3 live gate (session 42). Resolved
-2026-09-16 as owner decision D18 — mechanism: `reopened` disposition + adapter-side
-consistency check + `decision_state` turn-request extension; see
-`docs-local/local-decisions.md` D18. Implementation pending.**
+2026-09-16 as owner decision D18 and IMPLEMENTED + live-gate verified (session
+43): `reopened` disposition + adapter-side consistency check + `decision_state`
+turn-request extension; report consistency confirmed on a live story-09
+session (reopened issues in Resolutions, no resolved id remaining open).
+Item CLOSED — evidence in Runbook 13.**
 
 ### Motivation
 
