@@ -175,7 +175,10 @@ async function startSession() {
 
   if (result.ok) {
     globalThis.localStorage.setItem("session:id", result.body.session_id);
-    await openSession(result.body.session_id, { onRestartStory: restartStory });
+    await openSession(result.body.session_id, {
+      onRestartStory: restartStory,
+      onLeaveSession: leaveSession,
+    });
     return;
   }
 
@@ -193,6 +196,18 @@ async function startSession() {
 /** Show or clear the picker's spinner/status line. */
 function setSpinner(text) {
   document.querySelector("#picker-status").textContent = text ?? "";
+}
+
+/**
+ * Leave the session view: drop the stored session id and return to the
+ * picker with no preselection (the session stays resumable server-side;
+ * re-entering requires the session id — e.g. via the API).
+ */
+function leaveSession() {
+  globalThis.localStorage.removeItem("session:id");
+  document.querySelector("#session-view").hidden = true;
+  selectedStoryId = null;
+  showPicker();
 }
 
 /**
@@ -248,6 +263,7 @@ async function boot() {
         globalThis.localStorage.removeItem("session:id");
       },
       onRestartStory: restartStory,
+      onLeaveSession: leaveSession,
     });
     if (resumed) return;
   }

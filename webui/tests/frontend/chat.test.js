@@ -264,6 +264,26 @@ describe("increment 3 — parked, accepted, completed, finalizing", () => {
     expect(onRestartStory).toHaveBeenCalledWith("story-04");
   });
 
+  it("offers choosing another story in every state and fires onLeaveSession", async () => {
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()])));
+    const onLeaveSession = vi.fn();
+    await openSession("s-1", { onLeaveSession });
+
+    const leave = document.querySelector("#leave-session");
+    expect(leave).not.toBeNull();
+    leave.click();
+    expect(onLeaveSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("leave-session control is also present on a completed session", async () => {
+    fetchSession.mockResolvedValue(
+      ok({ ...sessionDetail([turn()], "completed"), reports: [reportDownload("md")] }),
+    );
+    await openSession("s-1", { onLeaveSession() {} });
+
+    expect(document.querySelector("#leave-session")).not.toBeNull();
+  });
+
   it("completed session renders persisted report links and regenerates them on demand", async () => {
     fetchSession.mockResolvedValue(
       ok({ ...sessionDetail([turn()], "completed"), reports: [reportDownload("md")] }),
