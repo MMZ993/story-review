@@ -685,3 +685,68 @@ and everything else to the webui service — same origin, no CORS anywhere):
 3. **Browser-side libraries are vendored as the libraries' real ESM dist
    files** (`static/vendor/`), loaded via an import map — no bundler, and
    no generated bundles (D17-3 intact: nothing we generate is committed).
+
+## D18 — Issue-identifier lifecycle: `reopened` disposition + adapter-side check (2026-09-16)
+
+Owner decision resolving future-extensions Item E (found at the Phase 7
+increment-3 live gate, session 42): a finalized review showed issues B-1/B-2
+both resolved (turn 2) and remaining open (turn 3) because the facilitator
+re-used resolved ids for new concerns; the contract permitted the overlap.
+
+Mechanism chosen (of the two candidates sketched in Item E):
+
+1. **`reopened` disposition** added to `ResolutionDraft`/`ResolutionItem`
+   (design change in `docs/design/schemas.md` + frozen cherry-pick; shared
+   review_schemas version bump). Latest-wins aggregation already reflects a
+   re-open; the report's Resolutions table shows the final disposition.
+2. **Prompt rule**: issue identifiers are immutable; a regressed concern is
+   re-opened with `reopened` on the same turn it reappears in
+   `open_issues`; a new concern gets a fresh id.
+3. **`decision_state` extension to the facilitator turn request** (contract
+   extension recorded here, D15-6 pattern — the request contract is
+   docs-local): orchestration assembles from the durable TurnRecords the
+   authoritative per-turn state — the latest-wins resolution map plus the
+   last delegation's open list — and renders it into the turn message
+   ("Current decision state"). This is the root-cause fix: the facilitator
+   previously had no structured record of past decisions and reconstructed
+   state from conversation prose. The same shared helper feeds finalize-time
+   aggregation, so input context and report provably agree.
+4. **Adapter-side consistency check in `validate_turn_output`** (not an ADK
+   callback): a `resolved`/`accepted` id in `decision_state` may appear in
+   `open_issues` only if the same turn emits `reopened` for it; violations
+   enter the existing bounded corrective re-prompt loop
+   (`DELEGATION_VALIDATION` on exhaustion). Callbacks stay reserved for
+   telemetry/authorization (Item D) — repair belongs to the proven loop.
+5. **`FinalizedReview` deterministic backstop**: validator rejects a final
+   state where a remaining-open id's latest disposition is `resolved`/
+   `accepted` (non-retryable → rolls back to `active`).
+6. **No state echoing**: the facilitator does not echo the decision state in
+   its reply — typed output + rendered context suffice (owner decision;
+   echoing invites drift).
+
+Backward compatibility: dispositions and `decision_state` are per-turn
+request/response data; stored TurnRecords and the compose-Postgres sessions
+need no migration (orchestration derives the map from existing records).
+
+### D18 amendment 1 — `FINAL_REVIEW_INVALID` error code (2026-09-16)
+
+Implementing the backstop (D18 point 5) surfaced that the ErrorCode taxonomy
+is a frozen Literal: the non-retryable contradiction failure gained its own
+code `FINAL_REVIEW_INVALID` (503, no retry hint — the PO must re-engage the
+dialogue), added to `docs/design/schemas.md` in the same D18 docs change and
+to the shared `ErrorCode` literal (review_schemas 0.5.0).
+
+### D18 amendment 2 — review findings (2026-09-16)
+
+Independent read-only review of the D18 implementation (verdict: Ready to
+proceed) found one Important, fixed in-session: the adapter rule now also
+rejects a **same-turn self-contradiction** (an id `resolved`/`accepted` this
+turn while still on this turn's `open_issues`) — previously such a turn
+passed and the contradiction only surfaced at the finalize backstop.
+Minors fixed: `_decision_state` returns `None` when no prior turns exist
+(matching the documented contract), and `DecisionState.resolutions` cap
+aligned to 200 (FinalizedReview's cap; avoids an unreachable construction
+failure). Accepted as-is: `FINAL_REVIEW_INVALID` also covers the
+pre-existing FinalizedReview validation rules (previously unhandled 500s —
+broader but strictly better); the phase-5 plan appendix now records the
+`decision_state` request-contract extension (D15-6 precedent).

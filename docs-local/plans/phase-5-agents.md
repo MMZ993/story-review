@@ -305,6 +305,16 @@ re-prompts; exhaustion returns `DELEGATION_VALIDATION`.
 - **Phase 5 close**: `FacilitatorResponse` additionally reports
   `corrective_reprompts` (0–2) so orchestration can persist the counter in
   `AgentRunRecord`.
+- **Item E (D18, 2026-09-16)**: the facilitator request gains an optional
+  `decision_state` block (`resolutions` latest-wins map, cap 200 + last
+  delegation's `open_issues`, cap 100), assembled by orchestration from the
+  durable TurnRecords and rendered into the turn message as the authoritative
+  "Current decision state"; `None` on the opening turn. The adapter enforces
+  the identifier-lifecycle turn rule (resolved/accepted ids re-appearing in
+  `open_issues` require a same-turn `reopened`; same-turn settled ids must not
+  stay on the open list) via the corrective re-prompt loop. The disposition
+  set gains `reopened` (review_schemas 0.5.0).
+
 - **Phase 6 increment 3 (D15 amendment 1)**: the facilitator request gains a
   required `invocation_id: UUID`; the adapter persists one completed
   response per `(session_id, invocation_id)` in its session-backend
