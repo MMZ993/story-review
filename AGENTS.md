@@ -52,7 +52,7 @@ authoritative record of what was executed against Google Cloud.
 
 - [`.agents/development-rules.md`](.agents/development-rules.md) — **read before
   writing/changing application code** (Python, schemas, tests, agents,
-  orchestration, TUI): doc-first, test-first, file-size and design limits,
+  orchestration, Web UI): doc-first, test-first, file-size and design limits,
   verification tiers, debugging, review triggers.
 - [`.agents/infra-rules.md`](.agents/infra-rules.md) — **read before touching
   terraform, gcloud, or any deployment/environment action**: command tiers

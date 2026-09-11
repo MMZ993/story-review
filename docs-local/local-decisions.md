@@ -592,3 +592,37 @@ live-minus-park split. Accepted cost: roughly 35–50 model calls and a
    clients (D15-3) — the live suite covers the real-adapter paths only.
 3. Sessions under test use distinct stories (story-05/06/07) so the
    one-active-run-per-story constraint cannot cross-contaminate tests.
+
+## D16 — Phase 7 client is a Web UI, not a TUI (2026-09-11)
+
+Owner decision (approved in chat): the Phase 7 client is a **minimal web
+UI** instead of the originally designed TUI — the owner confirmed a web
+interface is what will actually be needed (demo audience, no local
+tooling). This is a fundamental design change, applied to `docs/`
+(tech-stack.md Interface row, api-contract.md "Client interaction
+states", architecture.md, repository-layout.md `webui/`, data-flow.md
+participant labels, index.md) per the docs-first rule.
+
+1. **Scope — minimal MVP, functional only**: pre-conversation story
+   picker (story list; hovering/selecting an item renders the story
+   preview/detail via `GET /stories/{id}` before confirmation;
+   confirmation sends the story id via `POST /sessions`), chat-style
+   dialogue view for PO turns (one message per `POST /turns`,
+   facilitator message rendered, spinner-equivalent processing state),
+   PO acceptance / finalize path, and report download through the
+   regenerated signed URLs. No animations, no design system.
+2. **No server-side changes**: the API contract (`api-contract.md`) is
+   consumed as-is — the interaction states and client rules already
+   written for the TUI apply unchanged (session-ID persistence,
+   idempotency-key replay, single in-flight request).
+3. **Implementation shape**: thin static HTML/JS page served by a
+   small FastAPI/uv package (`webui/`, per repository-layout.md),
+   compose service next to orchestration; future-extensions Item B is
+   superseded by this decision. **Starting point**: the owner's
+   existing chat UI in `~/projects/homelab/cv-agent`
+   (`src/cv_agent/static/chat.{html,js,css}`, vanilla JS, FastAPI-
+   served, with a small markdown renderer and JS tests) is reused/
+   adapted — its chat shell and message rendering carry over; the API
+   calls must be re-pointed to the orchestration endpoints with
+   idempotency-key handling, and the story picker with hover preview
+   is added. No server-side changes.

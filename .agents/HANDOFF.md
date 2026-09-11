@@ -8,10 +8,14 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-13 (session 38 — Phase 6 COMPLETE and CLOSED:
-increment 5 exit gate — live integration suite over compose PASS (3
-passed in 367 s); phase-close review Ready-to-close, 2 minors fixed
-in-session; phase marked COMPLETE in development-plan).
+Last updated: 2026-09-11 (post-session-38 docs update — D16: Phase 7
+client changed from TUI to a minimal Web UI; docs/ design change applied
+(tech-stack, api-contract, architecture, repository-layout, data-flow, index)
+and development-plan/future-extensions updated. Prior: session 38 —
+Phase 6 COMPLETE and CLOSED: increment 5 exit gate — live
+integration suite over compose PASS (3 passed in 367 s); phase-close
+review Ready-to-close, 2 minors fixed in-session; phase marked
+COMPLETE in development-plan).
 
 ## Where we are
 
@@ -24,7 +28,8 @@ in-session; phase marked COMPLETE in development-plan).
   D15 amendment 3); phase-close review Ready-to-close (2 minors fixed
   in-session; PO-acceptance live coverage explicitly lives in the
   increment-4 gate). All regression suites green.
-  **Next: Phase 7 (TUI)**.
+  **Next: Phase 7 (Web UI, minimal chat MVP — design change
+  D16, TUI dropped)**.
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -292,8 +297,12 @@ after changes):
 
 1. Commit session-38 work (see Important Notes; owner approval
    pending), then owner push (main) when ready.
-2. **Phase 7 (TUI)** next session: plan first
-   (docs-local/plans/phase-7-tui.md) per the phase-plan pattern.
+2. **Phase 7 (Web UI)** next session: plan first
+   (docs-local/plans/phase-7-webui.md) per the phase-plan pattern;
+   scope per D16 (story picker with hover preview, chat turns, report
+   download; no server-side changes). Starting point: adapt the
+   existing vanilla-JS chat UI from
+   `~/projects/homelab/cv-agent` (D16-3); story picker added on top.
 
 ## Important Notes
 
