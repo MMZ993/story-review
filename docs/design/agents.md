@@ -16,10 +16,14 @@ Per-agent specifications. Each agent is a separate Agent Engine deployment.
   and owned by orchestration (see data-flow.md).
 - **Structured output**: every facilitator turn ends with a typed
   **`FacilitatorTurnOutput`** (see schemas.md) — the `reply`, the
-  **delegation decision** (`DelegationDecision`), and any **resolution updates**
+  **delegation decision** (`DelegationDecision`), any **resolution updates**
   (`ResolutionDraft`s: issue, disposition `resolved`/`accepted`/`unresolved`/`reopened`,
   explanation; identifiers are immutable — a regressed concern is re-opened with
-  `reopened`, a new concern gets a fresh id; see schemas.md). Orchestration interprets and executes it; the LLM proposes, code
+  `reopened`, a new concern gets a fresh id; see schemas.md), and **issue
+  descriptors** (`new_issues`: id, title, description — required for every
+  id the facilitator mints itself, i.e. any id added to `open_issues` that is
+  not in the latest synthesis; synthesis-born ids keep their synthesis
+  descriptions). Orchestration interprets and executes it; the LLM proposes, code
   disposes — orchestration stamps `turn_number` and persists the drafts as
   `ResolutionItem`s, so `FinalizedReview.resolutions` is derived from typed agent
   output, never from parsing reply prose. Validation failure triggers a corrective LLM

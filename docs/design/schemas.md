@@ -427,6 +427,17 @@ class ResolutionDraft(StrictModel):
     explanation: Text
 
 
+class IssueDraft(StrictModel):
+    """Facilitator-minted issue descriptor (D19): required whenever the
+    facilitator adds an issue id to `open_issues` that does not appear in
+    the latest synthesis findings/conflicts — synthesis-born ids already
+    carry title/description there; minted ids have no other home."""
+
+    issue: Text
+    title: Text
+    description: Text
+
+
 class FacilitatorTurnOutput(StrictModel):
     """Authoritative typed output of one facilitator turn. Orchestration never
     parses the reply prose; every programmatically consumed field lives here."""
@@ -434,6 +445,7 @@ class FacilitatorTurnOutput(StrictModel):
     reply: Text
     delegation: DelegationDecision
     resolutions: list[ResolutionDraft] = Field(default_factory=list, max_length=100)
+    new_issues: list[IssueDraft] = Field(default_factory=list, max_length=100)
 
     @model_validator(mode="after")
     def resolutions_are_final(self):
@@ -444,11 +456,37 @@ class FacilitatorTurnOutput(StrictModel):
                 raise ValueError("re-synthesis-only turns carry no resolution updates")
         return self
 
+    @model_validator(mode="after")
+    def new_issues_are_open(self):
+        # a descriptor exists only for ids actually on this turn's open
+        # list; one descriptor per id
+        described = [draft.issue for draft in self.new_issues]
+        if len(set(described)) != len(described):
+            raise ValueError("new_issues must be unique per issue id")
+        for issue in described:
+            if issue not in set(self.delegation.open_issues):
+                raise ValueError(
+                    f"new_issues describes an id not on this turn's open list: {issue}"
+                )
+        return self
+
+
+class IssueEntry(StrictModel):
+    """One entry of the finalized review's issue catalog (D19): the
+    descriptive record behind every issue id the report references."""
+
+    issue: Text
+    title: Text
+    description: Text
+    severity: Literal["info", "minor", "major", "blocker"] | None = None
+    source: Literal["synthesis", "facilitator"]
+
 
 class FinalizedReview(StrictModel):
     story_id: StoryId
     story_run_id: RunId
     synthesis_reference: ArtifactReference
+    issues: list[IssueEntry] = Field(default_factory=list, max_length=400)
     resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=200)
     remaining_open_issues: list[Text] = Field(default_factory=list, max_length=100)
     po_accepted: bool
@@ -478,6 +516,16 @@ class FinalizedReview(StrictModel):
                     "remaining open issue has a resolved/accepted latest "
                     f"disposition: {issue}"
                 )
+        # D19 completeness: every id the report references (resolutions,
+        # remaining open) must have a catalog entry — no bare unexplained
+        # identifiers can reach a rendered report
+        catalog = {entry.issue for entry in self.issues}
+        referenced = set(latest) | set(self.remaining_open_issues)
+        missing = referenced - catalog
+        if missing:
+            raise ValueError(
+                f"issues referenced without a catalog entry: {sorted(missing)}"
+            )
         return self
 
 
@@ -547,6 +595,18 @@ never by silently re-using the resolved id as if it were still open, and never b
 issuing a new id for the same concern. The facilitator adapter enforces this as a
 turn-context rule (corrective re-prompt on violation), and `FinalizedReview` rejects a
 self-contradictory final state as the deterministic backstop.
+
+**Issue catalog (D19).** Every issue id a report references must carry a
+descriptive record. Ids born in the synthesis (findings `B-*`/`E-*`, conflicts
+`C-*`) take title/description/severity from the latest synthesis; ids the
+facilitator mints itself must be described at birth via `new_issues`
+(`IssueDraft`, emitted on the same turn the id first appears in `open_issues` —
+the adapter enforces this as a turn-context rule, since it holds the synthesis
+report in the request and can distinguish synthesis-born from minted ids).
+Orchestration accumulates the drafts into the turn records and assembles
+`FinalizedReview.issues` at finalize; its validator rejects any referenced id
+without a catalog entry. Rendering presents the catalog as the report's
+Issues section and annotates resolution/open-issue rows with issue titles.
 
 ## HTTP API models
 
@@ -889,6 +949,7 @@ class TurnRecord(StrictModel):
     facilitator_reply: Text | None = None
     delegation: DelegationDecision | None = None
     resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=100)
+    new_issues: list[IssueDraft] = Field(default_factory=list, max_length=100)
     outcome: TurnOutcome | None = None
     produced_artifacts: list[ArtifactReference] = Field(
         default_factory=list,
