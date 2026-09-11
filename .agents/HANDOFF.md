@@ -8,15 +8,19 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (session 43 — **Item E (D18) + issue-catalog (D19)
-IMPLEMENTED and live-gate verified for D18**: reopened disposition,
-decision_state context, adapter rules, finalize backstop; D19 adds the
-issue catalog (typed facilitator descriptors + synthesis-sourced catalog
-+ report Issues section). D18 live gate PASS on story-09; D19 awaiting
-its live evidence (fold into increment 4). Commits so far: 592dd85 /
-e58bb7a / 0535b1c + frozen cherry-pick 7c8b9cf; D19 + webui
-leave-session button uncommitted. Prior: sessions 40–42 — Phase 7
-increments 0–3.)
+Last updated: 2026-09-16 (session 44 — **D19 live gate PASS on story-05**
+after two in-session root-cause fixes: serving-safe mirror lacked
+`new_issues` (Vertex structured output could never emit an IssueDraft —
+byte-identical corrective replies were the signal); issue catalog now
+unions **all synthesis versions** of the session, latest wins (docs
+updated + frozen cherry-pick). Facilitator prompt `new_issues` example +
+validator rejection carries inline JSON shape. Webui debt observed and
+recorded (Runbook 13 §D19): optimistic bubble persists after failed turn;
+stale error banner survives session switch; refresh mid-turn drops the
+pending message and may lose the idempotency key. D19 done; Phase 7
+increment 4 (exit gate + close) remains. Prior: session 43 — Item E
+(D18) + D19 implemented, D18 live gate PASS; commits 592dd85 / e58bb7a /
+0535b1c + 7c8b9cf, then 6e9684a / 66e10ca / 045a9e4.)
 
 ## Where we are
 
@@ -25,11 +29,13 @@ increments 0–3.)
   1–3). All gates green; live integration suite PASS (3 passed in 367 s).
 - **Phase 7 (Web UI) in progress** — increments 0–3 COMPLETE (sessions
   40–42, Runbook 13 + D17 amendment 1). **Item E debt DONE (session 43,
-  D18, Runbook 13 §Item E)**. Remaining: increment 4 (exit gate —
+  D18, Runbook 13 §Item E)**. **D19 live gate PASS (session 44,
+  Runbook 13 §D19)**. Remaining: increment 4 (exit gate —
   example-interaction walkthrough end-to-end + close). Compose Postgres
-  sessions: story-02 + **story-09 completed**, story-01/-04/-06 still
-  active (they hold those stories' active-session slots; the new
-  "choose another story" button leaves a session client-side only).
+  sessions: story-02 + story-09 + **story-05 completed** (session-44
+  D19 gate), story-01/-04/-06 still active (pre-D19 active-session
+  slots) and story-03 active but gate-abandoned (wedged turn-2 under
+  the pre-fix mirror gap).
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -46,6 +52,37 @@ increments 0–3.)
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+Session 44 (2026-09-16, main PC — **D19 live gate**; local Docker stack
+up throughout, no cloud actions, Cloud SQL STOPPED):
+- Goal: D19 live evidence. First attempts failed repeatably (story-03,
+  then story-05): facilitator minted F-1 in prose but never emitted
+  `new_issues`; corrective re-prompts produced byte-identical replies
+  (md5-verified via the ADK `events` table in the facilitator DB — the
+  fastest diagnosis path). Transient host-network outage to Google OAuth
+  mid-gate was identified and excluded as cause.
+- **Root cause 1 (Critical)**: `ServingSafeFacilitatorTurnOutput`
+  (ADK `output_schema`) predates D19 — no `new_issues`, so Vertex
+  structured output could never emit an IssueDraft. Fix:
+  `MirrorIssueDraft` + field, test-first.
+- **Root cause 2 (Important)**: catalog sourced from the latest
+  synthesis only — first acceptance hit the completeness backstop
+  (`FINAL_REVIEW_INVALID`, rolled back to active as designed) for the
+  six turn-2-resolved ids the re-synthesis dropped. Owner decision:
+  **catalog = union of all synthesis versions, latest wins** (docs
+  updated + frozen cherry-pick); `run_flow3` fetches each turn's
+  synthesis artifact.
+- Supporting: facilitator prompt `new_issues` worked example;
+  descriptor-validator rejection carries the inline JSON shape.
+- **Gate PASS (story-05)**: F-1 minted with same-turn descriptor,
+  accept-with-open-issues, report verified — Issues section (16 titled
+  entries, F-1 "raised by facilitator"), all Resolutions/Remaining-open
+  rows titled, no bare ids.
+- Webui debt recorded (Runbook 13): optimistic bubble persists after
+  failed turn; stale error banner survives session switch; refresh
+  mid-turn drops pending message / may lose idempotency key.
+- Verification: agent-kit **104**, orchestration **96+11s**,
+  facilitator adapter **3+1s**; stack recomposed twice.
+
 Session 43 (2026-09-16, main PC — Item E (D18) implementation + live gate;
 local Docker stack up throughout, no cloud actions, Cloud SQL STOPPED):
 - **Design + decisions**: `reopened` disposition + FinalizedReview
@@ -413,10 +450,10 @@ after changes):
   mcp-story **67**, mcp-artifact **32**, mcp-report **36** (session 43: +2
   D19 — issue catalog + annotations), compose contract
   **20** (re-run green after the compose additions, session 40), agent-kit
-  **103** (session 43: +12 D18, +1 D19), agents skeleton **4×4**, business adapter
+  **104** (session 44: +1 mirror new_issues), agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **95+11s** (session 43: +2 D18,
-  +1 D19);
+  facilitator adapter **3+1s**, orchestration **96+11s** (session 44: +1
+  catalog union);
   **webui 11 + vitest 44** (session 43: +2 leave-session); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
@@ -462,20 +499,17 @@ after changes):
 
 ## Next Steps
 
-1. **Next session (fresh context): D19 live evidence first** — the
-   compose stack is up with all D19 code (verified in-container); run a
-   fresh session on a free story (03/05/07/08/10) from the browser,
-   elicit a facilitator-minted concern (descriptor via `new_issues`),
-   accept, and verify the report: Issues section present, every
-   Resolutions/Remaining-open row titled, no bare ids. Codify in
-   Runbook 13 (D19 gate section). Then **Phase 7 increment 4 (exit gate
-   + close)**: owner-driven example-interaction walkthrough end-to-end
-   from the browser (story pick → dialogue arc → park or accept →
-   report download; idempotency replay mid-flow; live park verification
-   — deferred from increment 3; use a fresh session — pre-D19 sessions
-   may be un-finalizable per D19 amendment 1), all regression suites,
-   independent read-only review of the phase diff, Phase 7 COMPLETE in
-   development-plan.md, Runbook 13 completion review.
+1. **Phase 7 increment 4 (exit gate + close)**: owner-driven
+   example-interaction walkthrough end-to-end from the browser (fresh
+   session — pre-D19 sessions story-01/-04/-06 and the gate-abandoned
+   story-03 hold active slots and may be un-finalizable by design; check
+   `GET /api/v1/sessions` for free stories first): story pick → dialogue
+   arc → park or accept → report download; idempotency replay mid-flow;
+   **live park verification** (deferred from increment 3); address or
+   explicitly record the three webui debt items (Runbook 13 §D19). Then
+   all regression suites, independent read-only review of the phase
+   diff, Phase 7 COMPLETE in development-plan.md, Runbook 13 completion
+   review.
 2. Owner push `main` + `docs/initial-frozen` after these commits
    (identifier check re-ran clean post-commit).
 

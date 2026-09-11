@@ -420,3 +420,105 @@ Item E exit criteria: schema/design + frozen cherry-pick ✓, shared
 validators + tests ✓, orchestration stamping/aggregation ✓, live
 acceptance-with-open-issues consistent finalized review ✓ — **Item E
 closed**.
+
+## D19 live gate — issue catalog (2026-09-16, session 44)
+
+Session goal: live evidence for D19 (facilitator-minted issue with a
+same-turn descriptor surviving into the finalized review's Issues
+section; no bare ids anywhere). The gate surfaced — and closed — two
+real D19 implementation gaps before passing.
+
+### Findings fixed in-session (root causes, evidence)
+
+1. **Serving-safe mirror gap (Critical).** The facilitator emits its
+   turn through Vertex structured output against the ADK
+   `output_schema=ServingSafeFacilitatorTurnOutput` — and that mirror
+   predated D19: it had no `new_issues` field. The model was
+   *structurally incapable* of emitting the IssueDraft, which explains
+   every observed symptom across three sessions: F-1 described in
+   `reply` prose but never in an array; corrective re-prompts never
+   recovering; **byte-identical replies (same md5) on all three
+   attempts per turn** at temperature 0 (identical schema + input →
+   identical constrained decoding output — replay theory was a red
+   herring; the model's input never differed *effectively* because the
+   field could not exist). Diagnosis path worth remembering: the
+   adapter's ADK session events (facilitator DB, `events` table) hold
+   the exact model replies — md5-comparing the three attempts per turn
+   is what pinned it. Fix: `MirrorIssueDraft` + `new_issues` on the
+   mirror (`agent_kit/llm_output.py`), test-first
+   (`test_facilitator_mirrors.py`, agent-kit 103 → 104).
+2. **Catalog sourcing gap (Important).** First acceptance attempt on
+   story-05 failed the D19 completeness backstop
+   (`FINAL_REVIEW_INVALID`: "issues referenced without a catalog entry:
+   B-1, B-4, E-2, E-4, E-5, E-8") — exactly the ids resolved at turn 2
+   and dropped by the post-clarification re-synthesis. The catalog was
+   sourced from the *latest* synthesis only; the design never accounted
+   for resolved-and-dropped ids still referenced by the aggregate
+   Resolutions. Rollback to `active` worked as designed; acceptance was
+   retried after the fix. Owner decision: **union across all synthesis
+   versions the session produced, latest version winning** (better
+   report quality over lazy backfill). Docs: `docs/design/schemas.md`
+   catalog paragraph updated (atomic docs commit + frozen cherry-pick
+   due). Code: `issue_catalog(synthesis_reports, turns)`;
+   `run_flow3` fetches each turn's `produced_artifacts` synthesis
+   (deduped, turn order), fallback to the latest reference when turns
+   carry none. Test-first
+   (`test_issue_catalog_unions_synthesis_versions_latest_wins`;
+   orchestration 95 → 96).
+3. **Supporting hardening (kept)**: facilitator prompt `new_issues`
+   bullet gained a worked example + "prose in `reply` alone is not
+   enough"; the descriptor-validator rejection message now carries the
+   inline JSON shape (reaches both the 422 body and the corrective
+   re-prompt automatically). Neither could fix gap 1, but both make
+   first-attempt minting more likely and corrections actionable.
+
+### Gotchas recorded
+
+- Transient host-network outage to `oauth2.googleapis.com` (ADC token
+  refresh) mid-gate → facilitator 503s; recovered on its own. Distinguish
+  outage-driven 422/503s from validation 422s via the adapter log before
+  debugging behavior.
+- ADK session dialogue memory keeps rejected replies (by design,
+  observability.md); a session whose memory holds a rejected reply could
+  not be recovered by corrective re-prompts *while the mirror gap
+  existed* — untested whether post-fix corrections now recover such a
+  session (the gate passed on a first-attempt mint; fine either way).
+- Facilitator adapter's ADK events are queryable read-only via the
+  compose Postgres (`facilitator` DB) — the fastest diagnosis path for
+  "what did the model actually say".
+
+### Webui debt observed (client-side only; server correct in each case)
+
+1. Optimistic PO bubble persists after a failed turn (cleared only on
+   refresh).
+2. Stale error banner survives switching sessions via "choose another
+   story".
+3. Refresh during an in-flight turn drops the pending message from the
+   view and re-enables send; the localStorage idempotency key may be
+   lost mid-fetch → possible double turn. All three are candidates for
+   the increment-4 pass or a recorded known-issue list.
+
+### Gate evidence (owner-driven, story-05, **PASS**)
+
+- Fresh session on story-05 (`sess-d37f0a91…`): turn 1 opening, 11 open.
+- Turn 2 (PO clarifications + explicit "add this as a new issue with a
+  short title and description" ask): facilitator resolved B-1/B-4/E-2/
+  E-4/E-5/E-8, minted **F-1 "Fallback for PSP service degradation"**
+  with a full same-turn IssueDraft, re-synthesis produced E-9. Turn
+  record carries the `new_issues` draft (verified server-side).
+- Acceptance with open issues → synchronous finalize → completed, 2
+  report formats, downloaded over signed fake-gcs HTTPS.
+- Report verified: **Issues section present** (16 entries, every id
+  titled + described + severity/source; F-1 marked "raised by
+  facilitator"); **every Resolutions row titled** (B-1 — Epic
+  Misalignment — resolved (turn 2): …); **every Remaining-open row
+  titled** incl. F-1; **no bare ids anywhere**. The resolved-and-dropped
+  six (B-1/B-4/E-2/E-4/E-5/E-8) kept their v1 descriptors via the union
+  fix — the exact failure case of finding 2.
+- Compose Postgres now: story-02, story-09, **story-05 completed**;
+  story-01/-04/-06 (+ story-03, abandoned mid-gate with a wedged turn-2
+  after the pre-fix failures) active.
+
+Verification: agent-kit **104**, facilitator-adapter **3+1s**,
+orchestration **96+11s**, stack recomposed (`make agents-compose-up`)
+twice; other suites unchanged from session 43 baseline.
