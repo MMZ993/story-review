@@ -9,7 +9,7 @@ deterministic calls (parallel fan-out, artifact persistence) without LLM involve
 
 ```
 ┌─────────┐    ┌──────────────────────────────────────────────┐
-│ TUI/Web │──▶│ FastAPI orchestration service (Cloud Run)    │
+│ Web UI  │──▶│ FastAPI orchestration service (Cloud Run)    │
 └─────────┘    │  - session mgmt, artifact delivery to UI     │
                │  - parallel reviewer invocation (async)      │
                │  - direct MCP client calls (no LLM)          │
@@ -29,7 +29,7 @@ deterministic calls (parallel fan-out, artifact persistence) without LLM involve
 
 | Component | Runtime | Role |
 |---|---|---|
-| TUI / Web UI | client | PO dialogue, report display, PDF/MD download |
+| Web UI | client | PO dialogue, report display, PDF/MD download |
 | FastAPI orchestration | Cloud Run | entry point; session handling; parallel fan-out; direct MCP calls; artifact delivery |
 | Facilitator agent | Agent Engine (own deployment) | User-in-the-Loop dialogue, LLM-driven delegation decisions, readiness tracking |
 | Business Reviewer | Agent Engine (own deployment) | business-perspective story analysis |
@@ -61,7 +61,7 @@ and shared schemas into a self-contained build context before deployment (see
 
 ## Orchestration and Control Flow
 
-1. PO lists/loads a story in the TUI/Web UI (story MCP server reads from the backlog — a
+1. PO lists/loads a story in the Web UI (story MCP server reads from the backlog — a
    mock data store for the capstone); selecting a story **triggers the initial flow**.
 2. Orchestration (FastAPI) invokes Business + Engineering Reviewer deployments **in
    parallel** (`asyncio.gather`) — deterministic fan-out, no LLM decides this step.
@@ -96,7 +96,7 @@ Pattern mapping:
 ## Session and State
 
 - **Conversation sessions** (facilitator ↔ PO): ADK sessions persisted in Cloud SQL
-  PostgreSQL. The **server is stateless** — the client (TUI/Web) holds the session ID
+  PostgreSQL. The **server is stateless** — the client (Web UI) holds the session ID
   and every interaction resumes the session server-side with a new prompt. The session
   ID is generated at the start and persisted on the client side.
 - **Session lifecycle**: session states are `active`, `parked`, `finalizing`, and
@@ -129,7 +129,7 @@ Pattern mapping:
 
 ## Interfaces
 
-- TUI/Web ↔ FastAPI: HTTP (JSON events for dialogue turns; report references with
+- Web UI ↔ FastAPI: HTTP (JSON events for dialogue turns; report references with
   expiring signed URLs — report bytes are downloaded directly from GCS, not proxied
   through FastAPI).
 - FastAPI ↔ Agent Engine: Vertex AI Agent Engine client SDK (session-scoped calls).
