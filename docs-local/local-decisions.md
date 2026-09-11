@@ -653,3 +653,35 @@ Owner decisions (approved in chat), settling the increment-0 candidates in
    compose stack and reports evidence. Rationale: a UI has to be
    human-tested anyway (the reason D16 exists), and this matches the
    established live-gate protocol. No browser automation in this phase.
+
+### D17 amendment 1 — same-origin /api reverse proxy on the webui (2026-09-15)
+
+D17-1 said "no proxying: the browser calls orchestration directly". While
+opening Runbook 13 the owner and agent found this unworkable as written:
+
+- Orchestration has no CORS middleware and D16 forbids orchestration
+  server-side changes, so direct browser→orchestration calls from the
+  webui origin are blocked by the browser (different port = different
+  origin).
+- Orchestration had no persistent HTTP endpoint at all: Phase 6 live gates
+  ran it in-process (httpx ASGI transport) against the compose adapters.
+
+Owner decision (chosen for its fit to the future GCP deployment, where one
+HTTPS load balancer routes `/api/*` to the orchestration Cloud Run service
+and everything else to the webui service — same origin, no CORS anywhere):
+
+1. **The webui FastAPI app adds a thin same-origin `/api` reverse proxy**
+   to `ORCHESTRATION_BASE_URL`: pure pass-through of method, path, query,
+   body, and the client-hop headers (Content-Type, Idempotency-Key,
+   X-Correlation-Id); no business logic, no persistence. Unreachable
+   orchestration → 503 with a retryable `ORCHESTRATION_UNREACHABLE` error
+   envelope. D17-1 is amended from "static files only" to "static files +
+   the /api pass-through proxy only".
+2. **Orchestration becomes a compose service** (`local-agents` profile,
+   proxy target for browser gates; the Phase 6 pytest suites are unchanged).
+   The compose `postgres` (facilitator DB) also carries the orchestration
+   tables there; migrations run on demand via `run-migrations.sh` from a
+   throwaway container on the compose network (Runbook 13 has the command).
+3. **Browser-side libraries are vendored as the libraries' real ESM dist
+   files** (`static/vendor/`), loaded via an import map — no bundler, and
+   no generated bundles (D17-3 intact: nothing we generate is committed).
