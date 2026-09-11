@@ -22,7 +22,7 @@ FACILITATOR_PORT   ?= 8114
 	engineering-reviewer-adapter-test engineering-reviewer-live-test \
 	synthesis-adapter-test synthesis-live-test facilitator-adapter-test \
 	facilitator-live-test agents-compose-up agents-compose-down \
-	compose-up compose-down compose-contract-test orchestration-test orchestration-flow1-live-test orchestration-turns-live-test orchestration-finalize-live-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
+	compose-up compose-down compose-contract-test orchestration-test orchestration-flow1-live-test orchestration-turns-live-test orchestration-finalize-live-test orchestration-integration-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -315,6 +315,38 @@ orchestration-finalize-live-test: ## Phase 6 increment 4 live gate: full session
 		--with-requirements tests/requirements.lock \
 		--with-editable . --with-editable ../shared/review_schemas \
 		python -m pytest tests/test_finalize_live.py -q -rs
+
+orchestration-integration-test: ## Phase 6 increment 5 exit gate: live integration suite over compose (main PC; needs agents-compose-up)
+	container=$$(docker run -d --rm -e POSTGRES_USER=orch \
+		-e POSTGRES_PASSWORD=orch -e POSTGRES_DB=orchestration \
+		-p 127.0.0.1:$${ORCH_TEST_DB_PORT:-9030}:5432 postgres:16); \
+	trap 'docker rm -f $$container >/dev/null 2>&1' EXIT; \
+	for i in $$(seq 1 60); do \
+		docker exec $$container pg_isready -U orch >/dev/null 2>&1 && break; sleep 0.5; \
+	done; \
+	docker exec $$container pg_isready -U orch >/dev/null 2>&1 || { echo "test Postgres not ready" >&2; exit 1; }; \
+	DATABASE_URL=postgres://orch:orch@127.0.0.1:$${ORCH_TEST_DB_PORT:-9030}/orchestration \
+	deploy/cloud-sql/run-migrations.sh && \
+	cd orchestration && \
+	ORCH_LIVE_DB_DSN=postgres://orch:orch@127.0.0.1:$${ORCH_TEST_DB_PORT:-9030}/orchestration \
+	ORCH_LIVE_STORY_URL=http://127.0.0.1:$(STORY_PORT)/mcp \
+	ORCH_LIVE_ARTIFACT_URL=http://127.0.0.1:$(ARTIFACT_PORT)/mcp \
+	ORCH_LIVE_REPORT_URL=http://127.0.0.1:$(REPORT_PORT)/mcp \
+	ORCH_LIVE_BUSINESS_URL=http://127.0.0.1:$(BUSINESS_PORT) \
+	ORCH_LIVE_ENGINEERING_URL=http://127.0.0.1:$(ENGINEERING_PORT) \
+	ORCH_LIVE_SYNTHESIS_URL=http://127.0.0.1:$(SYNTHESIS_PORT) \
+	ORCH_LIVE_FACILITATOR_URL=http://127.0.0.1:$(FACILITATOR_PORT) \
+	ORCH_LIVE_BUCKET=$${ARTIFACT_BUCKET:-artifacts-local} \
+	ORCH_LIVE_GCS_PUBLIC_URL=https://127.0.0.1:$${FAKE_GCS_HTTPS_PORT:-9026} \
+	ORCH_TEST_DB_DSN=postgres://orch:orch@127.0.0.1:$${ORCH_TEST_DB_PORT:-9030}/orchestration \
+	ORCH_STORY_URL=http://story:8080/mcp ORCH_ARTIFACT_URL=http://artifact:8080/mcp \
+	ORCH_REPORT_URL=http://report:8080/mcp ORCH_BUCKET=artifacts-local \
+	ORCH_BUSINESS_URL=http://business:8080 ORCH_ENGINEERING_URL=http://engineering:8080 \
+	ORCH_SYNTHESIS_URL=http://synthesis:8080 ORCH_FACILITATOR_URL=http://facilitator:8080 \
+	uv run --no-project --with-requirements requirements.lock \
+		--with-requirements tests/requirements.lock \
+		--with-editable . --with-editable ../shared/review_schemas \
+		python -m pytest tests/integration -q -rs
 
 compose-up: ## Local development stack (Phase 4 `local` profile)
 	[ -f deploy/env/.env ] || cp deploy/env/.env.example deploy/env/.env
