@@ -34,6 +34,21 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from agent_kit.prompts import LoadedPrompt
 from review_schemas import ArtifactReference, FacilitatorTurnOutput, SynthesisReport
 from review_schemas.base import SessionId, Sha256, ShortText, Text
+from review_schemas.facilitator import ResolutionItem
+
+
+class DecisionState(BaseModel):
+    """Authoritative state of all decisions so far (D18), assembled by
+    orchestration from the durable TurnRecords: the latest-wins resolution
+    map (one `ResolutionItem` per issue id) plus the last delegation's open
+    list. Rendered into the turn message so the facilitator reconciles
+    against recorded state instead of reconstructing it from prose; `None`
+    means no prior decisions (opening turn or a pre-D18 caller)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=200)
+    open_issues: list[Text] = Field(default_factory=list, max_length=100)
 
 
 class FacilitatorRequest(BaseModel):
@@ -53,6 +68,7 @@ class FacilitatorRequest(BaseModel):
     synthesis_report: SynthesisReport
     synthesis_reference: ArtifactReference
     evidence_references: list[ArtifactReference] = Field(default_factory=list)
+    decision_state: DecisionState | None = None
 
     @model_validator(mode="after")
     def turn_and_message_agree(self):
@@ -116,6 +132,23 @@ def render_facilitator_message(request: FacilitatorRequest) -> str:
     ]
     if request.po_message is not None:
         sections += ["## PO message", request.po_message]
+    if request.decision_state is not None and (
+        request.decision_state.resolutions or request.decision_state.open_issues
+    ):
+        state = request.decision_state
+        listed = "\n".join(
+            f"- {item.issue}: {item.disposition} (turn {item.turn_number}) — "
+            + item.explanation
+            for item in state.resolutions
+        )
+        open_listed = ", ".join(state.open_issues) if state.open_issues else "none"
+        sections += [
+            "## Current decision state",
+            "Latest recorded disposition per issue (authoritative — reconcile "
+            "against this, not the conversation):\n"
+            + (listed if listed else "- none"),
+            f"Currently open issues: {open_listed}",
+        ]
     sections += [
         "## Latest synthesis report",
         "```json\n" + request.synthesis_report.model_dump_json(indent=2) + "\n```",
@@ -162,4 +195,37 @@ def validate_turn_output(
         if output.resolutions:
             raise FacilitatorTurnInvalid(
                 "the opening turn must not emit resolution updates"
+            )
+    if request.decision_state is not None:
+        reopened = {
+            draft.issue
+            for draft in output.resolutions
+            if draft.disposition == "reopened"
+        }
+        latest = {item.issue: item for item in request.decision_state.resolutions}
+        for issue in output.delegation.open_issues:
+            recorded = latest.get(issue)
+            if (
+                recorded is not None
+                and recorded.disposition in ("resolved", "accepted")
+                and issue not in reopened
+            ):
+                raise FacilitatorTurnInvalid(
+                    f"issue {issue} was {recorded.disposition} at turn "
+                    f"{recorded.turn_number} — re-appearing in open_issues "
+                    "requires a reopened disposition this turn (identifiers "
+                    "are immutable; a new concern gets a fresh id)"
+                )
+        # same-turn self-contradiction: an id resolved or accepted this
+        # turn must not simultaneously be on this turn's open list
+        settled_now = {
+            draft.issue
+            for draft in output.resolutions
+            if draft.disposition in ("resolved", "accepted")
+        }
+        for issue in settled_now.intersection(output.delegation.open_issues):
+            raise FacilitatorTurnInvalid(
+                f"issue {issue} is resolved this turn but still listed in "
+                "open_issues — a turn cannot settle and retain the same "
+                "issue; either drop it from open_issues or re-open it later"
             )

@@ -17,6 +17,7 @@ from review_schemas.facilitator import (
     FinalizedReview,
     ResolutionDraft,
     ResolutionItem,
+    latest_resolutions,
 )
 from review_schemas.judge import JudgeDimensionScore, JudgeIssue, JudgeResult
 from review_schemas.review import (
@@ -395,6 +396,93 @@ class TestFinalizedReview:
     def test_open_issues_require_po_acceptance(self):
         with pytest.raises(ValidationError, match="open issues"):
             self._finalized(po_accepted=False, remaining_open_issues=["one"])
+
+    def test_reopened_disposition_accepted(self):
+        final = self._finalized(
+            resolutions=[
+                {
+                    "issue": "i",
+                    "disposition": "resolved",
+                    "explanation": "e",
+                    "turn_number": 2,
+                },
+                {
+                    "issue": "i",
+                    "disposition": "reopened",
+                    "explanation": "regressed",
+                    "turn_number": 4,
+                },
+            ],
+            remaining_open_issues=["i"],
+        )
+        assert final.resolutions[-1].disposition == "reopened"
+
+    def test_remaining_open_contradicts_resolved_disposition(self):
+        with pytest.raises(ValidationError, match="resolved/accepted"):
+            self._finalized(remaining_open_issues=["i"])
+
+    def test_remaining_open_contradicts_accepted_disposition(self):
+        payload = {
+            "story_id": STORY_ID,
+            "story_run_id": RUN_ID,
+            "synthesis_reference": artifact_reference("synthesis"),
+            "resolutions": [
+                {
+                    "issue": "B-2",
+                    "disposition": "accepted",
+                    "explanation": "e",
+                    "turn_number": 2,
+                }
+            ],
+            "remaining_open_issues": ["B-2"],
+            "po_accepted": True,
+            "final_turn_number": 3,
+            "finalized_at": FIXED_TS,
+        }
+        with pytest.raises(ValidationError, match="B-2"):
+            FinalizedReview.model_validate(payload)
+
+    def test_remaining_open_without_any_resolution_is_valid(self):
+        final = self._finalized(
+            resolutions=[], remaining_open_issues=["never-resolved"]
+        )
+        assert final.remaining_open_issues == ["never-resolved"]
+
+
+class TestLatestResolutions:
+    """The shared latest-wins aggregation behind both the facilitator's
+    decision state and FinalizedReview (D18): one implementation so turn
+    context and the final report provably agree."""
+
+    def _item(self, issue: str, disposition: str, turn: int) -> ResolutionItem:
+        return ResolutionItem.model_validate(
+            {
+                "issue": issue,
+                "disposition": disposition,
+                "explanation": "e",
+                "turn_number": turn,
+            }
+        )
+
+    def test_latest_disposition_wins_in_first_seen_order(self):
+        result = latest_resolutions(
+            [
+                self._item("A-1", "resolved", 2),
+                self._item("B-1", "resolved", 2),
+                self._item("A-1", "reopened", 4),
+            ]
+        )
+        assert [(i.issue, i.disposition) for i in result] == [
+            ("A-1", "reopened"),
+            ("B-1", "resolved"),
+        ]
+
+    def test_empty_input_returns_empty_list(self):
+        assert latest_resolutions([]) == []
+
+    def test_single_occurrence_passes_through(self):
+        items = [self._item("A-1", "unresolved", 3)]
+        assert latest_resolutions(items) == items
 
 
 class TestConversationSummary:

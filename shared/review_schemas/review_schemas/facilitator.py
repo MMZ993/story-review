@@ -33,11 +33,19 @@ class DelegationDecision(StrictModel):
         return self
 
 
+Disposition = Literal["resolved", "accepted", "unresolved", "reopened"]
+
+
 class ResolutionItem(StrictModel):
-    """Stamped resolution: the durable form of a facilitator resolution."""
+    """Stamped resolution: the durable form of a facilitator resolution.
+
+    `reopened` marks a regression: a previously resolved/accepted issue
+    reappearing in `open_issues` (D18) — latest-wins aggregation makes the
+    re-open override the earlier resolution.
+    """
 
     issue: Text
-    disposition: Literal["resolved", "accepted", "unresolved"]
+    disposition: Disposition
     explanation: Text
     turn_number: Annotated[int, Field(ge=1)]
 
@@ -47,8 +55,25 @@ class ResolutionDraft(StrictModel):
     when converting it into a `ResolutionItem`."""
 
     issue: Text
-    disposition: Literal["resolved", "accepted", "unresolved"]
+    disposition: Disposition
     explanation: Text
+
+
+def latest_resolutions(
+    resolutions: list[ResolutionItem],
+) -> list[ResolutionItem]:
+    """Latest-wins aggregation per issue id, in first-seen order (D18).
+
+    One shared implementation behind both the facilitator's per-turn
+    decision state and `FinalizedReview.resolutions`, so the agent's turn
+    context and the final report provably agree. Input order is turn
+    order; the last occurrence of an issue id is its authoritative
+    disposition.
+    """
+    latest: dict[str, ResolutionItem] = {}
+    for item in resolutions:
+        latest[item.issue] = item
+    return list(latest.values())
 
 
 class FacilitatorTurnOutput(StrictModel):
@@ -90,6 +115,19 @@ class FinalizedReview(StrictModel):
             raise ValueError("final review requires this run's synthesis reference")
         if self.remaining_open_issues and not self.po_accepted:
             raise ValueError("normal readiness cannot retain open issues")
+        # D18 backstop: a resolved/accepted issue may only remain open if a
+        # later `reopened` overrode it — otherwise the review is
+        # self-contradictory and must not be finalized
+        latest = {item.issue: item for item in self.resolutions}
+        for issue in self.remaining_open_issues:
+            if latest.get(issue) is not None and latest[issue].disposition in (
+                "resolved",
+                "accepted",
+            ):
+                raise ValueError(
+                    "remaining open issue has a resolved/accepted latest "
+                    f"disposition: {issue}"
+                )
         return self
 
 

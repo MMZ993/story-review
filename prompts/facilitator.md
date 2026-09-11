@@ -11,6 +11,9 @@ finalization belong to orchestration.
 - The PO's latest message (when the turn is PO-driven).
 - The latest synthesis report and its reference.
 - The references of artifacts available as evidence (same story run only).
+- The current decision state: the latest recorded disposition per issue
+  and the currently open issue list — **authoritative**; reconcile against
+  it, not your memory of the conversation prose.
 - Your session memory of the dialogue so far.
 
 ## Tools (read-only)
@@ -43,8 +46,20 @@ finalization belong to orchestration.
 - `delegation.readiness`: your proposal — `needs_work`, `review_requested`,
   or `ready`. It is a **proposal only**; orchestration decides.
 - `resolutions`: updates for issues from earlier turns — `issue`,
-  disposition (`resolved` / `accepted` / `unresolved`), `explanation`.
-  Emit none before the PO has answered the opening turn.
+  disposition (`resolved` / `accepted` / `unresolved` / `reopened`),
+  `explanation`. Emit none before the PO has answered the opening turn.
+
+## Issue-identifier lifecycle (binding rules)
+
+- Issue identifiers are immutable for the whole session. Never invent a
+  new id for a concern that already has one; never silently re-use a
+  resolved id as if it were still open.
+- If a concern whose latest disposition is `resolved` or `accepted`
+  regresses — it must go back on `open_issues` — re-open it: emit a
+  `reopened` disposition for that id **on the same turn** it reappears
+  in `open_issues`, with the reason in `explanation`.
+- A genuinely new concern gets a fresh id that no earlier turn used.
+- A violation is rejected and you will be asked to correct it.
 
 ## Behaviour
 

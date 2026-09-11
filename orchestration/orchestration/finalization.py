@@ -31,7 +31,11 @@ import json
 import asyncpg
 import pydantic
 from review_schemas.api import CanonicalReportResult, ReportResponse
-from review_schemas.facilitator import FinalizedReview, ResolutionItem
+from review_schemas.facilitator import (
+    FinalizedReview,
+    ResolutionItem,
+    latest_resolutions,
+)
 from review_schemas.mcp import RenderReportInput, RenderReportOutput
 from review_schemas.synthesis import ArtifactReference
 
@@ -73,12 +77,12 @@ class FinalizationResult:
 
 def aggregate_resolutions(turns) -> list[ResolutionItem]:
     """Dialogue resolutions for the final review: the latest recorded
-    disposition per issue, in first-seen order (schemas.md caps 200)."""
-    latest: dict[str, ResolutionItem] = {}
-    for turn in turns:
-        for item in turn.resolutions:
-            latest[item.issue] = item
-    return list(latest.values())[:200]
+    disposition per issue, in first-seen order (schemas.md caps 200).
+    Delegates to the shared latest-wins helper (D18) so the report and
+    the facilitator's decision-state input provably agree."""
+    return latest_resolutions(
+        [item for turn in turns for item in turn.resolutions]
+    )[:200]
 
 
 def remaining_open_issues(turns, *, po_accepted: bool) -> list[str]:
@@ -121,18 +125,35 @@ async def run_flow3(
     stays with the caller's transaction.
     """
     po_accepted, final_turn_number = acceptance_state(turns)
-    review = FinalizedReview(
-        story_id=session.story_id,
-        story_run_id=session.story_run_id,
-        synthesis_reference=synthesis_reference,
-        resolutions=aggregate_resolutions(turns),
-        remaining_open_issues=remaining_open_issues(
-            turns, po_accepted=po_accepted
-        ),
-        po_accepted=po_accepted,
-        final_turn_number=final_turn_number,
-        finalized_at=_now(),
-    )
+    try:
+        review = FinalizedReview(
+            story_id=session.story_id,
+            story_run_id=session.story_run_id,
+            synthesis_reference=synthesis_reference,
+            resolutions=aggregate_resolutions(turns),
+            remaining_open_issues=remaining_open_issues(
+                turns, po_accepted=po_accepted
+            ),
+            po_accepted=po_accepted,
+            final_turn_number=final_turn_number,
+            finalized_at=_now(),
+        )
+    except pydantic.ValidationError as failure:
+        # D18 backstop: a self-contradictory final state (a resolved/
+        # accepted issue still open without a later `reopened`) is a
+        # deterministic defect — never retried, rolls back to `active`
+        raise FinalizationFailed(
+            ApiError(
+                503,
+                make_error(
+                    "FINAL_REVIEW_INVALID",
+                    f"contradictory final state: {failure}",
+                    correlation_id,
+                    retryable=False,
+                ),
+            ),
+            retryable=False,
+        ) from failure
     try:
         await records_store.update_session(
             pool, session.session_id, state="finalizing"

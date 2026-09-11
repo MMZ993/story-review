@@ -18,6 +18,7 @@ import pytest
 from pydantic import ValidationError
 
 from agent_kit.facilitator_input import (
+    DecisionState,
     FacilitatorRequest,
     FacilitatorResponse,
     FacilitatorTurnInvalid,
@@ -97,7 +98,9 @@ def synth_report() -> SynthesisReport:
 
 
 def request(
-    turn_number: int = 1, po_message: str | None = None
+    turn_number: int = 1,
+    po_message: str | None = None,
+    decision_state: DecisionState | None = None,
 ) -> FacilitatorRequest:
     return FacilitatorRequest(
         session_id=SESSION,
@@ -107,6 +110,28 @@ def request(
         synthesis_report=synth_report(),
         synthesis_reference=synth_reference(),
         evidence_references=[review_reference("business"), review_reference("engineering")],
+        decision_state=decision_state,
+    )
+
+
+def decision_state() -> DecisionState:
+    """Two resolved issues and one still open (D18 input fixture)."""
+    return DecisionState(
+        resolutions=[
+            {
+                "issue": "B-1",
+                "disposition": "resolved",
+                "explanation": "PO clarified tokens",
+                "turn_number": 2,
+            },
+            {
+                "issue": "B-2",
+                "disposition": "accepted",
+                "explanation": "accepted as is",
+                "turn_number": 2,
+            },
+        ],
+        open_issues=["C-1"],
     )
 
 
@@ -163,6 +188,20 @@ class TestRequestModel:
         with pytest.raises(ValidationError):
             FacilitatorRequest.model_validate(payload)
 
+    def test_decision_state_optional_and_accepted(self) -> None:
+        assert request().decision_state is None
+        req = request(turn_number=3, po_message="msg", decision_state=decision_state())
+        assert req.decision_state is not None
+        assert req.decision_state.resolutions[0].issue == "B-1"
+
+    def test_decision_state_reopened_disposition_accepted(self) -> None:
+        state = decision_state()
+        state = state.model_copy(deep=True)
+        state.resolutions[0] = state.resolutions[0].model_copy(
+            update={"disposition": "reopened"}
+        )
+        assert state.resolutions[0].disposition == "reopened"
+
 
 class TestRenderer:
     def test_message_names_story_turn_and_embeds_synthesis(self) -> None:
@@ -186,6 +225,22 @@ class TestRenderer:
         message = render_facilitator_message(request())
         assert "art-00000000-0000-0000-0000-000000000001" in message
         assert "art-00000000-0000-0000-0000-000000000002" in message
+
+    def test_decision_state_rendered_when_present(self) -> None:
+        message = render_facilitator_message(
+            request(
+                turn_number=3,
+                po_message="Actually the metric is still missing.",
+                decision_state=decision_state(),
+            )
+        )
+        assert "Current decision state" in message
+        assert "B-1" in message and "resolved" in message
+        assert "B-2" in message and "accepted" in message
+        assert "C-1" in message
+
+    def test_no_decision_state_section_when_absent(self) -> None:
+        assert "decision state" not in render_facilitator_message(request()).lower()
 
 
 def turn_output(**delegation) -> FacilitatorTurnOutput:
@@ -231,6 +286,85 @@ class TestValidateTurnOutput:
         validate_turn_output(
             output, request(turn_number=2, po_message="Re-run synthesis please.")
         )
+
+
+class TestIdentifierLifecycleRule:
+    """D18 turn-context rule: a resolved/accepted id reappearing in
+    open_issues must be re-opened with `reopened` on the same turn."""
+
+    def _request(self, state: DecisionState | None):
+        return request(
+            turn_number=3, po_message="New concern came up.", decision_state=state
+        )
+
+    def test_reused_resolved_id_requires_reopened(self) -> None:
+        output = turn_output(open_issues=["B-1", "C-1"])
+        with pytest.raises(FacilitatorTurnInvalid, match="B-1.*reopened"):
+            validate_turn_output(output, self._request(decision_state()))
+
+    def test_reused_accepted_id_requires_reopened(self) -> None:
+        output = turn_output(open_issues=["B-2"])
+        with pytest.raises(FacilitatorTurnInvalid, match="B-2.*reopened"):
+            validate_turn_output(output, self._request(decision_state()))
+
+    def test_reopened_draft_on_same_turn_passes(self) -> None:
+        from review_schemas import ResolutionDraft
+
+        output = FacilitatorTurnOutput(
+            reply="r",
+            delegation={"invoke": "none", "open_issues": ["B-1", "C-1"]},  # type: ignore[arg-type]
+            resolutions=[
+                ResolutionDraft(
+                    issue="B-1", disposition="reopened", explanation="regressed"
+                )
+            ],
+        )
+        validate_turn_output(output, self._request(decision_state()))
+
+    def test_already_reopened_id_staying_open_passes_without_new_draft(self) -> None:
+        state = decision_state().model_copy(deep=True)
+        state.resolutions[0] = state.resolutions[0].model_copy(
+            update={"disposition": "reopened", "explanation": "regressed at turn 2"}
+        )
+        output = turn_output(open_issues=["B-1", "C-1"])
+        validate_turn_output(output, self._request(state))
+
+    def test_unresolved_ids_in_open_list_pass(self) -> None:
+        output = turn_output(open_issues=["C-1"])
+        validate_turn_output(output, self._request(decision_state()))
+
+    def test_no_decision_state_skips_rule(self) -> None:
+        output = turn_output(open_issues=["B-1"])
+        validate_turn_output(output, self._request(None))
+
+    def test_same_turn_resolved_id_still_open_is_rejected(self) -> None:
+        from review_schemas import ResolutionDraft
+
+        output = FacilitatorTurnOutput(
+            reply="r",
+            delegation={"invoke": "none", "open_issues": ["X"]},  # type: ignore[arg-type]
+            resolutions=[
+                ResolutionDraft(
+                    issue="X", disposition="resolved", explanation="done"
+                )
+            ],
+        )
+        with pytest.raises(FacilitatorTurnInvalid, match="X.*open_issues"):
+            validate_turn_output(output, self._request(decision_state()))
+
+    def test_same_turn_resolved_id_not_open_passes(self) -> None:
+        from review_schemas import ResolutionDraft
+
+        output = FacilitatorTurnOutput(
+            reply="r",
+            delegation={"invoke": "none", "open_issues": ["C-1"]},  # type: ignore[arg-type]
+            resolutions=[
+                ResolutionDraft(
+                    issue="X", disposition="resolved", explanation="done"
+                )
+            ],
+        )
+        validate_turn_output(output, self._request(decision_state()))
 
 
 class TestResponse:

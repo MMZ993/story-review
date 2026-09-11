@@ -270,6 +270,52 @@ async def test_non_retryable_render_failure_rolls_back_to_active(
     assert retry.json()["outcome"] == "finalize"
 
 
+async def test_contradictory_final_state_rolls_back_to_active(
+    pool, settings, artifact
+):
+    """D18 backstop: a resolved issue still on the open list at acceptance
+    fails FinalizedReview validation — non-retryable, session back to
+    active, PO can re-engage."""
+    from review_schemas.facilitator import ResolutionDraft
+
+    client, _ = finalize_client(pool, settings, artifact)
+    facilitator = ScriptedFacilitator(
+        [
+            dialogue_output(
+                "none",
+                open_issues=["X"],
+                resolutions=[
+                    ResolutionDraft(
+                        issue="X",
+                        disposition="resolved",
+                        explanation="Confirmed.",
+                    )
+                ],
+            )
+        ]
+    )
+    session = await create_session_with(client, facilitator)
+
+    dialogue = await post_turn(client, session["session_id"], key=KEY_TURN)
+    assert dialogue.status_code == 200, dialogue.text
+
+    failed = await post_turn(
+        client,
+        session["session_id"],
+        key=KEY_OTHER,
+        payload={"message": None, "po_accepted": True},
+    )
+    assert failed.status_code == 503, failed.text
+    assert failed.json()["error"]["retryable"] is False
+    assert "X" in failed.json()["error"]["message"]
+    async with pool.acquire() as conn:
+        state = await conn.fetchval(
+            "select state from sessions where session_id = $1",
+            session["session_id"],
+        )
+    assert state == "active"
+
+
 async def test_non_retryable_artifact_save_failure_rolls_back_to_active(
     pool, settings, artifact
 ):
