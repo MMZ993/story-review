@@ -16,7 +16,7 @@ from orchestration code.
 
 ```mermaid
 sequenceDiagram
-    participant PO as PO (TUI/Web)
+    participant PO as PO (Web UI)
     participant F as FastAPI orchestration
     participant S as Story MCP
     participant B as Business Reviewer
@@ -202,7 +202,7 @@ reference with a newly generated signed URL; it performs no writes or rendering.
 
 ```mermaid
 sequenceDiagram
-    participant PO as PO (TUI/Web)
+    participant PO as PO (Web UI)
     participant F as FastAPI orchestration
     participant C as Cloud SQL
     participant A as Artifact MCP
@@ -543,7 +543,7 @@ as session state because it expires and can be regenerated.
 
 ```mermaid
 sequenceDiagram
-    participant PO as PO (TUI/Web)
+    participant PO as PO (Web UI)
     participant F as FastAPI orchestration
     participant C as Cloud SQL
     participant A as Artifact MCP
@@ -731,7 +731,7 @@ artifact payloads.
 
 ```mermaid
 sequenceDiagram
-    participant PO as PO (TUI/Web)
+    participant PO as PO (Web UI)
     participant F as FastAPI orchestration
     participant C as Cloud SQL
     participant A as Artifact MCP
