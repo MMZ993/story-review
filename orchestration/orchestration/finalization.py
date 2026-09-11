@@ -76,28 +76,33 @@ class FinalizationResult:
     report_references: list[ArtifactReference]
 
 
-def issue_catalog(synthesis_report: SynthesisReport, turns) -> list[IssueEntry]:
-    """D19: the finalized review's issue catalog — synthesis findings +
-    conflicts (title/description/severity from the latest synthesis) plus
-    the facilitator-minted drafts accumulated in the turn records
-    (synthesis wins on collision: minted ids re-describing a synthesis id
-    are ignored, per the no-re-description rule). First-seen order."""
+def issue_catalog(synthesis_reports: list[SynthesisReport], turns) -> list[IssueEntry]:
+    """D19 + amendment: the finalized review's issue catalog — synthesis
+    findings + conflicts unioned across **every synthesis version the
+    session produced** (chronological order, latest version winning on
+    collision: a later synthesis may drop findings the reviewers stopped
+    reporting, but an id the report still references must keep its
+    descriptor) plus the facilitator-minted drafts accumulated in the
+    turn records (synthesis wins on collision: minted ids re-describing
+    a synthesis id are ignored, per the no-re-description rule).
+    First-seen order."""
     entries: dict[str, IssueEntry] = {}
-    for finding in synthesis_report.merged_findings:
-        entries[finding.id] = IssueEntry(
-            issue=finding.id,
-            title=finding.title,
-            description=finding.description,
-            severity=finding.severity,
-            source="synthesis",
-        )
-    for conflict in synthesis_report.conflicts:
-        entries[conflict.id] = IssueEntry(
-            issue=conflict.id,
-            title=f"Conflict {conflict.id}",
-            description=conflict.description,
-            source="synthesis",
-        )
+    for synthesis_report in synthesis_reports:
+        for finding in synthesis_report.merged_findings:
+            entries[finding.id] = IssueEntry(
+                issue=finding.id,
+                title=finding.title,
+                description=finding.description,
+                severity=finding.severity,
+                source="synthesis",
+            )
+        for conflict in synthesis_report.conflicts:
+            entries[conflict.id] = IssueEntry(
+                issue=conflict.id,
+                title=f"Conflict {conflict.id}",
+                description=conflict.description,
+                source="synthesis",
+            )
     for turn in turns:
         for draft in turn.new_issues:
             entries.setdefault(
@@ -123,7 +128,7 @@ def _build_final_review(
     session,
     *,
     synthesis_reference: ArtifactReference,
-    synthesis_report: SynthesisReport,
+    synthesis_reports: list[SynthesisReport],
     turns,
     deadline: float,
     correlation_id: str,
@@ -133,7 +138,7 @@ def _build_final_review(
     to a non-retryable `FINAL_REVIEW_INVALID` (rolls back to `active`)."""
     po_accepted, final_turn_number = acceptance_state(turns)
     try:
-        catalog = issue_catalog(synthesis_report, turns)
+        catalog = issue_catalog(synthesis_reports, turns)
     except ValueError as failure:
         raise FinalizationFailed(
             ApiError(
@@ -280,16 +285,31 @@ async def run_flow3(
     # session the finalize endpoint would reject
     await records_store.update_session(pool, session.session_id, state="finalizing")
     try:
-        synthesis_report = await _synthesis_report(
-            artifact_client,
-            synthesis_reference,
-            deadline=deadline,
-            correlation_id=correlation_id,
-        )
+        # D19 amendment: fetch every synthesis version the session produced
+        # (turn-ordered, deduped) — the catalog unions them, latest winning;
+        # the newest reference doubles as the review's synthesis_reference.
+        version_refs: list[ArtifactReference] = []
+        seen: set[str] = set()
+        for turn in turns:
+            for reference in turn.produced_artifacts:
+                if reference.artifact_id not in seen:
+                    seen.add(reference.artifact_id)
+                    version_refs.append(reference)
+        if not version_refs:
+            version_refs = [synthesis_reference]
+        synthesis_reports = [
+            await _synthesis_report(
+                artifact_client,
+                reference,
+                deadline=deadline,
+                correlation_id=correlation_id,
+            )
+            for reference in version_refs
+        ]
         review = _build_final_review(
             session,
             synthesis_reference=synthesis_reference,
-            synthesis_report=synthesis_report,
+            synthesis_reports=synthesis_reports,
             turns=turns,
             deadline=deadline,
             correlation_id=correlation_id,

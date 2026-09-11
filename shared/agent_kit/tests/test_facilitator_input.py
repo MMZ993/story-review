@@ -380,7 +380,14 @@ class TestIssueDescriptorRule:
 
     def test_minted_id_without_descriptor_rejected(self) -> None:
         output = turn_output(open_issues=["C-1", "F-1"])
-        with pytest.raises(FacilitatorTurnInvalid, match="F-1.*IssueDraft"):
+        # D19 amendment: the rejection must carry the inline JSON shape so
+        # the corrective re-prompt shows the model exactly what to emit.
+        with pytest.raises(
+            FacilitatorTurnInvalid,
+            match=r'issue F-1 is newly minted.*"new_issues": '
+            r'\[\{"issue": "F-1", "title": "\.\.\.", '
+            r'"description": "\.\.\."\}\]',
+        ):
             validate_turn_output(output, self._request(decision_state()))
 
     def test_minted_id_with_descriptor_passes(self) -> None:
