@@ -119,8 +119,12 @@ def flow_client(
     artifact: FakeArtifactMcp,
     agents,
     detail=None,
+    report=None,
 ) -> httpx.AsyncClient:
     detail = detail or story_detail()
+    from .fakes import FakeReportMcp
+
+    report = report if report is not None else FakeReportMcp(artifact)
 
     def client(url, transport):
         return McpClient(
@@ -132,6 +136,7 @@ def flow_client(
         pool=pool,
         story_client=client(settings.story_url, story_transport(detail)),
         artifact_client=client(settings.artifact_url, artifact),
+        report_client=client(settings.report_url, report),
         agents=agents,
     )
     return httpx.AsyncClient(

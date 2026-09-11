@@ -13,6 +13,7 @@ from review_schemas.api import TurnRequest, TurnResponse
 from . import flows, turns_flow
 from .api_errors import ApiError, make_error
 from .errors import IdempotencyKeyReused, SessionLocked
+from .finalization import FinalizationFailed
 
 router = APIRouter(prefix="/api/v1/sessions/{session_id}", tags=["turns"])
 
@@ -46,12 +47,16 @@ async def post_turn(
             request.app.state.settings,
             story_client=request.app.state.story_client,
             artifact_client=request.app.state.artifact_client,
+            report_client=request.app.state.report_client,
             agents=request.app.state.agents,
+            signer=request.app.state.signer,
             session_id=session_id,
             payload=payload.model_dump(mode="json"),
             key=idempotency_key,
             correlation_id=correlation_id,
         )
+    except FinalizationFailed as exc:
+        raise exc.api_error from exc
     except SessionLocked as exc:
         raise turns_flow.map_session_locked(exc, correlation_id) from exc
     except IdempotencyKeyReused as exc:

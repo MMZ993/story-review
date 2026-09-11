@@ -100,11 +100,79 @@ def story_transport(detail: StoryDetail):
     return transport
 
 
+class FakeReportMcp:
+    """McpClient session_call seam with report-server semantics:
+    deterministic rendering from the persisted finalized-review artifact,
+    idempotent per (run, format), IDEMPOTENCY_KEY_REUSED on a different
+    final review for the same identity (LLM-free server — nothing is
+    scripted beyond typed outputs and injected failures)."""
+
+    def __init__(self, artifact: FakeArtifactMcp):
+        self.artifact = artifact
+        self.render_calls: list[dict] = []
+        self.failures: list[ErrorBody] = []  # scripted, popped per call
+        self._by_identity: dict[tuple[str, str], dict] = {}
+
+    async def __call__(self, url, tool, arguments, timeout_s):
+        assert tool == "render_report", f"unexpected report tool {tool!r}"
+        self.render_calls.append(arguments)
+        if self.failures:
+            raise McpCallFailure(self.failures.pop(0))
+        run = arguments["story_run_id"]
+        final = arguments["final_review_reference"]
+        format_name = arguments["format"]
+        stored = self.artifact._artifacts.get(final["artifact_id"])
+        if stored is None or stored["reference"]["type"] != "finalized-review":
+            raise McpCallFailure(
+                ErrorBody(
+                    code="RENDER_FAILED",
+                    message="finalized-review artifact not found",
+                    correlation_id=uuid.uuid4(),
+                    retryable=False,
+                )
+            )
+        identity = (run, format_name)
+        existing = self._by_identity.get(identity)
+        if existing is not None:
+            if existing["final_id"] != final["artifact_id"]:
+                raise McpCallFailure(
+                    ErrorBody(
+                        code="IDEMPOTENCY_KEY_REUSED",
+                        message="report identity reused with a different final review",
+                        correlation_id=uuid.uuid4(),
+                        retryable=False,
+                    )
+                )
+            return {
+                "reference": dict(existing["reference"]),
+                "format": format_name,
+                "created": False,
+            }
+        artifact_id = "art-" + str(uuid.uuid5(uuid.NAMESPACE_URL, f"{run}|{format_name}"))
+        rendered = f"# final report {run} {format_name}".encode()
+        reference = {
+            "artifact_id": artifact_id,
+            "story_run_id": run,
+            "type": f"report-{format_name}",
+            "perspective": None,
+            "version": 1,
+            "created_at": datetime.now(UTC).isoformat(),
+            "content_type": CONTENT_TYPES[f"report-{format_name}"],
+            "checksum_sha256": hashlib.sha256(rendered).hexdigest(),
+        }
+        self._by_identity[identity] = {
+            "reference": dict(reference),
+            "final_id": final["artifact_id"],
+        }
+        return {"reference": dict(reference), "format": format_name, "created": True}
+
+
 class FakeArtifactMcp:
     """McpClient session_call seam with artifact-service semantics."""
 
     def __init__(self) -> None:
         self.save_calls: list[dict] = []
+        self.save_failures: list[ErrorBody] = []  # scripted, popped per save
         self._by_slot: dict[tuple[str, str, str], dict] = {}
         self._artifacts: dict[str, dict] = {}
 
@@ -118,6 +186,8 @@ class FakeArtifactMcp:
         raise AssertionError(f"unexpected artifact tool {tool!r}")
 
     def _save(self, arguments: dict) -> dict:
+        if self.save_failures:
+            raise McpCallFailure(self.save_failures.pop(0))
         self.save_calls.append(arguments)
         slot = (
             arguments["story_run_id"],

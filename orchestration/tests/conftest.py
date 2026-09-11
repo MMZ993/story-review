@@ -30,6 +30,7 @@ def make_settings(**overrides) -> Settings:
         engineering_url="http://engineering:8080",
         synthesis_url="http://synthesis:8080",
         facilitator_url="http://facilitator:8080",
+        gcs_public_url="https://127.0.0.1:9026",
     )
     values.update(overrides)
     return Settings(**values)

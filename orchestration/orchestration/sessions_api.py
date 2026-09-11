@@ -25,7 +25,7 @@ from review_schemas.api import (
 from review_schemas.mcp import ListArtifactsInput, ListArtifactsOutput
 from review_schemas.synthesis import ArtifactReference
 
-from . import flows, records_store
+from . import finalization, flows, records_store
 from .api_errors import ApiError, make_error
 from .errors import ConstraintViolation, IdempotencyKeyReused
 from .mcp_client import (
@@ -175,6 +175,13 @@ async def get_session(session_id: str, *, request: Request):
         raise _not_found(correlation_id)
     turns = await records_store.list_turns(request.app.state.pool, session_id)
     references = await _run_artifacts(request, record.story_run_id)
+    reports = (
+        finalization.report_response(
+            record.session_id, record.report_references, request.app.state.signer
+        ).report
+        if record.state == "completed"
+        else []
+    )
     return SessionDetail(
         session_id=record.session_id,
         story_run_id=record.story_run_id,
@@ -198,7 +205,7 @@ async def get_session(session_id: str, *, request: Request):
             for turn in turns
         ],
         artifact_references=references,
-        reports=[],
+        reports=reports,
     )
 
 

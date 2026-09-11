@@ -385,3 +385,108 @@ Increment 3 verdict: **green** — deterministic tier 77+7s; live gate
 PASS. Next: increment 4 (flows 3+4 — finalization, reports, PO
 acceptance), which also removes the two documented increment-3 finalize
 gaps.
+
+## Increment 4 — flows 3+4: finalization, reports, PO acceptance (session 37)
+
+Scope per plan + D15 amendment 2 (signed-URL settlement, below):
+
+- **Flow 3 core** (`finalization.py`): session → `finalizing` (idempotent
+  retry marker) → deterministic `finalized-review` artifact (latest
+  synthesis + dialogue resolutions aggregated latest-per-issue + PO
+  acceptance state; `remaining_open_issues` retained only on explicit
+  acceptance) → `render_report` per requested format (idempotent per
+  (run, format)) → one transaction: report references + `completed` +
+  canonical response (schemas.md completed invariants). Retryable
+  failures keep `finalizing` and release the lock; non-retryable
+  failures (deterministic `RENDER_FAILED`, validation, malformed render
+  output) roll back to `active` — no session stuck in `finalizing`.
+- **Flow 2 wiring**: the two increment-3 503 gaps removed. Gate-finalize
+  continues synchronously into flow 3 under the same lease;
+  `po_accepted` turns bypass facilitator/delegation, take the next
+  chronological turn number, never increment
+  `facilitator_turn_count`, and finalize in the same TurnResponse.
+  Facilitator count is durable from the finalize turn record onward
+  (crash-window safety).
+- **Endpoints** (`finalize_api.py`): `POST /sessions/{id}/finalize`
+  four-state table (finalizing → lease + resume flow 3 + atomic
+  completion; completed → read-only fresh URLs, no writes; active → 409
+  `NOT_FINALIZING`; parked → 409 `SESSION_READ_ONLY`); session re-read
+  under the lease closes the finalize-vs-completed race.
+  `GET /sessions/{id}/report`: completed only, fresh signed URLs, 409
+  `REPORT_NOT_READY` otherwise. Completed `SessionDetail` now exposes
+  `reports` (fresh URLs).
+- **Same-key retry semantics**: a retry of a turn whose flow 3 failed
+  retryably resumes flow 3 directly (no facilitator, no duplicate turn
+  record) via the in-progress claim; a rejected new key's claim row is
+  released (`idempotency.release`) so it can never masquerade as a
+  legitimate takeover; parked/completed/finalizing sessions reject new
+  turn keys with 409.
+- **Signed URLs** (`signed_urls.py`): V4-signed HTTPS download URLs via
+  google-cloud-storage from the report server's deterministic object
+  layout (`runs/<run>/reports/<id>.<ext>`); URLs never stored (regenerated
+  on every read/replay). See D15 amendment 2.
+
+Commands (deterministic tier + regression):
+
+```
+make orchestration-test        # 90 passed / 8 skipped (baseline 77+7s; +1 live skip)
+make review-schemas-test       # 154 (unchanged)
+make agent-kit-test            # 86 (unchanged)
+make facilitator-adapter-test  # 3+1s (unchanged)
+make agents-test               # 4x4 (unchanged)
+make compose-contract-test     # 20 (unchanged; fake-gcs dual-scheme wiring)
+docker build -f orchestration/Dockerfile .   # image ok (key file rides in the package dir)
+```
+
+Evidence: deterministic tier green; review findings (4 Important + 6
+minors from the independent read-only review) fixed in-session and
+re-verified by a focused re-review (**Ready to proceed**); throwaway
+postgres startup race observed once (6 total; fix stays due before
+Phase 8).
+
+D15-5 empirical verification (standalone throwaway fake-gcs container,
+then the recomposed stack): `-scheme both -backend memory
+-public-host 127.0.0.1:<https-port>` serves the shared memory backend on
+HTTPS (container 4443 → host `${FAKE_GCS_HTTPS_PORT:-9026}`) and HTTP
+(container 8000 → host `${FAKE_GCS_PORT:-9025}`); the
+`/bucket/object?X-Goog-Signature=…` path serves bytes over HTTPS with no
+signature validation. Compose wiring updated: artifact/report servers and
+gcs-init use `http://fake-gcs:8000`; contract tests keep
+`http://127.0.0.1:9025`.
+
+Live gate (owner approved in chat; `make orchestration-finalize-live-test`):
+**PASS** — 1 passed in 63 s. Real session creation (story-07, md+pdf)
+over compose HTTP incl. real Vertex, then an explicit `po_accepted`
+turn finalizing synchronously in the same 200 TurnResponse (report
+entries for both formats, facilitator_turn_count still 1), durable
+completed session row with both report references, GET /report fresh
+URLs, and real report-byte downloads from fake-gcs over the signed
+HTTPS URLs (TLS verification relaxed locally). ≈4 model calls.
+
+Live-only gotchas fixed in-session:
+
+- The compose stack had gone down between verification and the gate
+  (all services exited); `agents-compose-up` brought it back.
+- `test_flow1_live._live_env()` filters the environment to
+  `REQUIRED_ENV`, silently dropping `ORCH_LIVE_GCS_PUBLIC_URL` — the
+  live fixture read it from `os.environ` directly; without it the
+  signer fell back to ambient-ADC mode and failed (user tokens cannot
+  sign V4 URLs).
+- asyncpg returns jsonb columns as strings — `len(row)` on a jsonb
+  string is its character length, not its element count.
+- Throwaway-postgres startup race observed twice more during the gate
+  runs (8 observations total; the small-retry fix in run-migrations.sh
+  stays due before Phase 8).
+
+Gotchas learned:
+
+- `ReportDownload.signed_url` is `HttpsUrl` (strict `^https://`), so the
+  planned "unsigned HTTP fake-gcs URL" fallback was impossible;
+  fake-gcs's dual-scheme mode (HTTPS on `-port`, HTTP on `-port-http`)
+  satisfies the schema and keeps the internal HTTP paths untouched.
+- Same strict-JSON datetime gotcha family as increments 2/3:
+  `RenderReportOutput` must round-trip through
+  `model_validate_json(json.dumps(raw))`.
+- A single scripted retryable `render_report` failure is swallowed by
+  the client's 3-attempt retry policy — failure scripting must exhaust
+  the policy (3 entries) to reach the 503 path.

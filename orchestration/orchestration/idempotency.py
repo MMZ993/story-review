@@ -90,6 +90,26 @@ async def claim(
     return ClaimResult(ClaimOutcome.IN_PROGRESS)
 
 
+async def release(
+    pool: asyncpg.Pool,
+    route: str,
+    session_id: str,
+    key: Any,
+) -> None:
+    """Drop a claim row we inserted but then rejected before any side
+    effect (e.g. a new key on a read-only session), so a later retry of
+    that key starts clean instead of arriving as IN_PROGRESS."""
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "delete from idempotency_claims "
+            "where route = $1 and session_id = $2 and idempotency_key = $3 "
+            "and state = 'in_progress'",
+            route,
+            session_id,
+            key,
+        )
+
+
 async def complete(
     pool: asyncpg.Pool,
     route: str,

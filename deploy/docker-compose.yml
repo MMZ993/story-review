@@ -22,21 +22,21 @@ name: story-review
 services:
   fake-gcs:
     image: fsouza/fake-gcs-server:latest
-    command: -scheme http -backend memory
-    # Host-side access only (contract tests, debugging): bind loopback.
-    # Container-to-container traffic uses the compose service DNS
-    # (http://fake-gcs:4443) and never traverses this mapping; the
-    # Runbook-10 0.0.0.0 gotcha applies to *separate* docker-run
-    # containers reaching a host-published port, not to one compose
-    # network.
+    # Dual scheme (increment 4 / D15-5): HTTP for the internal artifact
+    # and report servers (http://fake-gcs:8000) and host-side contract
+    # tests (127.0.0.1:9025); HTTPS for orchestration's signed report
+    # download URLs (self-signed — the ReportDownload HttpsUrl shape
+    # requires https; downloaders relax verification locally).
+    command: -scheme both -backend memory -public-host 127.0.0.1:${FAKE_GCS_HTTPS_PORT:-9026}
     ports:
-      - "127.0.0.1:${FAKE_GCS_PORT:-9025}:4443"
+      - "127.0.0.1:${FAKE_GCS_PORT:-9025}:8000"
+      - "127.0.0.1:${FAKE_GCS_HTTPS_PORT:-9026}:4443"
     profiles: ["local"]
 
   gcs-init:
     # Creates the shared artifact bucket before the servers start; the
-    # servers then connect to http://fake-gcs:4443 inside the compose
-    # network (never through the host port).
+    # servers then connect to http://fake-gcs:8000 inside the compose
+    # network (never through the host ports).
     image: python:3.13-slim
     depends_on:
       - fake-gcs
@@ -48,7 +48,7 @@ services:
       - |
         import os, time, urllib.request, urllib.error
         bucket = os.environ["ARTIFACT_BUCKET"]
-        url = f"http://fake-gcs:4443/storage/v1/b?project=local"
+        url = f"http://fake-gcs:8000/storage/v1/b?project=local"
         body = f'{{"name": "{bucket}"}}'.encode()
         for _ in range(60):
             try:
@@ -94,7 +94,7 @@ services:
         condition: service_completed_successfully
     environment:
       ARTIFACT_BUCKET: ${ARTIFACT_BUCKET:-artifacts-local}
-      ARTIFACT_GCS_ENDPOINT: http://fake-gcs:4443
+      ARTIFACT_GCS_ENDPOINT: http://fake-gcs:8000
       ARTIFACT_AUTH_DISABLED: "1"
     ports:
       - "127.0.0.1:${ARTIFACT_PORT:-8102}:8080"
@@ -109,7 +109,7 @@ services:
         condition: service_completed_successfully
     environment:
       REPORT_BUCKET: ${ARTIFACT_BUCKET:-artifacts-local}
-      REPORT_GCS_ENDPOINT: http://fake-gcs:4443
+      REPORT_GCS_ENDPOINT: http://fake-gcs:8000
       REPORT_AUTH_DISABLED: "1"
     ports:
       - "127.0.0.1:${REPORT_PORT:-8103}:8080"

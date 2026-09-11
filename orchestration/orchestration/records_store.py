@@ -239,11 +239,14 @@ async def update_session(
     *,
     state: str | None = None,
     facilitator_turn_count: int | None = None,
+    final_review_reference=None,
+    report_references: list | None = None,
     conn: asyncpg.Connection | None = None,
 ) -> None:
-    """Apply a turn's session-state transition (park/complete later) and
-    the facilitator-turn count; bumps updated_at. `conn` joins an outer
-    transaction (atomic park + idempotency completion)."""
+    """Apply a session-state transition (park / finalizing / completed
+    with its persisted references) and the facilitator-turn count; bumps
+    updated_at. `conn` joins an outer transaction (atomic transitions +
+    idempotency completion)."""
     assignments = ["updated_at = now()"]
     args: list = [session_id]
     if state is not None:
@@ -252,6 +255,12 @@ async def update_session(
     if facilitator_turn_count is not None:
         args.append(facilitator_turn_count)
         assignments.append(f"facilitator_turn_count = ${len(args)}")
+    if final_review_reference is not None:
+        args.append(_dumps(final_review_reference))
+        assignments.append(f"final_review_reference = ${len(args)}")
+    if report_references is not None:
+        args.append(_dumps(report_references))
+        assignments.append(f"report_references = ${len(args)}")
     executor = conn
     if executor is None:
         async with pool.acquire() as borrowed:

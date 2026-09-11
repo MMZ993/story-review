@@ -56,6 +56,13 @@ class Settings:
     #: /health probe budget per downstream (observability.md specifies no
     #: value; 5 s keeps /health fast under full load).
     health_probe_timeout_seconds: int = 5
+    #: Signed report download lifetime (observability.md prescribes no
+    #: value; 15 min comfortably covers a review session handoff).
+    signed_url_ttl_seconds: int = 900
+    #: Local fake-gcs substitution endpoint (D15-5): when set, signed URLs
+    #: are rewritten to this HTTPS URL and signed with the throwaway local
+    #: key (signed_urls.py). None = real GCS / Phase 8.
+    gcs_public_url: str | None = None
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "Settings":
@@ -79,4 +86,8 @@ class Settings:
             engineering_url=values["ORCH_ENGINEERING_URL"],
             synthesis_url=values["ORCH_SYNTHESIS_URL"],
             facilitator_url=values["ORCH_FACILITATOR_URL"],
+            gcs_public_url=source.get("ORCH_GCS_PUBLIC_URL", "").strip() or None,
+            signed_url_ttl_seconds=int(
+                source.get("ORCH_SIGNED_URL_TTL_SECONDS", "900")
+            ),
         )
