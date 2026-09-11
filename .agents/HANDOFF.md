@@ -319,12 +319,12 @@ after changes):
 
 1. Owner push `main` + `docs/initial-frozen` (5 commits on main
    pending, incl. session 38 work).
-2. **Phase 7 (Web UI)** in progress: plan drafted
-   (`docs-local/plans/phase-7-webui.md`, increments 0–4, pattern of the
-   Phase 6 plan); **D17 candidate decisions (packaging, vitest, reuse
-   mechanics, localStorage persistence, owner-driven gates) pending owner
-   approval** before Runbook 13 opens and increment 0 starts. Scope per
-   D16; starting point per D16-3.
+2. **Phase 7 (Web UI)** in progress: plan committed
+   (`docs-local/plans/phase-7-webui.md`, increments 0–4); **D17 settled**
+   (uv package static-only; vitest+jsdom; reuse from real source files only
+   — never generated bundles; localStorage persistence; owner-driven manual
+   browser gates). Next: open Runbook 13, start increment 0 (skeleton).
+   Scope per D16; starting point per D16-3.
 
 ## Important Notes
 
