@@ -26,3 +26,6 @@ __pycache__/
 
 # local cloud-run deploy overrides
 deploy/cloud-run/*/.env
+
+# node (webui frontend dev tooling)
+node_modules/

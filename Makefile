@@ -16,13 +16,14 @@ BUSINESS_PORT      ?= 8111
 ENGINEERING_PORT   ?= 8112
 SYNTHESIS_PORT     ?= 8113
 FACILITATOR_PORT   ?= 8114
+WEBUI_PORT         ?= 8120
 
 .PHONY: help smoke-vertex spike-connectivity-test review-schemas-test ado-wire-test dataset-test mcp-ingress-test mcp-story-test mcp-artifact-test mcp-report-test dataset-push agent-kit-test agents-test \
 	business-reviewer-adapter-test business-reviewer-live-test \
 	engineering-reviewer-adapter-test engineering-reviewer-live-test \
 	synthesis-adapter-test synthesis-live-test facilitator-adapter-test \
 	facilitator-live-test agents-compose-up agents-compose-down \
-	compose-up compose-down compose-contract-test orchestration-test orchestration-flow1-live-test orchestration-turns-live-test orchestration-finalize-live-test orchestration-integration-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
+	compose-up compose-down compose-contract-test orchestration-test orchestration-flow1-live-test orchestration-turns-live-test orchestration-finalize-live-test orchestration-integration-test webui-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -347,6 +348,12 @@ orchestration-integration-test: ## Phase 6 increment 5 exit gate: live integrati
 		--with-requirements tests/requirements.lock \
 		--with-editable . --with-editable ../shared/review_schemas \
 		python -m pytest tests/integration -q -rs
+
+webui-test: ## Phase 7: webui deterministic tests (uv package + vitest frontend)
+	cd webui && \
+	uv run --no-project --with-requirements tests/requirements.lock \
+		--with-editable . python -m pytest tests -q && \
+	npm ci --silent && npm test
 
 compose-up: ## Local development stack (Phase 4 `local` profile)
 	[ -f deploy/env/.env ] || cp deploy/env/.env.example deploy/env/.env

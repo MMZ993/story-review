@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>story-review</title>
+    <link rel="stylesheet" href="/app.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "dompurify": "/vendor/dompurify.esm.js",
+          "marked": "/vendor/marked.esm.js",
+          "remend": "/vendor/remend.esm.js"
+        }
+      }
+    </script>
+    <script type="module" src="/app.js" defer></script>
+  </head>
+  <body>
+    <main class="page">
+      <header class="site-header">
+        <h1>story-review</h1>
+        <p id="orchestration-status" role="status">checking orchestration…</p>
+      </header>
+
+      <!-- Story picker (increment 1) -->
+      <section id="picker-view" class="view" aria-label="Story picker">
+        <p>Story picker arrives in increment 1.</p>
+      </section>
+
+      <!-- Session chat view (increment 2) -->
+      <section id="session-view" class="view" aria-label="Session" hidden>
+        <ol id="messages" class="messages"></ol>
+        <div id="status" role="status"></div>
+      </section>
+    </main>
+  </body>
+</html>
