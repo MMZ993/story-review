@@ -626,3 +626,30 @@ participant labels, index.md) per the docs-first rule.
    calls must be re-pointed to the orchestration endpoints with
    idempotency-key handling, and the story picker with hover preview
    is added. No server-side changes.
+
+## D17 — Phase 7 Web UI increment-0 decisions (2026-09-14)
+
+Owner decisions (approved in chat), settling the increment-0 candidates in
+`docs-local/plans/phase-7-webui.md`:
+
+1. **Packaging**: `webui/` uv package — FastAPI serving static files only
+   (no business logic, no DB, no downstream clients), orchestration location
+   via `ORCHESTRATION_BASE_URL` env, root-context Dockerfile, compose
+   `local`-profile service next to orchestration. No proxying: the browser
+   calls orchestration directly.
+2. **JS test tooling**: vitest + jsdom for frontend JS tests (same setup as
+   the cv-agent source project); node-based, dev-only, not shipped in the
+   image.
+3. **Reuse mechanics**: only the chat shell (HTML/CSS) and real source
+   modules (e.g. `frontend/markdown.js`) are copied/adapted from cv-agent —
+   **never generated files** (owner clarified `chat.js` there is a generated
+   bundle, 3.6k lines; not hand-written source). The API layer is written
+   fresh against api-contract.md.
+4. **Client persistence**: session id + pending idempotency keys stored in
+   `localStorage` keyed by session id, so a page reload resumes the active
+   session (client rule: persist the key with the in-flight logical request).
+5. **Gate driving mode — owner-driven manual browser walkthroughs**: the
+   agent proposes exact steps, the owner clicks through them against the
+   compose stack and reports evidence. Rationale: a UI has to be
+   human-tested anyway (the reason D16 exists), and this matches the
+   established live-gate protocol. No browser automation in this phase.

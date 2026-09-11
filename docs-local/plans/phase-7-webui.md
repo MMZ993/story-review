@@ -28,28 +28,29 @@ Phase 6.
   shell and markdown rendering carry over; API calls re-pointed to orchestration
   with idempotency keys; story picker added.
 
-## Increment-0 owner decisions (D17 candidates — settle before increment 1)
+## Increment-0 owner decisions (settled 2026-09-14 — D17)
 
 1. **Packaging**: `webui/` uv package (`webui` 0.1.0, FastAPI + uvicorn serving
    static files only — no business logic, no DB, no downstream clients;
    orchestration base URL via env `ORCHESTRATION_BASE_URL`) + root-context
    Dockerfile like the other units, wired into compose as a `local`-profile
-   service next to orchestration. Per repository-layout.md `webui/` row. Confirm.
+   service next to orchestration. Per repository-layout.md `webui/` row.
 2. **JS test tooling**: vitest + jsdom for the frontend JS tests (same setup as
    the cv-agent source project; node-based, dev-only, not shipped in the image).
    Test targets: markdown rendering (carried over), idempotency-key/session-id
-   persistence logic, API client state machine (fetch mocked). Confirm.
-3. **Reuse mechanics**: copy the needed pieces into `webui/static/` (chat shell
-   html/css trimmed to minimal, markdown renderer module, message-rendering
-   helpers) — no vendoring of the 3.6k-line chat.js; API layer written fresh
-   against api-contract.md. Confirm.
+   persistence logic, API client state machine (fetch mocked).
+3. **Reuse mechanics**: copy/adapt only real source files (chat shell
+   html/css trimmed to minimal, markdown renderer module) — never generated
+   files (cv-agent's `chat.js` is a generated bundle); API layer written
+   fresh against api-contract.md.
 4. **Client persistence**: session id + pending idempotency keys in
    `localStorage` keyed by session id, so a page reload resumes the active
    session (client rule: persist the idempotency key with the in-flight logical
-   request). Confirm.
+   request).
 5. **Browser verification**: gates are owner-driven manual walkthroughs in a
-   real browser (agent proposes exact steps; owner executes and reports), same
-   as live gates; no automated browser automation in this phase. Confirm.
+   real browser (agent proposes exact steps; owner executes and reports) —
+   a UI has to be human-tested anyway (the reason D16 exists); no browser
+   automation in this phase.
 
 ## Deliverables
 
