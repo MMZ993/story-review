@@ -31,6 +31,7 @@ ErrorCode = Literal[
     "UPSTREAM_UNAVAILABLE",
     "RENDER_FAILED",
     "REPORT_RENDER_FAILED",
+    "FINAL_REVIEW_INVALID",
 ]
 
 

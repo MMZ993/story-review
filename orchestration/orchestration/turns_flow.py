@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 
 import asyncpg
 from review_schemas.api import CanonicalTurnResult, TurnResponse
-from review_schemas.facilitator import ResolutionItem
+from review_schemas.facilitator import ResolutionItem, latest_resolutions
 from review_schemas.records import TurnRecord
 from review_schemas.synthesis import SynthesisReport
 
@@ -39,7 +39,7 @@ from . import (
     records_store,
     turn_execution,
 )
-from .agent_clients import AgentSet, FacilitatorInvocation
+from .agent_clients import AgentSet, DecisionState, FacilitatorInvocation
 from .api_errors import ApiError, make_error
 from .config import Settings
 from .errors import SessionLocked
@@ -248,6 +248,7 @@ async def _execute(
                 synthesis_report=synthesis_report,
                 synthesis_reference=synthesis_reference,
                 evidence_references=evidence_references,
+                decision_state=_decision_state(turns),
             ),
             deadline=deadline,
         )
@@ -360,6 +361,24 @@ async def _execute(
 def deadline_of(settings: Settings) -> float:
     """Fresh end-to-end deadline for a request body under execution."""
     return time.monotonic() + settings.request_deadline_seconds
+
+
+def _decision_state(turns):
+    """D18: the authoritative decision state for the coming facilitator
+    turn, assembled from the durable turn records — the latest-wins
+    resolution map (shared helper, same aggregation finalize uses) plus
+    the last delegation's open list."""
+    if not turns:
+        return None  # opening turn: no prior decisions exist
+    resolutions = latest_resolutions(
+        [item for turn in turns for item in turn.resolutions]
+    )
+    open_issues: list[str] = []
+    for turn in reversed(turns):
+        if turn.delegation is not None:
+            open_issues = list(turn.delegation.open_issues)
+            break
+    return DecisionState(resolutions=resolutions, open_issues=open_issues)
 
 
 def _stamped_resolutions(drafts, turn_number: int):

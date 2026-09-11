@@ -281,6 +281,48 @@ async def test_resolutions_are_stamped_with_api_turn_number(
 # --- gate truth table -------------------------------------------------------
 
 
+async def test_facilitator_request_carries_decision_state(
+    pool, settings, artifact
+):
+    """D18: from turn 3 onward the facilitator request carries the
+    authoritative decision state (latest-wins map + last open list)
+    assembled from the durable turn records."""
+    from review_schemas.facilitator import ResolutionDraft
+
+    facilitator = ScriptedFacilitator(
+        [
+            dialogue_output(
+                "none",
+                open_issues=["C-1", "X"],
+                resolutions=[
+                    ResolutionDraft(
+                        issue="X",
+                        disposition="resolved",
+                        explanation="Confirmed.",
+                    )
+                ],
+            ),
+            dialogue_output("none"),
+        ]
+    )
+    client = dialogue_client(pool, settings, artifact)
+    session = await create_session_with(client, facilitator)
+
+    first = await post_turn(client, session["session_id"])
+    assert first.status_code == 200, first.text
+    second = await post_turn(
+        client, session["session_id"], key=KEY_OTHER
+    )
+    assert second.status_code == 200, second.text
+
+    state = facilitator.calls[-1].decision_state
+    assert state is not None
+    assert [(i.issue, i.disposition, i.turn_number) for i in state.resolutions] == [
+        ("X", "resolved", 2)
+    ]
+    assert state.open_issues == ["C-1", "X"]
+
+
 async def test_park_at_facilitator_turn_10(pool, settings, artifact):
     facilitator = ScriptedFacilitator([dialogue_output("none")])
     client = dialogue_client(pool, settings, artifact)

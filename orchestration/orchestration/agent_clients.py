@@ -29,7 +29,7 @@ from typing import Protocol
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 from review_schemas.errors import ErrorBody
-from review_schemas.facilitator import FacilitatorTurnOutput
+from review_schemas.facilitator import FacilitatorTurnOutput, ResolutionItem
 from review_schemas.review import ReviewReport, StoryDetail
 from review_schemas.synthesis import ArtifactReference, SynthesisReport
 from review_schemas.base import SessionId, Text
@@ -91,9 +91,23 @@ class SynthesisInvocation(BaseModel):
     engineering: PerspectivePair
 
 
+class DecisionState(BaseModel):
+    """D18 mirror of the adapter's decision-state block: orchestration's
+    authoritative record of all decisions so far (latest-wins resolution
+    map + the last delegation's open list), assembled from the durable
+    TurnRecords and sent with every facilitator turn from turn 2 onward;
+    `None` on the opening turn (no prior decisions)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=200)
+    open_issues: list[Text] = Field(default_factory=list, max_length=100)
+
+
 class FacilitatorInvocation(BaseModel):
     """`POST /turn` body for the facilitator adapter (frozen contract +
-    the recorded D15-6 `invocation_id` extension)."""
+    the recorded D15-6 `invocation_id` and D18 `decision_state`
+    extensions)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -104,6 +118,7 @@ class FacilitatorInvocation(BaseModel):
     synthesis_report: SynthesisReport
     synthesis_reference: ArtifactReference
     evidence_references: list[ArtifactReference] = Field(default_factory=list)
+    decision_state: DecisionState | None = None
 
 
 @dataclass(frozen=True)
