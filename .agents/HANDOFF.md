@@ -319,10 +319,12 @@ after changes):
 
 1. Owner push `main` + `docs/initial-frozen` (5 commits on main
    pending, incl. session 38 work).
-2. **Phase 7 (Web UI)** next session: plan first
-   (docs-local/plans/phase-7-webui.md) per the phase-plan pattern;
-   scope per D16 (story picker with hover preview, chat turns, report
-   download; no server-side changes; adapt cv-agent chat UI per D16-3).
+2. **Phase 7 (Web UI)** in progress: plan drafted
+   (`docs-local/plans/phase-7-webui.md`, increments 0–4, pattern of the
+   Phase 6 plan); **D17 candidate decisions (packaging, vitest, reuse
+   mechanics, localStorage persistence, owner-driven gates) pending owner
+   approval** before Runbook 13 opens and increment 0 starts. Scope per
+   D16; starting point per D16-3.
 
 ## Important Notes
 
