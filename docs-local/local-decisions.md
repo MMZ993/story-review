@@ -805,3 +805,29 @@ have no title field); pre-D19 active sessions with prose open_issues
 (story-01/-04/-06 in the compose Postgres) may fail the completeness
 validator at finalize — the defect surfacing, expected; increment 4
 uses a fresh session.
+
+### D19 amendment 2 — live-gate findings (2026-09-16, session 44)
+
+The D19 live gate (story-05) surfaced two implementation gaps, both
+fixed in-session (evidence: Runbook 13 §D19 live gate):
+
+1. **Serving-safe mirror gap**: the facilitator's ADK
+   `output_schema` mirror (`ServingSafeFacilitatorTurnOutput`) was not
+   extended for D19 — no `new_issues` field, so Vertex structured
+   output could never emit an IssueDraft (byte-identical replies across
+   corrective re-prompts at temperature 0 were the diagnostic signal).
+   Fix: `MirrorIssueDraft` + `new_issues` on the mirror.
+2. **Catalog sourcing (owner decision)**: the catalog is now the
+   **union of every synthesis version the session produced, latest
+   version winning on collision** — a later synthesis legitimately
+   drops findings the reviewers stopped reporting, but ids still
+   referenced by the final review (resolved mid-session) must keep
+   their descriptors. Chosen over lazy backfill for report quality.
+   Applied to `docs/design/schemas.md` (issue-catalog paragraph);
+   implementation in `orchestration/finalization.py`.
+
+Supporting (kept): facilitator prompt `new_issues` worked example;
+descriptor-validator rejection carries the inline JSON shape (flows
+into the corrective re-prompt). Gate verdict: **PASS** on story-05 —
+F-1 minted with a same-turn descriptor, Issues section present, all
+Resolutions/Remaining-open rows titled, no bare ids.
