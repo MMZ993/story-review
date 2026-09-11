@@ -95,7 +95,7 @@ locally; facilitator delegation behaves per example-interaction.md scenario.
 
 Cost: Vertex AI tokens only.
 
-## Phase 6 — Orchestration (FastAPI) — planned
+## Phase 6 — Orchestration (FastAPI) — COMPLETE (sessions 32–38; increments 0–5 all green, exit gate (live integration suite over compose, 3 passed in 367 s) PASS, phase-close review 2026-09-13 Ready-to-close with 2 minors fixed same session; plan in plans/phase-6-orchestration.md, decisions D15 + amendments 1–3, evidence in runbooks/12-orchestration.md)
 
 Scope: API contract (all endpoints), flows 1–3, gate precedence, turn leases,
 idempotency (stored canonical responses), Cloud SQL records, direct MCP client

@@ -571,3 +571,24 @@ Owner decisions at increment 3 opening (approved in chat):
 3. **Signed-URL TTL**: 15 minutes (`ORCH_SIGNED_URL_TTL_SECONDS`,
    default 900) — observability.md/api-contract prescribe no value;
    recorded here as the chosen constant.
+
+### D15 amendment 3 — increment-5 exit gate runs fully live (2026-09-13, session 38)
+
+Owner decision at increment 5 opening (approved in chat): the Phase 6
+exit-gate integration suite (`orchestration/tests/integration/`, run
+via `make orchestration-integration-test`) runs **fully live** against
+the compose stack with the real local adapters and real Vertex —
+including park-at-10 (a real 10-turn arc steered to stay open) — rather
+than a hybrid (fake agent clients for scripted outcomes) or a
+live-minus-park split. Accepted cost: roughly 35–50 model calls and a
+15–30 minute runtime per gate run. Consequences recorded:
+
+1. Model-dependent behavior is steered via the PO message (the
+   facilitator's documented input) but asserted only on observable
+   outcomes; the gate finalize is steered with a bounded retry loop
+   (max 4 steering turns) before the finalize assertion fails.
+2. Scripted truth-table coverage (gate precedence, park-beats-synthesis,
+   failure paths) stays in the deterministic tier with fake agent
+   clients (D15-3) — the live suite covers the real-adapter paths only.
+3. Sessions under test use distinct stories (story-05/06/07) so the
+   one-active-run-per-story constraint cannot cross-contaminate tests.
