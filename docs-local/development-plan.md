@@ -106,13 +106,17 @@ Exit criteria: integration tests against compose stack (local adapters) cover fl
 
 Cost: Vertex AI tokens only.
 
-## Phase 7 — TUI — planned
+## Phase 7 — Web UI (minimal chat MVP) — planned
 
-Scope: client state machine per api-contract.md; session-ID persistence, spinner,
-idempotency-key replay, report download via signed URLs.
+Scope: simple web client over the orchestration API (design change from TUI,
+D16): pre-conversation story picker (list with hover preview / story detail
+render before confirming selection), chat-style dialogue view for facilitator
+turns (POST /turns with idempotency-key replay), report download via signed
+URLs. Minimal MVP — no animations, no styling beyond basic usability. Consumes
+the API contract as-is; no new server-side flows.
 
-Exit criteria: the example-interaction.md walkthrough playable end-to-end from the
-TUI against the local stack.
+Exit criteria: the example-interaction.md walkthrough playable end-to-end from
+a browser against the local stack.
 
 Cost: Vertex AI tokens only.
 

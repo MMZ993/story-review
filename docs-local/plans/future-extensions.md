@@ -55,14 +55,18 @@ output.
 - Relationship to the existing Phase 9 judge: separate prompt, separate
   model role; do not conflate.
 
-## Item B — Phase 10: Web interface
+## Item B — Web interface
 
-**Status: proposed.**
+**Status: superseded (2026-09-11) — folded into Phase 7 as the Web UI (D16).**
+The TUI was dropped in favour of a minimal web client; see
+`development-plan.md` Phase 7 and D16. The sketch below is retained for
+history: the accepted Phase 7 scope matches it (thin client, API consumed
+as-is, same idempotency-key semantics).
 
 ### Motivation
 
-The TUI (Phase 7) is the primary client per `docs/`. A web interface widens
-the demo audience and removes local-tooling prerequisites.
+The original design had a TUI (Phase 7) as the primary client. A web
+interface widens the demo audience and removes local-tooling prerequisites.
 
 ### Scope (sketch)
 
@@ -72,7 +76,7 @@ the demo audience and removes local-tooling prerequisites.
   `docs/`.
 - Session start / story selection, live (SSE or polling) facilitator turn
   view, PO acceptance action, report download via signed URLs.
-- Same idempotency-key semantics as the TUI.
+- Same idempotency-key semantics as the client.
 
 ### Exit criteria
 
