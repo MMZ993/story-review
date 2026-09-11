@@ -598,8 +598,12 @@ self-contradictory final state as the deterministic backstop.
 
 **Issue catalog (D19).** Every issue id a report references must carry a
 descriptive record. Ids born in the synthesis (findings `B-*`/`E-*`, conflicts
-`C-*`) take title/description/severity from the latest synthesis; ids the
-facilitator mints itself must be described at birth via `new_issues`
+`C-*`) take title/description/severity from the synthesis — **union across
+all synthesis versions the session produced, latest version winning** on
+collision: a later synthesis legitimately drops findings both reviewers
+stopped reporting, but a resolved issue still referenced by the report must
+keep its descriptor; ids the facilitator mints itself must be described at
+birth via `new_issues`
 (`IssueDraft`, emitted on the same turn the id first appears in `open_issues` —
 the adapter enforces this as a turn-context rule, since it holds the synthesis
 report in the request and can distinguish synthesis-born from minted ids).
