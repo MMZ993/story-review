@@ -8,11 +8,11 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-11 (post-session-38 docs update — D16: Phase 7
-client changed from TUI to a minimal Web UI; docs/ design change applied
-(tech-stack, api-contract, architecture, repository-layout, data-flow, index)
-and development-plan/future-extensions updated. Prior: session 38 —
-Phase 6 COMPLETE and CLOSED: increment 5 exit gate — live
+Last updated: 2026-09-11 (session 39 — docs-only — D16: Phase 7
+client changed from TUI to a minimal Web UI; docs/ design change
+applied and cherry-picked to docs/initial-frozen; development-plan,
+future-extensions Item B superseded, HANDOFF updated. Prior: session
+38 — Phase 6 COMPLETE and CLOSED: increment 5 exit gate — live
 integration suite over compose PASS (3 passed in 367 s); phase-close
 review Ready-to-close, 2 minors fixed in-session; phase marked
 COMPLETE in development-plan).
@@ -46,6 +46,28 @@ COMPLETE in development-plan).
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Session 39 (2026-09-11, main PC — docs-only replan; no cloud actions,
+no local Docker, Cloud SQL STOPPED throughout):
+- Owner decision **D16**: Phase 7 client is a **minimal Web UI**, not a
+  TUI (owner confirmed a web interface is what is needed; scope =
+  chat-style dialogue, pre-conversation story picker with hover
+  preview, report download via signed URLs; no animations, no design;
+  API consumed as-is, no server-side changes).
+- Applied the design change in `docs/` (tech-stack Interface row,
+  api-contract "Client interaction states", architecture, data-flow
+  participant labels, repository-layout `tui/`→`webui/`, index);
+  Phase 7 rewritten in development-plan; future-extensions Item B
+  marked superseded; D16 recorded in local-decisions; AGENTS.md +
+  HANDOFF references updated.
+- **D16-3 starting point**: the existing vanilla-JS chat UI at
+  `~/projects/homelab/cv-agent/src/cv_agent/static/`
+  (`chat.{html,js,css}` + markdown renderer + JS tests) — reuse chat
+  shell/message rendering, re-point API calls to orchestration
+  endpoints with idempotency keys, add the story picker.
+- Commits: `962928d` (docs, atomic) + `bb59420` (docs-local bundle) on
+  main; `962928d` cherry-picked to `docs/initial-frozen` as `206208b`
+  (clean). Owner to push both branches.
 
 Session 38 (2026-09-13, main PC — Phase 6 increment 5 + close; local
 Docker compose stack (real adapters + Vertex for the gate), throwaway
@@ -295,14 +317,12 @@ after changes):
 
 ## Next Steps
 
-1. Commit session-38 work (see Important Notes; owner approval
-   pending), then owner push (main) when ready.
+1. Owner push `main` + `docs/initial-frozen` (5 commits on main
+   pending, incl. session 38 work).
 2. **Phase 7 (Web UI)** next session: plan first
    (docs-local/plans/phase-7-webui.md) per the phase-plan pattern;
    scope per D16 (story picker with hover preview, chat turns, report
-   download; no server-side changes). Starting point: adapt the
-   existing vanilla-JS chat UI from
-   `~/projects/homelab/cv-agent` (D16-3); story picker added on top.
+   download; no server-side changes; adapt cv-agent chat UI per D16-3).
 
 ## Important Notes
 
