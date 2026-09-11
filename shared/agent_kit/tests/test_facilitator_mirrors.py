@@ -14,9 +14,36 @@ import json
 
 from agent_kit.llm_output import (
     MirrorDelegationDecision,
+    MirrorIssueDraft,
     MirrorResolutionDraft,
     ServingSafeFacilitatorTurnOutput,
 )
+
+
+def test_mirror_supports_new_issues() -> None:
+    """D19: the serving-safe mirror must expose `new_issues` (mirror of
+    `IssueDraft`) so Vertex structured output can actually emit the
+    facilitator-minted descriptors — the strict model stays the authority."""
+    import json
+
+    from review_schemas import FacilitatorTurnOutput
+
+    mirror = ServingSafeFacilitatorTurnOutput(
+        reply="r",
+        delegation=MirrorDelegationDecision(
+            invoke="none", open_issues=["E-2", "F-1"], readiness="needs_work"
+        ),
+        new_issues=[
+            MirrorIssueDraft(
+                issue="F-1",
+                title="Retry storm during PSP outage",
+                description="Retries may amplify PSP load; circuit breaker required.",
+            )
+        ],
+    )
+    strict = FacilitatorTurnOutput.model_validate(json.loads(mirror.model_dump_json()))
+    assert strict.new_issues[0].issue == "F-1"
+    assert strict.new_issues[0].title == "Retry storm during PSP outage"
 
 
 def test_mirrors_keep_shared_field_names() -> None:

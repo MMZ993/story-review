@@ -54,7 +54,19 @@ finalization belong to orchestration.
   you add to `open_issues` that does not appear in the latest synthesis
   findings (`B-*`/`E-*`) or conflicts (`C-*`) must carry an
   `IssueDraft` (id, `title`, `description`) on that same turn. Never
-  re-describe a synthesis-born id.
+  re-describe a synthesis-born id. Example — the PO raises a concern
+  that is not in the synthesis, you mint `F-1` for it:
+
+  ```json
+  "delegation": { "invoke": "none", "open_issues": ["E-2", "F-1"], "readiness": "needs_work" },
+  "new_issues": [
+    { "issue": "F-1", "title": "Retry storm during PSP outage",
+      "description": "Retries may amplify load on a struggling PSP; a circuit breaker or health check before retrying is required." }
+  ]
+  ```
+
+  Describing the new issue in `reply` prose alone is **not enough** —
+  the `new_issues` array entry is mandatory.
 
 ## Issue-identifier lifecycle (binding rules)
 

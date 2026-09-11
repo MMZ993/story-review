@@ -255,7 +255,8 @@ def _validate_issue_descriptors(
     for issue in output.delegation.open_issues:
         if issue not in known and issue not in described:
             raise FacilitatorTurnInvalid(
-                f"issue {issue} is newly minted — it needs an IssueDraft "
-                "(issue, title, description) in new_issues this turn; "
-                "synthesis-born ids must not be re-described"
+                f"issue {issue} is newly minted — it needs an IssueDraft in "
+                f'new_issues this turn, e.g. "new_issues": [{{"issue": '
+                f'"{issue}", "title": "...", "description": "..."}}] '
+                "(synthesis-born ids must not be re-described)"
             )

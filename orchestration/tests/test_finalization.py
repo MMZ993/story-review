@@ -38,6 +38,69 @@ def artifact():
     return FakeArtifactMcp()
 
 
+def _synthesis_report(findings):
+    """Minimal SynthesisReport with the given merged findings."""
+    from datetime import UTC, datetime
+
+    from review_schemas.synthesis import ArtifactReference, SynthesisReport
+
+    def _ref(perspective: str) -> ArtifactReference:
+        return ArtifactReference(
+            artifact_id=f"art-0000000{1 if perspective == 'business' else 2}-0000-4000-8000-000000000000",
+            story_run_id="run-00000000-0000-4000-8000-000000000000",
+            type=f"review-{perspective}",
+            perspective=perspective,
+            version=1,
+            created_at=datetime.now(UTC),
+            content_type="application/json",
+            checksum_sha256="a" * 64,
+        )
+
+    return SynthesisReport(
+        story_id="story-07",
+        summary="s",
+        merged_findings=[
+            {
+                "id": f["id"],
+                "title": f["title"],
+                "description": "d",
+                "severity": f["severity"],
+                "category": "completeness",
+            }
+            for f in findings
+        ],
+        inputs={"business": _ref("business"), "engineering": _ref("engineering")},
+    )
+
+
+def test_issue_catalog_unions_synthesis_versions_latest_wins():
+    """D19 amendment: the catalog unions every synthesis version the
+    session produced (a later synthesis drops findings the reviewers
+    stopped reporting, but a resolved issue still referenced by the
+    report must keep its descriptor); latest version wins on collision."""
+    from orchestration.finalization import issue_catalog
+
+    v1 = _synthesis_report(
+        [
+            {"id": "B-1", "title": "Epic misalignment", "severity": "minor"},
+            {"id": "E-2", "title": "Stored data unclear", "severity": "major"},
+        ]
+    )
+    v2 = _synthesis_report(
+        [
+            # B-1 resolved and dropped by v2; E-2 re-described (latest wins)
+            {"id": "E-2", "title": "Stored data unclear (updated)", "severity": "minor"},
+        ]
+    )
+
+    catalog = {e.issue: e for e in issue_catalog([v1, v2], turns=[])}
+
+    assert set(catalog) == {"B-1", "E-2"}
+    assert catalog["B-1"].title == "Epic misalignment"  # preserved from v1
+    assert catalog["E-2"].title == "Stored data unclear (updated)"  # v2 wins
+    assert catalog["B-1"].source == "synthesis"
+
+
 def finalize_client(pool, settings, artifact, report=None):
     report = report if report is not None else FakeReportMcp(artifact)
     return dialogue_client(pool, settings, artifact, report=report), report

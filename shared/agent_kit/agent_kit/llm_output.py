@@ -88,12 +88,23 @@ class MirrorResolutionDraft(BaseModel):
     explanation: str
 
 
+class MirrorIssueDraft(BaseModel):
+    """Serving-safe mirror of `review_schemas.IssueDraft` (D19: the
+    facilitator-minted issue descriptor; must be emittable by Vertex
+    structured output on the turn the id is minted)."""
+
+    issue: str
+    title: str
+    description: str
+
+
 class ServingSafeFacilitatorTurnOutput(BaseModel):
     """Serving-safe mirror of `review_schemas.FacilitatorTurnOutput`."""
 
     reply: str
     delegation: MirrorDelegationDecision
     resolutions: list[MirrorResolutionDraft] = Field(default_factory=list)
+    new_issues: list[MirrorIssueDraft] = Field(default_factory=list)
 
 
 class MirrorSynthesisInputs(BaseModel):
