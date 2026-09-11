@@ -750,3 +750,58 @@ failure). Accepted as-is: `FINAL_REVIEW_INVALID` also covers the
 pre-existing FinalizedReview validation rules (previously unhandled 500s —
 broader but strictly better); the phase-5 plan appendix now records the
 `decision_state` request-contract extension (D15-6 precedent).
+
+## D19 — Issue catalog: typed descriptors for facilitator-minted issues (2026-09-16)
+
+Owner decision (session 43, found at the Item E live gate): finalized
+reports referenced bare issue ids — remaining-open lists and Resolutions
+carried no titles/descriptions, and facilitator-minted ids (e.g. E-7–E-9
+on story-09) had no descriptive home anywhere. Owner: complete solution,
+no fallback debt. Chosen mechanism (hybrid — facilitator input +
+orchestration catalog):
+
+1. **`IssueDraft` on `FacilitatorTurnOutput.new_issues`** (id, title,
+   description): required on the same turn the facilitator adds a *minted*
+   id to `open_issues` — one not present in the latest synthesis
+   findings/conflicts. Synthesis-born ids (B-*/E-* findings, C-*
+   conflicts) keep their synthesis title/description/severity; no
+   re-description (avoids drift). The adapter enforces the
+   minted-id-needs-descriptor rule deterministically in
+   `validate_turn_output` (it holds the synthesis report in the request);
+   violations enter the corrective re-prompt loop (D18 pattern, proven
+   live).
+2. **`TurnRecord.new_issues`** accumulates the stamped drafts.
+3. **`FinalizedReview.issues`** (`IssueEntry`: id, title, description,
+   severity where known, source `synthesis`|`facilitator`, cap 400),
+   assembled by orchestration at finalize: latest-synthesis findings +
+   conflicts ∪ accumulated facilitator drafts. Validator rejects any
+   referenced id (resolutions ∪ remaining-open) without a catalog entry —
+   a bare unexplained id can no longer reach a rendered report.
+4. **Renderer** gains an "Issues" catalog section and annotates
+   Resolutions/Remaining-open rows with issue titles.
+5. `remaining_open_issues` stays a list of ids (annotation happens at
+   render); stored artifacts stay small.
+
+review_schemas version 0.5.0 → 0.6.0. Backward compatibility: old
+sessions (no `new_issues` in turn records) finalize with the
+synthesis-only catalog; ids absent from both sources now fail the
+completeness validator (previously they rendered bare — the defect
+itself).
+
+### D19 amendment 1 — review findings (2026-09-16)
+
+Independent read-only review of the D19 implementation (verdict:
+Needs-fixes → all findings fixed in-session): malformed synthesis
+artifact content during the catalog fetch is now classified per the
+data-flow §3 table (deterministic validation failure → non-retryable,
+rolls back to active; previously an unhandled 500 leaving the session
+stuck in `finalizing`); the fetch runs inside the failure-handling try;
+catalog overflow raises a clear FINAL_REVIEW_INVALID instead of silent
+truncation into a deferred validator failure; `FinalizedReview.issues`
+gained a uniqueness validator and reuse-previous turns may not mint
+issues (matching the no-resolutions rule). Accepted as-is: conflicts
+render with the synthesized title "Conflict {id}" (synthesis conflicts
+have no title field); pre-D19 active sessions with prose open_issues
+(story-01/-04/-06 in the compose Postgres) may fail the completeness
+validator at finalize — the defect surfacing, expected; increment 4
+uses a fresh session.

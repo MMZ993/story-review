@@ -8,11 +8,15 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-15 (session 42 — Phase 7 increments 2 + 3 COMPLETE:
-chat view (dialogue turns, session resume) + park/acceptance/finalize/
-report download; browser gates PASS incl. full story-02 arc to a downloaded
-report; design defect found → **future-extensions Item E** (owner: address
-next session). Prior: session 41 — increment 1; session 40 — increment 0.)
+Last updated: 2026-09-16 (session 43 — **Item E (D18) + issue-catalog (D19)
+IMPLEMENTED and live-gate verified for D18**: reopened disposition,
+decision_state context, adapter rules, finalize backstop; D19 adds the
+issue catalog (typed facilitator descriptors + synthesis-sourced catalog
++ report Issues section). D18 live gate PASS on story-09; D19 awaiting
+its live evidence (fold into increment 4). Commits so far: 592dd85 /
+e58bb7a / 0535b1c + frozen cherry-pick 7c8b9cf; D19 + webui
+leave-session button uncommitted. Prior: sessions 40–42 — Phase 7
+increments 0–3.)
 
 ## Where we are
 
@@ -20,19 +24,12 @@ next session). Prior: session 41 — increment 1; session 40 — increment 0.)
   (sessions 32–38; detail in Runbook 12, decisions D15 + amendments
   1–3). All gates green; live integration suite PASS (3 passed in 367 s).
 - **Phase 7 (Web UI) in progress** — increments 0–3 COMPLETE (sessions
-  40–42, Runbook 13 + D17 amendment 1). Remaining: increment 4 (exit
-  gate — example-interaction walkthrough end-to-end + close). The live
-  story-02 session was accepted/completed at the increment-3 gate;
-  story-01/04/06 sessions remain active in the compose Postgres (no UI
-  way to park them until increment 4's walkthrough or server-side).
-- **Next session: future-extensions Item E first** (owner decision,
-  2026-09-15): issue-identifier lifecycle — reopened disposition or
-  orchestration-side consistency check when a resolved id reappears in
-  open_issues; docs/ design change + schema version + shared
-  review_schemas + orchestration work (full item in
-  `docs-local/plans/future-extensions.md`). Found at the increment-3
-  gate: facilitator re-used resolved ids B-1/B-2 for new concerns →
-  self-contradictory finalized review (resolved + remaining-open).
+  40–42, Runbook 13 + D17 amendment 1). **Item E debt DONE (session 43,
+  D18, Runbook 13 §Item E)**. Remaining: increment 4 (exit gate —
+  example-interaction walkthrough end-to-end + close). Compose Postgres
+  sessions: story-02 + **story-09 completed**, story-01/-04/-06 still
+  active (they hold those stories' active-session slots; the new
+  "choose another story" button leaves a session client-side only).
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -49,6 +46,51 @@ next session). Prior: session 41 — increment 1; session 40 — increment 0.)
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+Session 43 (2026-09-16, main PC — Item E (D18) implementation + live gate;
+local Docker stack up throughout, no cloud actions, Cloud SQL STOPPED):
+- **Design + decisions**: `reopened` disposition + FinalizedReview
+  consistency rule + `FINAL_REVIEW_INVALID` error code in
+  `docs/design/schemas.md` (+ agents.md), frozen cherry-pick `7c8b9cf`;
+  D18 + amendments 1–2 in local-decisions; phase-5 plan appendix records
+  the `decision_state` request extension.
+- **Code**: review_schemas 0.5.0 (`reopened`, shared `latest_resolutions`,
+  backstop validator, new error code); agent_kit `DecisionState` on
+  FacilitatorRequest + "Current decision state" renderer + lifecycle rule
+  in `validate_turn_output` (prior-state reuse AND same-turn
+  self-contradiction) via the corrective re-prompt loop; orchestration
+  `_decision_state(turns)` assembly (None on opening turn), shared
+  aggregation in finalization, backstop → 503 non-retryable → rollback to
+  active; facilitator prompt lifecycle rules.
+- **Review**: independent read-only review Ready-to-proceed; Important
+  (same-turn self-contradiction gap) + minors fixed in-session (D18
+  amendment 2).
+- **Live gate PASS (owner-driven, story-09)**: resolve (10→6 open) →
+  withdrawal → **reopened B-3/E-4, fresh ids E-7–E-9, no id reuse, no
+  422** → accept with open issues → report: reopened issues in
+  Resolutions, every remaining-open id never-resolved or reopened —
+  consistent. Evidence in Runbook 13.
+- **UI addition** (owner request): persistent "choose another story"
+  control in every session state (client-side leave; in-flight confirm).
+- **D19 (issue catalog) implemented after the gate** (owner: complete
+  solution, no fallback debt; found at the D18 gate — reports showed bare
+  ids): `IssueDraft` on `FacilitatorTurnOutput.new_issues` (minted ids
+  must be described same-turn; adapter rule in validate_turn_output),
+  `TurnRecord.new_issues` + migration 0002, `FinalizedReview.issues`
+  (synthesis findings+conflicts ∪ facilitator drafts, synthesis wins,
+  completeness validator → FINAL_REVIEW_INVALID), renderer "Issues"
+  section + title annotations, prompt: open_issues = ids only.
+  run_flow3 reordered (mark finalizing before the catalog fetch; fetch
+  failures classified per the flow-3 table). Independent review
+  (needs-fixes) findings fixed in-session: malformed synthesis content →
+  non-retryable rollback; catalog overflow → clear error; catalog
+  uniqueness + reuse-only-turn validators; fetch moved inside the
+  failure-handling try. **Caveat recorded**: pre-D19 active sessions
+  (story-01/-04/-06, prose open_issues) may now be un-finalizable by the
+  completeness rule — expected; increment 4 should use a fresh session.
+- Verification: review-schemas **170**, agent-kit **103**, orchestration
+  **95+11s**, facilitator-adapter **3+1s**, mcp-report **36**, webui
+  **pytest 11 + vitest 44**. Identifier check clean after the D18 commits.
+
 Session 42 (2026-09-15, main PC — Phase 7 increments 2 + 3; local Docker
 stack up throughout, no cloud actions, Cloud SQL STOPPED):
 - **Increment 2 (chat view, dialogue turns, session resume)**:
@@ -367,15 +409,15 @@ and the git log.
 Baseline (latest green run of every suite — re-verify against these counts
 after changes):
 
-- review-schemas **154** (unchanged since session 40 — not re-run, no schema changes), ado-wire **7**, dataset **36**, mcp-ingress **7**,
-  mcp-story **67**, mcp-artifact **32**, mcp-report **34**, compose contract
+- review-schemas **170** (session 43: +7 D18, +3 D19), ado-wire **7**, dataset **36**, mcp-ingress **7**,
+  mcp-story **67**, mcp-artifact **32**, mcp-report **36** (session 43: +2
+  D19 — issue catalog + annotations), compose contract
   **20** (re-run green after the compose additions, session 40), agent-kit
-  **86**, agents skeleton **4×4**, business adapter
+  **103** (session 43: +12 D18, +1 D19), agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **90+8s** (increments 0–4);
-  **webui 11 + vitest 42** (session 42: +9 turn tests, +8 chat-view, +3
-  finalize/report, +5 end-state = 27 new since session 41); compose
-  contract **20** (re-run green, session 42); live gates: business/engineering/synthesis
+  facilitator adapter **3+1s**, orchestration **95+11s** (session 43: +2 D18,
+  +1 D19);
+  **webui 11 + vitest 44** (session 43: +2 leave-session); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
   webui browser gates PASS: increment 0 reachability, increment 1 picker +
@@ -420,26 +462,22 @@ after changes):
 
 ## Next Steps
 
-1. **Next session: future-extensions Item E** (owner decision): design
-   change for issue-identifier lifecycle — `reopened` disposition vs
-   orchestration-side consistency check (re-map/reject when a resolved id
-   reappears in `delegation.open_issues`); docs/ design change + frozen
-   cherry-pick + shared review_schemas schema version + orchestration
-   work; facilitator prompt rule (ids immutable). Read Item E in
-   `docs-local/plans/future-extensions.md` first.
-2. **Phase 7 increment 4 (exit gate + close)** after Item E (or
-   interleaved if the owner prefers): owner-driven example-interaction
-   walkthrough end-to-end from the browser (story pick → dialogue arc →
-   park or accept → report download; idempotency replay mid-flow; live
-   park verification — deferred from increment 3), all regression
-   suites, independent read-only review of the phase diff, Phase 7
-   COMPLETE in development-plan.md, Runbook 13 completion review.
-3. Owner push `main` + `docs/initial-frozen` (commits on main pending,
-   incl. sessions 38–42 work).
-4. Commit sessions 40–42 work when the owner asks (webui/ + Makefile +
-   compose + .gitignore + docs-local bundle incl. Runbook 13, D17
-   amendment 1, future-extensions Item E, and this HANDOFF); identifier
-   check after the last commit.
+1. **Next session (fresh context): D19 live evidence first** — the
+   compose stack is up with all D19 code (verified in-container); run a
+   fresh session on a free story (03/05/07/08/10) from the browser,
+   elicit a facilitator-minted concern (descriptor via `new_issues`),
+   accept, and verify the report: Issues section present, every
+   Resolutions/Remaining-open row titled, no bare ids. Codify in
+   Runbook 13 (D19 gate section). Then **Phase 7 increment 4 (exit gate
+   + close)**: owner-driven example-interaction walkthrough end-to-end
+   from the browser (story pick → dialogue arc → park or accept →
+   report download; idempotency replay mid-flow; live park verification
+   — deferred from increment 3; use a fresh session — pre-D19 sessions
+   may be un-finalizable per D19 amendment 1), all regression suites,
+   independent read-only review of the phase diff, Phase 7 COMPLETE in
+   development-plan.md, Runbook 13 completion review.
+2. Owner push `main` + `docs/initial-frozen` after these commits
+   (identifier check re-ran clean post-commit).
 
 ## Important Notes
 
@@ -468,12 +506,13 @@ after changes):
   az fallback.
 - Throwaway-postgres startup race now 8 observations (Runbook 12);
   run-migrations.sh small-retry fix stays due before Phase 8 cloud runs.
-- **Local stack is UP** (since session 40): orchestration (:8130) + webui
-  (:8120) compose services; orchestration uses the separate
+- **Local stack is UP** (since session 40, rebuilt session 43 with the
+  D18 code): orchestration (:8130) + webui (:8120) compose services; orchestration uses the separate
   `orchestration` database in the compose postgres. Compose Postgres
-  now holds 4 sessions: story-02 **completed** (increment-3 gate),
-  story-01/-04/-06 still **active** (no UI park until increment 4;
-  they hold those stories' active-session slots). `agents-compose-down`
+  now holds 5 sessions: story-02 + story-09 **completed** (increment-3
+  gate, Item E gate), story-01/-04/-06 still **active** (they hold those
+  stories' active-session slots; the webui "choose another story" button
+  leaves client-side only). `agents-compose-down`
   when done. `compose-contract-test` needs `compose-up` first.
   Signed fake-gcs URLs point at `https://127.0.0.1:9026` (self-signed
   cert — accept the browser warning; recorded in Runbook 13).
