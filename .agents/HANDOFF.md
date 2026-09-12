@@ -8,11 +8,9 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-20 (session 50 — **D22 implemented + Phase 7 COMPLETE**:
-abandon endpoint + webui abandon button + past-sessions list, six legacy
-stuck sessions parked live, full regressions green, independent phase
-review Ready-to-proceed with findings fixed). Prior: session 49 —
-increment-4 walkthrough PASS + D22 docs.
+Last updated: 2026-09-12 (post-Phase-7 UI/UX follow-up — picker/session
+layout, paragraph previews, comment-story fix; local compose rebuilt and
+smoke-checked). Prior: session 50 — **D22 implemented + Phase 7 COMPLETE**.
 
 ## Where we are
 
@@ -45,6 +43,22 @@ increment-4 walkthrough PASS + D22 docs.
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+Post-Phase-7 UI/UX follow-up (2026-09-12, main PC; local Docker stack
+rebuilt, no cloud actions, Cloud SQL STOPPED):
+- **Web UI**: picker resume/open controls moved left; header now says
+  "FastAPI backend" on one line; story previews normalize the plain-text
+  story projection into sanitized Markdown paragraphs; accept/finalize moved
+  below the send row alongside abandon/choose-story controls.
+- **Comment-story fix**: stories endpoint now validates the story-MCP JSON
+  through Pydantic's JSON boundary, so strict timestamp fields in comments
+  no longer produce an invalid-payload 503. Regression test added.
+- **Verification**: webui **pytest 12 + vitest 77**; orchestration **117 +
+  11 skipped**. The first orchestration run hit the known throwaway-Postgres
+  startup race before tests; the rerun passed. `make agents-compose-up`
+  rebuilt the full local stack; webui health is OK and story-43 returned
+  200 with three comments. Evidence: Runbook 13 §Post-Phase-7 UI/UX
+  follow-up.
+
 Session 50 (2026-09-20, main PC — **D22 implementation + Phase 7 close**;
 local Docker stack, images rebuilt twice, no cloud actions, Cloud SQL STOPPED):
 - **D22 test-first**: review-schemas 0.8.0 → 0.9.0 (`AbandonSessionResponse`,
@@ -682,10 +696,11 @@ after changes):
   `infra/envs/ado.env`), project `story-review` (Agile), ids 5–55,
   conventions in Runbook 08; re-export needs `$ADO_PAT` (`rest-verify`) or
   az fallback.
-- Throwaway-postgres startup race now 8 observations (Runbook 12);
+- Throwaway-postgres startup race now 9 observations (Runbook 12/13);
   run-migrations.sh small-retry fix stays due before Phase 8 cloud runs.
-- **Local stack is UP, carries the D20+D21+run-release+D22 code** (webui and
-  orchestration images rebuilt session 50; rebuilds wipe fake-gcs's
+- **Local stack is UP, carries the D20+D21+run-release+D22 code plus the
+  post-Phase-7 UI/UX fixes** (webui and orchestration images rebuilt in the
+  follow-up session; rebuilds wipe fake-gcs's
   memory-backend artifacts — old completed sessions' downloads 404,
   expected; compose Postgres is volume-backed and needs manual migrations —
   0003 + 0004 applied): orchestration (:8130) + webui (:8120) compose

@@ -32,6 +32,16 @@ DETAIL_01 = {
     "epic_context": "Platform hardening.",
     "roadmap_context": "Q3 security items.",
 }
+DETAIL_WITH_COMMENT = {
+    **DETAIL_01,
+    "comments": [
+        {
+            "author": "PO",
+            "text": "The rate limit applies to API clients too.",
+            "created_at": "2026-09-08T14:05:17.217Z",
+        }
+    ],
+}
 
 
 def error_body(code: str, retryable: bool = False) -> ErrorBody:
@@ -143,6 +153,17 @@ async def test_story_detail_proxies_full_story():
     assert response.status_code == 200
     body = response.json()
     assert body == {**DETAIL_01, "comments": [], "context_stories": []}
+
+
+async def test_story_detail_accepts_json_timestamp_in_comment_payload():
+    async with make_app(
+        story=story_transport(details={"story-01": DETAIL_WITH_COMMENT})
+    ) as client:
+        response = await client.get("/api/v1/stories/story-01")
+    assert response.status_code == 200
+    assert response.json()["comments"][0]["created_at"].startswith(
+        "2026-09-08T14:05:17.217"
+    )
 
 
 async def test_unknown_story_maps_to_404_envelope():

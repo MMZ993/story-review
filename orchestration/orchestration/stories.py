@@ -8,6 +8,7 @@ envelope; any other downstream failure → retryable 503.
 
 from __future__ import annotations
 
+import json
 import time
 
 from fastapi import APIRouter, Request
@@ -75,7 +76,7 @@ async def get_story(story_id: str, *, request: Request):
         payload = await client.call(
             "get_story", {"story_id": story_id}, deadline=_deadline(request)
         )
-        return StoryDetail.model_validate(payload)
+        return StoryDetail.model_validate_json(json.dumps(payload))
     except McpCallFailure as failure:
         raise tool_failure(failure.error, _correlation(request)) from failure
     except ValidationError as failure:

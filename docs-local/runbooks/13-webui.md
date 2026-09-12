@@ -996,3 +996,29 @@ history intact) + parked/completed history.
   from *both* `__all__` and EXPECTED_EXPORTS — new public models must be
   added consciously in three places (api.py, `__init__` import + `__all__`,
   EXPECTED_EXPORTS) and cross-checked against schemas.md.
+
+## Post-Phase-7 UI/UX follow-up (2026-09-12)
+
+Owner approved the local rebuild after the UI/UX fixes. No cloud actions;
+Cloud SQL remains STOPPED. The compose Postgres container is persistent and
+was left running.
+
+Commands run:
+
+    make webui-test            # pytest 12 + vitest 77 passed
+    make orchestration-test    # 117 passed, 11 skipped
+    make agents-compose-up     # rebuilt compose images and recreated services
+    curl --fail http://127.0.0.1:8120/health
+    # {"status":"ok"}
+    curl --fail http://127.0.0.1:8120/api/v1/stories/story-43
+    # 200; "VAT breakdown table in the order confirmation email", 3 comments
+
+Delivered: picker session actions use left-aligned controls; header reports
+"FastAPI backend" reachability; story preview normalizes plain-text lines to
+sanitized Markdown paragraphs; session action controls sit beneath the
+composer; and orchestration validates story-MCP JSON through the JSON boundary
+so comment `created_at` timestamps no longer cause invalid-payload 503s.
+
+Gotcha: the first `make orchestration-test` attempt hit the known throwaway
+Postgres startup race (`database system is starting up`) before tests began;
+the unchanged target passed on its next run.

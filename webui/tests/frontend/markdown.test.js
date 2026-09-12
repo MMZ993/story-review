@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 
-import { renderMarkdown } from "../../static/markdown.js";
+import { renderMarkdown, renderStoryPreview } from "../../static/markdown.js";
 
 // Carried over from the cv-agent source project (D16-3): the renderer must
 // never trust model HTML and must repair incomplete fences for display.
@@ -14,6 +14,18 @@ describe("renderMarkdown", () => {
 
     expect(message.querySelector("pre code")?.textContent).toContain("<script>alert(1)</script>");
     expect(message.querySelector("script")).toBeNull();
+  });
+
+  it("renders story plain-text lines as separate Markdown paragraphs", () => {
+    const document = new JSDOM("<div id=preview></div>").window.document;
+    const preview = document.querySelector("#preview");
+
+    renderStoryPreview(preview, "Context: first paragraph\n\nScope: second paragraph");
+
+    expect([...preview.querySelectorAll("p")].map((paragraph) => paragraph.textContent)).toEqual([
+      "Context: first paragraph",
+      "Scope: second paragraph",
+    ]);
   });
 
   it("formats completed Markdown while removing raw HTML and images", () => {
