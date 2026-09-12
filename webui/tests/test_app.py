@@ -21,6 +21,14 @@ def test_root_serves_the_static_shell(client):
     assert "story-review" in response.text
 
 
+def test_root_includes_the_owner_attribution_footer(client):
+    response = client.get("/")
+
+    assert "@ 2026 Marcin Żak /" in response.text
+    assert 'href="https://mmz.sh/"' in response.text
+    assert ">mmz.sh</a>" in response.text
+
+
 def test_config_requires_orchestration_base_url():
     from webui.config import Settings
 
