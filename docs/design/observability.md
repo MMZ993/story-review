@@ -89,8 +89,9 @@ returns a structured error to the PO in the dialogue — no silent failures.
 ## Loop safety and dashboards
 
 The opening facilitator call is turn 1. Each later request that invokes the facilitator
-increments the count once; explicit PO acceptance does not. Facilitator turn 10 parks the
-session before readiness evaluation and emits a cap event.
+increments the count once — a delegated turn still counts once despite its two
+invocations (Item G / D21); explicit PO acceptance does not. Facilitator turn 10 parks
+the session before readiness evaluation and emits a cap event.
 
 Built-in Cloud Monitoring dashboards show per-agent latency/error/token use, retry and
 validation exhaustion, idempotency mismatch/in-progress rates, lock waits, ambiguous
