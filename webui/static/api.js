@@ -95,11 +95,19 @@ export async function fetchStoryDetail(storyId, options = {}) {
  * key under `scope` before the first fetch, retries 503 with the SAME key
  * and request after a backoff up to the attempt budget, and clears the
  * pending key once any definitive outcome (2xx or non-503) is received.
- * Transport failures are definitive (the key stays for later replay only if
- * the caller never completes — it is cleared here because the client shows
- * the transport error; a re-send generates a fresh logical request).
+ * `pendingBody` (optional) is persisted alongside the key under
+ * `${scope}:body` and cleared with it — a mid-request reload can then
+ * re-issue the same logical request (same key, same body) and receive the
+ * canonical replay. 503 and 409 SESSION_LOCKED (retryable per the
+ * contract — the original request may still hold the lease, e.g. after a
+ * page reload aborted the fetch) are retried with the SAME key; a
+ * SESSION_LOCKED retry waits for the envelope's retry_after_seconds when
+ * present. Transport failures are definitive (the key stays for
+ * later replay only if the caller never completes — it is cleared here
+ * because the client shows the transport error; a re-send generates a
+ * fresh logical request).
  */
-async function postWithIdempotentKey(url, body, scope, options) {
+async function postWithIdempotentKey(url, body, scope, options, pendingBody = null) {
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   const storage = options.storage ?? globalThis.localStorage;
   const sleep = options.sleep ?? defaultSleep;
@@ -108,6 +116,12 @@ async function postWithIdempotentKey(url, body, scope, options) {
 
   const key = storage.getItem(scope) ?? uuidv4();
   storage.setItem(scope, key);
+  const bodyScope = `${scope}:body`;
+  if (pendingBody !== null) {
+    storage.setItem(bodyScope, JSON.stringify(pendingBody));
+  } else {
+    storage.removeItem(bodyScope); // defensive: no stale body for this scope
+  }
   const request = {
     method: "POST",
     headers: { "Content-Type": "application/json", "Idempotency-Key": key },
@@ -124,11 +138,17 @@ async function postWithIdempotentKey(url, body, scope, options) {
       break;
     }
     result = await toResult(response);
-    if (result.ok || result.status !== 503 || attempt >= attempts) break;
-    await sleep(backoffMs);
+    if (result.ok || attempt >= attempts) break;
+    const locked = result.status === 409 && result.error?.code === "SESSION_LOCKED";
+    if (result.status !== 503 && !locked) break;
+    const waitMs = locked
+      ? (result.error?.retry_after_seconds ?? 0) * 1000 || backoffMs
+      : backoffMs;
+    await sleep(waitMs);
   }
 
   storage.removeItem(scope);
+  if (pendingBody !== null) storage.removeItem(bodyScope);
   return result;
 }
 
@@ -153,7 +173,9 @@ export async function fetchSession(sessionId, options = {}) {
  * Idempotency: one pending key per session ("pending:turn:{id}" — exactly
  * one in-flight logical request per session), persisted before the fetch,
  * re-used on 503 retry and lost-response replay, cleared on any definitive
- * outcome. 409/404/422 are definitive and returned to the caller.
+ * outcome. The turn body is persisted next to the key so a mid-turn reload
+ * can re-issue the same logical request (see getPendingTurn). 409/404/422
+ * are definitive and returned to the caller.
  */
 export async function postTurn(sessionId, { message, poAccepted = false }, options = {}) {
   const body = poAccepted ? { po_accepted: true } : { message, po_accepted: false };
@@ -162,7 +184,46 @@ export async function postTurn(sessionId, { message, poAccepted = false }, optio
     body,
     `pending:turn:${sessionId}`,
     options,
+    { message: message ?? null, po_accepted: poAccepted },
   );
+}
+
+/**
+ * The persisted body of a session's pending (in-flight or lost) turn, or
+ * null when no pending turn exists. Pre-refresh-resume pending keys
+ * (written before the body was persisted) have no body and also read as
+ * null — callers should clearPendingTurn those.
+ */
+export function getPendingTurn(sessionId, options = {}) {
+  const storage = options.storage ?? globalThis.localStorage;
+  const scope = `pending:turn:${sessionId}`;
+  if (storage.getItem(scope) === null) return null;
+  const raw = storage.getItem(`${scope}:body`);
+  if (raw === null) return null;
+  try {
+    const body = JSON.parse(raw);
+    return { message: body.message ?? null, poAccepted: Boolean(body.po_accepted) };
+  } catch {
+    return null;
+  }
+}
+
+/** Drop a session's pending-turn keys (used after resume decisions). */
+export function clearPendingTurn(sessionId, options = {}) {
+  const storage = options.storage ?? globalThis.localStorage;
+  const scope = `pending:turn:${sessionId}`;
+  storage.removeItem(scope);
+  storage.removeItem(`${scope}:body`);
+}
+
+/** GET /api/v1/sessions: the session list (flow-1 progress discovery). */
+export async function fetchSessions(options = {}) {
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+  try {
+    return toResult(await fetchImpl(SESSIONS_URL, { method: "GET" }));
+  } catch {
+    return { ok: false, status: 0, error: { code: "TRANSPORT", message: "request failed" } };
+  }
 }
 
 /**

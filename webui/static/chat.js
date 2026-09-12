@@ -12,8 +12,16 @@
  * the api client (which owns idempotency-key persistence).
  */
 
-import { fetchReport, fetchSession, finalizeRetry, postTurn } from "./api.js";
-import { appendFacilitatorTurn, appendPoMessage, renderHistory } from "./messages.js";
+import {
+  clearPendingTurn,
+  fetchReport,
+  fetchSession,
+  finalizeRetry,
+  getPendingTurn,
+  postTurn,
+} from "./api.js";
+import { appendFacilitatorTurn, appendPoMessage, appendProgress, renderHistory } from "./messages.js";
+import { pollProcessingStage, stageText } from "./progress.js";
 
 const MAX_FACILITATOR_TURNS = 10;
 
@@ -23,6 +31,9 @@ let sessionState = "active";
 let sessionId = null;
 let storyId = null;
 let inFlight = false;
+
+/** Stop handle of the passive stage poll (openSession processing view). */
+let stagePollStop = null;
 
 /** Host callbacks (app.js): stale-id fallback, parked-session restart,
  * and leave-session (back to the picker). */
@@ -125,6 +136,10 @@ function renderStateControls() {
     if (inFlight && !globalThis.confirm?.("A turn is still processing — leave anyway? (it keeps running server-side)")) {
       return;
     }
+    if (stagePollStop) {
+      stagePollStop();
+      stagePollStop = null;
+    }
     onLeaveSession?.();
   });
   actions.append(leave);
@@ -169,7 +184,7 @@ async function sendTurn(event) {
   const input = document.querySelector("#turn-input");
   const message = input.value.trim();
   if (!message) return;
-  await runTurn(() => postTurn(sessionId, { message }), message);
+  await runTurn(() => postTurn(sessionId, { message }), message, { restoreToInput: true });
   input.focus();
 }
 
@@ -184,19 +199,28 @@ async function acceptReport() {
 }
 
 /**
- * Shared single-turn runner: optimistic PO bubble, in-flight guard,
- * facilitator reply + outcome handling, error surfacing.
+ * Shared single-turn runner: optimistic PO bubble, in-flight guard, live
+ * stage placeholder (Item F), facilitator reply + outcome handling, error
+ * surfacing. On failure the optimistic bubble is removed and a message
+ * turn's text is restored to the composer for editing (webui debt 1).
  */
-async function runTurn(post, optimisticPoBubble) {
+async function runTurn(post, optimisticPoBubble, { restoreToInput = false } = {}) {
   const input = document.querySelector("#turn-input");
   inFlight = true;
-  input.value = "";
+  if (restoreToInput) input.value = "";
   syncComposer();
-  appendPoMessage(document.querySelector("#messages"), optimisticPoBubble);
+  const optimistic = appendPoMessage(document.querySelector("#messages"), optimisticPoBubble);
+  const placeholder = appendProgress(document.querySelector("#messages"));
+  placeholder.update(stageText(null));
+  const stopPolling = pollProcessingStage(sessionId, {
+    onStage: (detail) => placeholder.update(stageText(detail.processing_stage)),
+  });
   setStatus("processing… (this can take several minutes)");
 
   const result = await post();
 
+  stopPolling();
+  placeholder.remove();
   inFlight = false;
   if (result.ok) {
     setStatus(null);
@@ -213,6 +237,8 @@ async function runTurn(post, optimisticPoBubble) {
     renderStateControls();
     refreshHeader();
   } else {
+    optimistic.remove();
+    if (restoreToInput) input.value = optimisticPoBubble;
     const lockedHint =
       result.status === 409 && result.error?.code === "SESSION_LOCKED"
         ? " (another request holds the turn lease — wait for it to finish or expire, then send a new message)"
@@ -238,19 +264,22 @@ export async function openSession(id, handlers = {}) {
     return false;
   }
 
-  onUnknownSession = handlers.onUnknownSession ?? null;
-  onRestartStory = handlers.onRestartStory ?? null;
-  onLeaveSession = handlers.onLeaveSession ?? null;
+  onUnknownSession = handlers.onUnknownSession ?? onUnknownSession;
+  onRestartStory = handlers.onRestartStory ?? onRestartStory;
+  onLeaveSession = handlers.onLeaveSession ?? onLeaveSession;
   sessionId = id;
   storyId = result.body.story_id;
   sessionState = result.body.state;
+  inFlight = false; // a freshly opened view is at rest (passive mode re-arms below)
 
   document.querySelector("#picker-view").hidden = true;
   document.querySelector("#session-view").hidden = false;
+  setStatus(null); // never inherit a stale banner from a previous session
 
+  if (stagePollStop) stagePollStop();
   renderHeader(result.body);
   renderHistory(document.querySelector("#messages"), result.body.turns ?? []);
-  if (sessionState === "completed") renderReportLinks(result.body.reports);
+  renderReportLinks(sessionState === "completed" ? (result.body.reports ?? []) : []);
   renderStateControls();
   syncComposer();
 
@@ -259,6 +288,41 @@ export async function openSession(id, handlers = {}) {
     composer.addEventListener("submit", sendTurn);
     document.querySelector("#accept-turn").addEventListener("click", acceptReport);
     composer.dataset.wired = "true";
+  }
+
+  const pending = sessionState === "active" ? getPendingTurn(id) : null;
+  if (pending) {
+    // mid-turn reload (webui debt 3): re-issue the same logical request
+    // (the api client reuses the persisted idempotency key → canonical
+    // replay server-side) while showing the live stage placeholder.
+    await runTurn(
+      () =>
+        postTurn(sessionId, {
+          message: pending.message ?? undefined,
+          poAccepted: pending.poAccepted,
+        }),
+      pending.poAccepted ? "(accepted the report)" : pending.message,
+      { restoreToInput: !pending.poAccepted },
+    );
+  } else if (result.body.processing_stage && sessionState !== "completed") {
+    // the server is processing this session (e.g. creation still running
+    // or another client's request): read-only view + live placeholder
+    inFlight = true;
+    syncComposer();
+    const placeholder = appendProgress(document.querySelector("#messages"));
+    placeholder.update(stageText(result.body.processing_stage));
+    stagePollStop = pollProcessingStage(id, {
+      onStage: (detail) => placeholder.update(stageText(detail.processing_stage)),
+      onDone: () => {
+        placeholder.remove();
+        stagePollStop = null;
+        inFlight = false;
+        syncComposer();
+        if (sessionId === id) openSession(id); // history replay from truth
+      },
+    });
+  } else {
+    clearPendingTurn(id); // drop any legacy key-only residue
   }
   return true;
 }

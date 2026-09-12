@@ -104,6 +104,8 @@ async def run_turn(
             correlation_id=correlation_id,
         )
     finally:
+        # the advisory stage marker never outlives the lease holder
+        await records_store.set_processing_stage(pool, session_id, None)
         await lease.release(pool, session_id, token)
 
 
@@ -146,6 +148,7 @@ async def _execute(
         synthesis_reference = await _latest_synthesis(
             artifact_client, session, deadline_of(settings), correlation_id
         )
+        await records_store.set_processing_stage(pool, session_id, "finalizing")
         return await _finalize_and_respond(
             pool,
             settings,
@@ -198,6 +201,7 @@ async def _execute(
         synthesis_reference = await _latest_synthesis(
             artifact_client, session, deadline, correlation_id
         )
+        await records_store.set_processing_stage(pool, session_id, "finalizing")
         return await _finalize_and_respond(
             pool,
             settings,
@@ -217,6 +221,8 @@ async def _execute(
     message = payload["message"]
     facilitator_turn = session.facilitator_turn_count + 1
     assert facilitator_turn <= PARK_TURN, "active sessions cannot exceed turn 10"
+
+    await records_store.set_processing_stage(pool, session_id, "facilitator")
 
     story, references = await lineage.assemble_inputs(
         story_client, artifact_client, session, deadline, correlation_id
@@ -272,6 +278,7 @@ async def _execute(
         ),
     )
 
+    await records_store.set_processing_stage(pool, session_id, "delegating")
     new_references = await turn_execution.execute_delegation(
         pool,
         artifact_client,
@@ -286,6 +293,7 @@ async def _execute(
         correlation_id=correlation_id,
     )
 
+    await records_store.set_processing_stage(pool, session_id, "synthesizing")
     synthesis_reference, synthesis_produced = await turn_execution.maybe_synthesize(
         pool,
         artifact_client,
@@ -332,6 +340,7 @@ async def _execute(
             pool, session_id, facilitator_turn_count=facilitator_turn
         )
         turns = await records_store.list_turns(pool, session_id)
+        await records_store.set_processing_stage(pool, session_id, "finalizing")
         return await _finalize_and_respond(
             pool,
             settings,

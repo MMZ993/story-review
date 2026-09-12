@@ -213,6 +213,50 @@ async def run_create_session(
         ),
     )
 
+    try:
+        return await _initial_pipeline(
+            pool,
+            settings,
+            artifact_client=artifact_client,
+            agents=agents,
+            story=story,
+            story_run=story_run,
+            session_record=session_record,
+            payload=payload,
+            key=key,
+            deadline=deadline,
+            correlation_id=correlation_id,
+        )
+    except BaseException:
+        # the advisory stage marker must not survive a failed flow
+        await records_store.set_processing_stage(
+            pool, session_record.session_id, None
+        )
+        raise
+
+
+async def _initial_pipeline(
+    pool: asyncpg.Pool,
+    settings: Settings,
+    *,
+    artifact_client: McpClient,
+    agents: AgentSet,
+    story: StoryDetail,
+    story_run: StoryRunRecord,
+    session_record: SessionRecord,
+    payload: dict,
+    key: uuid.UUID,
+    deadline: float,
+    correlation_id: str,
+) -> CreateSessionResponse:
+    """Flow-1 body after the session row exists: story artifact, parallel
+    reviewer fan-out, synthesis, facilitator opening turn, turn record,
+    canonical response. Each long-running step first publishes its
+    advisory `processing_stage` marker for polling clients (Item F)."""
+    run_id = story_run.story_run_id
+    await records_store.set_processing_stage(
+        pool, session_record.session_id, "reviewing"
+    )
     story_reference = await _save_artifact(
         artifact_client,
         type_="story",
@@ -251,13 +295,16 @@ async def run_create_session(
         key,
         correlation_id,
         run_id,
-        session_id,
+        session_record.session_id,
         [
             (business_review, [business_reference], [story_reference], "business-reviewer"),
             (engineering_review, [engineering_reference], [story_reference], "engineering-reviewer"),
         ],
     )
 
+    await records_store.set_processing_stage(
+        pool, session_record.session_id, "synthesizing"
+    )
     try:
         synthesis = await agents.synthesis.invoke(
             SynthesisInvocation(
@@ -288,7 +335,7 @@ async def run_create_session(
         key,
         correlation_id,
         run_id,
-        session_id,
+        session_record.session_id,
         [
             (
                 synthesis,
@@ -300,6 +347,9 @@ async def run_create_session(
     )
 
     evidence = [story_reference, business_reference, engineering_reference]
+    await records_store.set_processing_stage(
+        pool, session_record.session_id, "facilitator"
+    )
     try:
         facilitator = await agents.facilitator.invoke(
             FacilitatorInvocation(
@@ -374,6 +424,9 @@ async def run_create_session(
     )
     await idempotency.complete(
         pool, ROUTE, "", key, response.model_dump(mode="json")
+    )
+    await records_store.set_processing_stage(
+        pool, session_record.session_id, None
     )
     return response
 

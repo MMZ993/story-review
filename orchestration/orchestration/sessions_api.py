@@ -153,14 +153,15 @@ async def list_sessions(
             story_id=record.story_id,
             state=record.state,
             requested_formats=record.requested_formats,
+            processing_stage=stage,
             created_at=record.created_at,
             updated_at=record.updated_at,
         )
-        for record in page
+        for record, stage in page
     ]
     return ListSessionsResponse(
         sessions=sessions,
-        next_cursor=encode_cursor(page[-1]) if more and page else None,
+        next_cursor=encode_cursor(page[-1][0]) if more and page else None,
     )
 
 
@@ -206,6 +207,9 @@ async def get_session(session_id: str, *, request: Request):
         ],
         artifact_references=references,
         reports=reports,
+        processing_stage=await records_store.get_processing_stage(
+            request.app.state.pool, session_id
+        ),
     )
 
 

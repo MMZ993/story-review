@@ -208,11 +208,12 @@ async def list_sessions(
     *,
     limit: int,
     before: tuple[object, str] | None = None,
-) -> tuple[list[SessionRecord], bool]:
+) -> tuple[list[tuple[SessionRecord, str | None]], bool]:
     """One keyset page ordered by (updated_at desc, session_id desc).
 
     `before` is the previous page's last (updated_at datetime, session_id)
-    key; returns the page and whether more rows follow it.
+    key; returns the page (record + advisory processing stage, exposed on
+    SessionSummary for polling clients) and whether more rows follow it.
     """
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -225,7 +226,11 @@ async def list_sessions(
             limit + 1,
         )
     more = len(rows) > limit
-    return [_session_from_row(row) for row in rows[:limit]], more
+    page = [
+        (_session_from_row(row), row["processing_stage"])
+        for row in rows[:limit]
+    ]
+    return page, more
 
 
 async def touch_session(pool: asyncpg.Pool, session_id: str) -> None:
@@ -235,6 +240,33 @@ async def touch_session(pool: asyncpg.Pool, session_id: str) -> None:
             "update sessions set updated_at = now() where session_id = $1",
             session_id,
         )
+
+
+async def set_processing_stage(
+    pool: asyncpg.Pool, session_id: str, stage: str | None
+) -> None:
+    """Set or clear the advisory processing-stage marker (Item F): the
+    running flow's own position in the pipeline, exposed through
+    SessionSummary/SessionDetail so a client may poll honest progress
+    while its synchronous POST is outstanding. Cleared (None) on
+    completion and on failure."""
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "update sessions set processing_stage = $2 "
+            "where session_id = $1",
+            session_id,
+            stage,
+        )
+
+
+async def get_processing_stage(
+    pool: asyncpg.Pool, session_id: str
+) -> str | None:
+    """Read the advisory stage marker (read paths for polling clients)."""
+    row = await _fetchrow(
+        pool, "select processing_stage from sessions where session_id = $1", session_id
+    )
+    return row["processing_stage"] if row else None
 
 
 async def update_session(

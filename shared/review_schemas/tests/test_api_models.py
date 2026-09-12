@@ -238,6 +238,21 @@ class TestSessionModels:
         with pytest.raises(ValidationError, match="unique"):
             SessionSummary.model_validate(self._summary(requested_formats=["md", "md"]))
 
+    def test_processing_stage_optional_and_bounded(self):
+        assert SessionSummary.model_validate(self._summary()).processing_stage is None
+        staged = SessionSummary.model_validate(
+            self._summary(processing_stage="synthesizing")
+        )
+        assert staged.processing_stage == "synthesizing"
+        assert (
+            SessionDetail.model_validate(
+                self._summary(facilitator_turn_count=1, processing_stage="reviewing")
+            ).processing_stage
+            == "reviewing"
+        )
+        with pytest.raises(ValidationError, match="processing_stage"):
+            SessionSummary.model_validate(self._summary(processing_stage="daydreaming"))
+
     def test_detail_reports_only_when_completed(self):
         detail = SessionDetail.model_validate(self._summary(facilitator_turn_count=1))
         assert detail.reports == []

@@ -19,6 +19,7 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .config import Settings
 
@@ -118,5 +119,19 @@ def create_app(
             response.headers["X-Correlation-Id"] = correlation
         return response
 
+    class NoCacheStaticMiddleware(BaseHTTPMiddleware):
+        """Mark static-shell responses `Cache-Control: no-cache`: the shell
+        is baked into the image and changes across rebuilds, and without an
+        explicit directive browsers may heuristically cache a stale chat.js
+        across deploys (live finding, Runbook 13). Revalidation via ETag
+        still avoids re-downloading unchanged files."""
+
+        async def dispatch(self, request, call_next):
+            response = await call_next(request)
+            if not request.url.path.startswith("/api"):
+                response.headers["Cache-Control"] = "no-cache"
+            return response
+
+    app.add_middleware(NoCacheStaticMiddleware)
     app.mount("/", StaticFiles(directory=_STATIC_DIR, html=True), name="static")
     return app
