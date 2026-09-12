@@ -109,7 +109,10 @@ Pattern mapping:
   report failure leaves a session in `finalizing` so the idempotent finalization
   request can be retried; the retry atomically reacquires the session turn lease
   before rendering. A non-retryable finalization failure rolls the session back to
-  `active` so it is never permanently stuck (see data-flow.md §3).
+  `active` so it is never permanently stuck (see data-flow.md §3). A client can also
+  explicitly **abandon** an `active` or `finalizing` session (`POST /abandon` — park
+  now, no report) when it is stuck without an exit: the atomic transition parks the
+  session and its story run, releasing the story for a new session.
 - **Retention (decided)**: all sessions, dialogue history, and artifacts are retained
   for the project lifetime; no cleanup runs in the sandbox or dev. Cloud SQL rows and
   GCS artifacts are deleted together only when the daily sandbox project is recreated
