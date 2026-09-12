@@ -251,6 +251,21 @@ export async function finalizeRetry(sessionId, options = {}) {
   );
 }
 
+/**
+ * POST /api/v1/sessions/{id}/abandon (D22): explicit park-now of an
+ * active/finalizing session — no model call, no report. Empty body +
+ * Idempotency-Key (scope per session); 503 and 409 SESSION_LOCKED are
+ * retried with the same key, 409 SESSION_READ_ONLY and 404 are definitive.
+ */
+export async function abandonSession(sessionId, options = {}) {
+  return postWithIdempotentKey(
+    `${SESSIONS_URL}/${encodeURIComponent(sessionId)}/abandon`,
+    {},
+    `pending:abandon:${sessionId}`,
+    options,
+  );
+}
+
 /** GET /api/v1/sessions/{id}/report: regenerate signed URLs (completed only). */
 export async function fetchReport(sessionId, options = {}) {
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;

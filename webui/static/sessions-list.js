@@ -49,3 +49,41 @@ export function renderOpenSessions(listElement, summaryElement, sessions, storie
     listElement.append(li);
   }
 }
+
+/** Render the historical (parked/completed) sessions read-only: story
+ * title (fallback id) + state, multiple sessions per story, and an open
+ * button that opens the existing read-only session view (D22-3). */
+export function renderPastSessions(listElement, summaryElement, sessions, stories, onOpen) {
+  const past = (sessions ?? []).filter(
+    (session) => session.state === "parked" || session.state === "completed",
+  );
+  summaryElement.textContent = `past sessions (${past.length})`;
+  listElement.replaceChildren();
+
+  if (past.length === 0) {
+    const li = document.createElement("li");
+    li.className = "past-sessions-empty";
+    li.textContent = "no past sessions";
+    listElement.append(li);
+    return;
+  }
+
+  for (const session of past) {
+    const title =
+      stories.find((story) => story.story_id === session.story_id)?.title ??
+      session.story_id;
+    const li = document.createElement("li");
+    li.className = "past-session-row";
+
+    const label = document.createElement("span");
+    label.textContent = `${session.story_id} — ${title} (${session.state})`;
+
+    const open = document.createElement("button");
+    open.type = "button";
+    open.textContent = "open";
+    open.addEventListener("click", () => onOpen(session.session_id));
+
+    li.append(label, open);
+    listElement.append(li);
+  }
+}

@@ -13,6 +13,7 @@ import pytest
 from pydantic import ValidationError
 
 from review_schemas.api import (
+    AbandonSessionResponse,
     CanonicalReportResult,
     CanonicalTurnResult,
     CreateSessionRequest,
@@ -393,6 +394,24 @@ class TestReportAndCanonicalModels:
                     ],
                 }
             )
+
+
+class TestAbandonSessionResponse:
+    def test_valid_response(self):
+        ok = AbandonSessionResponse.model_validate(
+            {"session_id": SESSION_ID, "state": "parked"}
+        )
+        assert ok.state == "parked"
+
+    def test_state_is_parked_only(self):
+        with pytest.raises(ValidationError):
+            AbandonSessionResponse.model_validate(
+                {"session_id": SESSION_ID, "state": "active"}
+            )
+
+    def test_requires_both_fields(self):
+        with pytest.raises(ValidationError):
+            AbandonSessionResponse.model_validate({"session_id": SESSION_ID})
 
 
 class TestHealth:

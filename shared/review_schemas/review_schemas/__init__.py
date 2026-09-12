@@ -64,6 +64,7 @@ from review_schemas.judge import (
     JudgeResult,
 )
 from review_schemas.api import (
+    AbandonSessionResponse,
     CanonicalOperationResult,
     CanonicalReportResult,
     CanonicalTurnResult,
@@ -107,6 +108,7 @@ from review_schemas.mcp import (
 
 __all__ = [
     # base
+    "AbandonSessionResponse",
     "AgentRunId",
     "ArtifactId",
     "ArtifactType",

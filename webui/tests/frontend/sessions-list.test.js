@@ -8,7 +8,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { JSDOM } from "jsdom";
 
-import { renderOpenSessions } from "../../static/sessions-list.js";
+import { renderOpenSessions, renderPastSessions } from "../../static/sessions-list.js";
 
 function installDom() {
   const { window } = new JSDOM(
@@ -86,5 +86,44 @@ describe("renderOpenSessions", () => {
     const dom = installDom();
     renderOpenSessions(dom.list, dom.summary, null, [], vi.fn());
     expect(dom.list.textContent).toContain("no open sessions");
+  });
+});
+
+describe("renderPastSessions", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("lists parked/completed sessions read-only (multiple per story) with an open button", () => {
+    const dom = installDom();
+    const onOpen = vi.fn();
+    renderPastSessions(
+      dom.list,
+      dom.summary,
+      [
+        session({ session_id: "sess-p1", state: "parked" }),
+        session({ session_id: "sess-c1", state: "completed" }),
+        session(),
+      ],
+      [{ story_id: "story-07", title: "30-minute order edit window after purchase" }],
+      onOpen,
+    );
+
+    expect(dom.summary.textContent).toBe("past sessions (2)");
+    const rows = dom.list.querySelectorAll("li");
+    expect(rows).toHaveLength(2);
+    expect(rows[0].textContent).toContain("parked");
+    expect(rows[0].textContent).toContain("30-minute order edit window after purchase");
+    expect(rows[1].textContent).toContain("completed");
+
+    rows[0].querySelector("button").click();
+    expect(onOpen).toHaveBeenCalledWith("sess-p1");
+  });
+
+  it("renders an explicit note when there are no past sessions", () => {
+    const dom = installDom();
+    renderPastSessions(dom.list, dom.summary, [session()], [], vi.fn());
+    expect(dom.summary.textContent).toBe("past sessions (0)");
+    expect(dom.list.textContent).toContain("no past sessions");
   });
 });

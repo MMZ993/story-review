@@ -16,6 +16,7 @@ vi.mock("../../static/api.js", () => ({
   postTurn: vi.fn(),
   fetchReport: vi.fn(),
   finalizeRetry: vi.fn(),
+  abandonSession: vi.fn(),
   getPendingTurn: vi.fn(),
   clearPendingTurn: vi.fn(),
 }));
@@ -23,6 +24,7 @@ vi.mock("../../static/api.js", () => ({
 import { openSession } from "../../static/chat.js";
 import { setStagePollInterval } from "../../static/progress.js";
 import {
+  abandonSession,
   clearPendingTurn,
   fetchReport,
   fetchSession,
@@ -562,5 +564,63 @@ describe("report-links hygiene", () => {
     await openSession("s-1");
 
     expect(links.children.length).toBe(0);
+  });
+});
+
+describe("abandon session control (D22)", () => {
+  it("parks an active session after a confirm and shows the parked view", async () => {
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()])));
+    await openSession("s-1");
+    const abandon = document.querySelector("#abandon-session");
+    expect(abandon).not.toBeNull();
+
+    vi.spyOn(globalThis, "confirm").mockReturnValue(false);
+    abandon.click();
+    expect(abandonSession).not.toHaveBeenCalled();
+
+    vi.spyOn(globalThis, "confirm").mockReturnValue(true);
+    abandonSession.mockResolvedValue(ok({ session_id: "s-1", state: "parked" }));
+    abandon.click();
+    await vi.waitFor(() => expect(abandonSession).toHaveBeenCalledWith("s-1"));
+
+    expect(document.querySelector("#status").textContent).toContain("parked");
+    expect(document.querySelector("#restart-story")).not.toBeNull();
+    expect(document.querySelector("#abandon-session")).toBeNull();
+    expect(fetchReport).not.toHaveBeenCalled();
+  });
+
+  it("offers abandon on a finalizing session", async () => {
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()], "finalizing")));
+    await openSession("s-1");
+    expect(document.querySelector("#abandon-session")).not.toBeNull();
+  });
+
+  it("does not offer abandon on parked or completed sessions", async () => {
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()], "parked")));
+    await openSession("s-1");
+    expect(document.querySelector("#abandon-session")).toBeNull();
+
+    fetchSession.mockResolvedValue(
+      ok({
+        ...sessionDetail([turn()], "completed"),
+        reports: [reportDownload()],
+      }),
+    );
+    await openSession("s-1");
+    expect(document.querySelector("#abandon-session")).toBeNull();
+  });
+
+  it("surfaces the error when the abandon fails", async () => {
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()])));
+    await openSession("s-1");
+    vi.spyOn(globalThis, "confirm").mockReturnValue(true);
+    abandonSession.mockResolvedValue({
+      ok: false,
+      status: 409,
+      error: { code: "SESSION_READ_ONLY", message: "the session is already parked or completed; it is read-only" },
+    });
+    document.querySelector("#abandon-session").click();
+    await vi.waitFor(() => expect(document.querySelector("#status").textContent).toContain("read-only"));
+    expect(document.querySelector("#abandon-session")).not.toBeNull();
   });
 });

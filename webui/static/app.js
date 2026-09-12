@@ -21,7 +21,7 @@ import { createSession, fetchSessions, fetchStories, fetchStoryDetail } from "./
 import { openSession } from "./chat.js";
 import { renderMarkdown } from "./markdown.js";
 import { stageText } from "./progress.js";
-import { renderOpenSessions } from "./sessions-list.js";
+import { renderOpenSessions, renderPastSessions } from "./sessions-list.js";
 
 const statusElement = document.querySelector("#orchestration-status");
 const pickerView = document.querySelector("#picker-view");
@@ -292,6 +292,13 @@ async function showPicker() {
   renderOpenSessions(
     pickerView.querySelector("#open-sessions-list"),
     pickerView.querySelector("#open-sessions-summary"),
+    sessionsResult.ok ? sessionsResult.body.sessions : null,
+    allStories,
+    resumeSession,
+  );
+  renderPastSessions(
+    pickerView.querySelector("#past-sessions-list"),
+    pickerView.querySelector("#past-sessions-summary"),
     sessionsResult.ok ? sessionsResult.body.sessions : null,
     allStories,
     resumeSession,

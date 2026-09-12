@@ -12,6 +12,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  abandonSession,
   clearPendingTurn,
   createSession,
   fetchReport,
@@ -52,7 +53,7 @@ function jsonResponse(status, body) {
   };
 }
 
-const errorEnvelope = (code, message) => ({ error: { code, message } });
+const errorEnvelope = (code, message, extra = {}) => ({ error: { code, message, ...extra } });
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -322,6 +323,72 @@ describe("finalizeRetry", () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(result.error.code).toBe("NOT_FINALIZING");
+  });
+});
+
+describe("abandonSession", () => {
+  it("POSTs an empty body with a persisted key under pending:abandon:{id}", async () => {
+    const storage = memoryStorage();
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse(200, { session_id: "s-1", state: "parked" }));
+
+    const result = await abandonSession("s-1", { fetchImpl, storage });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "/api/v1/sessions/s-1/abandon",
+      expect.objectContaining({ method: "POST" }),
+    );
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(init.body).toBe("{}");
+    expect(init.headers["Idempotency-Key"]).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(storage.getItem("pending:abandon:s-1")).toBeNull();
+    expect(result.ok).toBe(true);
+    expect(result.body).toEqual({ session_id: "s-1", state: "parked" });
+  });
+
+  it("retries a 503 with the same key and returns a 409 SESSION_LOCKED envelope without clearing the key", async () => {
+    const storage = memoryStorage();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(503, errorEnvelope("RETRYABLE", "upstream")))
+      .mockResolvedValueOnce(
+        jsonResponse(409, errorEnvelope("SESSION_LOCKED", "lease held", { retry_after_seconds: 2 })),
+      );
+    const sleep = vi.fn().mockResolvedValue(undefined);
+
+    const result = await abandonSession("s-1", {
+      fetchImpl,
+      storage,
+      sleep,
+      backoffMs: 10,
+      attempts: 2,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    const [first, second] = fetchImpl.mock.calls;
+    expect(second[1].headers["Idempotency-Key"]).toBe(first[1].headers["Idempotency-Key"]);
+    expect(result.error.code).toBe("SESSION_LOCKED");
+    expect(storage.getItem("pending:abandon:s-1")).toBe(
+      first[1].headers["Idempotency-Key"],
+    );
+  });
+
+  it("returns a definitive 409 SESSION_READ_ONLY without retrying", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(409, errorEnvelope("SESSION_READ_ONLY", "parked")));
+    const sleep = vi.fn().mockResolvedValue(undefined);
+
+    const result = await abandonSession("s-1", {
+      fetchImpl,
+      storage: memoryStorage(),
+      sleep,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(result.error.code).toBe("SESSION_READ_ONLY");
   });
 });
 
