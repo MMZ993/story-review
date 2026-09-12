@@ -75,9 +75,11 @@ and shared schemas into a self-contained build context before deployment (see
    MCP tools to retrieve supporting evidence through orchestration-supplied,
    lineage-scoped references.
 7. Orchestration executes the requested re-review and re-synthesis or continues the
-   dialogue. Any turn that produces synthesis must continue so the facilitator evaluates
-   the new output on the next turn. A normal turn finalizes only when no issues remain and
-   no work was requested; explicit PO acceptance bypasses facilitator/delegated work.
+   dialogue. A turn that produces synthesis invokes the facilitator a **second time**
+   (post-delegation summary turn) so it evaluates the new output within the same turn;
+   that final output governs the gate. A normal turn finalizes only when no issues
+   remain and no work was requested; explicit PO acceptance bypasses
+   facilitator/delegated work.
 8. On readiness, orchestration first persists a deterministic **`FinalizedReview`
    artifact** — the latest synthesis combined with the dialogue resolutions and the PO
    acceptance state — via the artifact MCP server. The report MCP server then renders
