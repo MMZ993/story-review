@@ -11,7 +11,10 @@ import pytest
 
 from review_schemas.errors import ErrorBody
 
+from orchestration import records_store
+
 from .fakes import FakeArtifactMcp, FakeReportMcp
+from .factories import story_run
 from .test_create_session_flow import CORR
 from .test_turns_flow import (
     KEY_OTHER,
@@ -130,6 +133,31 @@ async def completed_session(client_and_report, *, po_accepted=True):
 
 
 # --- finalize endpoint state machine ----------------------------------------
+
+
+async def test_completed_session_releases_story_for_new_run(
+    pool, settings, artifact
+):
+    """Completion transitions the story run too: the one-active-run-per-story
+    partial index must permit a fresh run on the same story afterwards
+    (api-contract: new sessions may reuse a completed story)."""
+    client, report = finalize_client(pool, settings, artifact)
+    _, _, session = await completed_session((client, report))
+
+    async with pool.acquire() as conn:
+        run_state = await conn.fetchval(
+            "select state from story_runs where story_run_id = "
+            "(select story_run_id from sessions where session_id = $1)",
+            session["session_id"],
+        )
+    assert run_state == "completed"
+
+    # a fresh run on the same story is now allowed (no constraint breach)
+    story_id = await pool.fetchval(
+        "select story_id from sessions where session_id = $1",
+        session["session_id"],
+    )
+    await records_store.create_story_run(pool, story_run(story_id=story_id))
 
 
 async def test_finalize_active_session_409_not_finalizing(pool, settings, artifact):

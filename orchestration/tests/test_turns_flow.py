@@ -430,6 +430,16 @@ async def test_park_at_facilitator_turn_10(pool, settings, artifact):
         )
     assert state == "parked"
 
+    # the story run parks with its session: a fresh run on the same story
+    # must be allowed (one_active_run_per_story excludes parked runs)
+    async with pool.acquire() as conn:
+        run_state = await conn.fetchval(
+            "select state from story_runs where story_run_id = "
+            "(select story_run_id from sessions where session_id = $1)",
+            session["session_id"],
+        )
+    assert run_state == "parked"
+
     # parked sessions are read-only
     again = await post_turn(client, session["session_id"], key=KEY_OTHER)
     assert again.status_code == 409
