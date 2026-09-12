@@ -294,7 +294,31 @@ export async function openSession(id, handlers = {}) {
   }
 
   const pending = sessionState === "active" ? getPendingTurn(id) : null;
-  if (pending) {
+  const stage = result.body.processing_stage;
+  if (pending && stage) {
+    // mid-turn reload while the logical request still holds the server
+    // lease (re-issuing would just eat the SESSION_LOCKED retry budget):
+    // passive read-only view that keeps the sent message visible; when the
+    // stage clears, the re-open replays the stored request with its key
+    inFlight = true;
+    syncComposer();
+    appendPoMessage(
+      document.querySelector("#messages"),
+      pending.poAccepted ? "(accepted the report)" : pending.message,
+    );
+    const placeholder = appendProgress(document.querySelector("#messages"));
+    placeholder.update(stageText(stage));
+    stagePollStop = pollProcessingStage(id, {
+      onStage: (detail) => placeholder.update(stageText(detail.processing_stage)),
+      onDone: () => {
+        placeholder.remove();
+        stagePollStop = null;
+        inFlight = false;
+        syncComposer();
+        if (sessionId === id) openSession(id); // pending branch replays the stored request
+      },
+    });
+  } else if (pending) {
     // mid-turn reload (webui debt 3): re-issue the same logical request
     // (the api client reuses the persisted idempotency key → canonical
     // replay server-side) while showing the live stage placeholder.

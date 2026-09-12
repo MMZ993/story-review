@@ -94,7 +94,10 @@ export async function fetchStoryDetail(storyId, options = {}) {
  * Shared mutating-POST core: persists the logical request's idempotency
  * key under `scope` before the first fetch, retries 503 with the SAME key
  * and request after a backoff up to the attempt budget, and clears the
- * pending key once any definitive outcome (2xx or non-503) is received.
+ * pending key once any definitive outcome (2xx or non-503) is received,
+ * except a budget-exhausted SESSION_LOCKED: the logical request may still
+ * be executing server-side under its lease (e.g. after a mid-turn reload),
+ * so its key and body stay persisted for a later resume/replay.
  * `pendingBody` (optional) is persisted alongside the key under
  * `${scope}:body` and cleared with it — a mid-request reload can then
  * re-issue the same logical request (same key, same body) and receive the
@@ -147,8 +150,14 @@ async function postWithIdempotentKey(url, body, scope, options, pendingBody = nu
     await sleep(waitMs);
   }
 
-  storage.removeItem(scope);
-  if (pendingBody !== null) storage.removeItem(bodyScope);
+  const lockedExhausted =
+    !result.ok &&
+    result.status === 409 &&
+    result.error?.code === "SESSION_LOCKED";
+  if (!lockedExhausted) {
+    storage.removeItem(scope);
+    if (pendingBody !== null) storage.removeItem(bodyScope);
+  }
   return result;
 }
 
