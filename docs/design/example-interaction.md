@@ -67,7 +67,14 @@ checkout (answers the old `E-2`).
 **Re-synthesis** pairs business v1 + engineering v2: `C-1` resolved (recorded in
 `resolved_from_previous`); new conflict `C-2` — `B-2`'s "not measurable" vs the PO's
 now-stated 30-second metric: the story text hasn't been updated to include it.
-Outcome `continue` (synthesis produced this turn; facilitator evaluates next turn).
+
+**Post-delegation summary turn (second facilitator call)**: with synthesis v2 appended
+to the session context, the facilitator is invoked again and its reply becomes the
+turn's final `facilitator_reply` — it reports the re-review outcome (`E-1` resolved
+via PSP vault tokens, new `E-3` expired-token fallback) and the new conflict `C-2`,
+repeating the important parts of its hidden pre-delegation reply
+(`delegation_rationale_reply`). Its updated `open_issues = ["C-2"]` is
+non-empty → outcome `continue`.
 
 ## 4. Second clarification resolves without delegation (flow 2)
 
@@ -80,8 +87,8 @@ Facilitator `DelegationDecision`: `invoke="none"`, `reuse_previous=false`,
 existing artifacts; no reviewer re-run needed.
 
 Resolutions recorded as `ResolutionItem`s (`C-2 → resolved`, `B-1 → resolved`,
-`E-1 → resolved` …). Gate: `open_issues` empty, `invoke=none`, no synthesis this
-turn → outcome `finalize`.
+`E-1 → resolved` …). Gate: final typed output has `open_issues` empty, `invoke=none`,
+no synthesis this turn → outcome `finalize`.
 
 ## 5. Finalization (flow 3)
 

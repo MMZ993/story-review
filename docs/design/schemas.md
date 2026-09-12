@@ -440,7 +440,14 @@ class IssueDraft(StrictModel):
 
 class FacilitatorTurnOutput(StrictModel):
     """Authoritative typed output of one facilitator turn. Orchestration never
-    parses the reply prose; every programmatically consumed field lives here."""
+    parses the reply prose; every programmatically consumed field lives here.
+
+    On a delegated turn the facilitator produces two of these (Item G / D21):
+    the pre-delegation output (its `reply` is the delegation rationale and is
+    not shown to the PO) and, after the re-review and re-synthesis complete,
+    the post-delegation summary output — the turn's final and gate-authoritative
+    one. The second call cannot request a new delegation for the same turn;
+    any delegation it emits executes on the next PO turn."""
 
     reply: Text
     delegation: DelegationDecision
@@ -680,6 +687,11 @@ class TurnView(StrictModel):
     po_message: Text | None = None
     po_accepted: bool = False
     facilitator_reply: Text | None = None
+    # Pre-delegation facilitator reply (Item G / D21): present only on turns
+    # that ran a delegation / re-synthesis; `facilitator_reply` is then the
+    # final post-delegation summary reply. Clients show only the final reply
+    # in the default chat view; this field is audit/appendix material.
+    delegation_rationale_reply: Text | None = None
     delegation: DelegationDecision | None = None
     resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=100)
     outcome: TurnOutcome
@@ -740,6 +752,9 @@ class TurnResponse(StrictModel):
     outcome: TurnOutcome
     state: Literal["active", "parked", "completed"]
     facilitator_reply: Text | None = None
+    # Pre-delegation reply when the turn ran a delegation (Item G / D21);
+    # see TurnView — `facilitator_reply` above is always the final reply.
+    delegation_rationale_reply: Text | None = None
     issues: list[Text] = Field(default_factory=list, max_length=100)
     delegation: DelegationDecision | None = None
     resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=100)
@@ -780,7 +795,8 @@ ProcessingStage = Literal["reviewing", "synthesizing", "facilitator", "delegatin
 `SessionSummary.processing_stage` (and therefore `SessionDetail.processing_stage`)
 exposes live pipeline progress for a session whose flow-1/flow-2/flow-3 request is
 currently executing server-side: `reviewing` (flow-1 reviewer fan-out),
-`synthesizing`, `facilitator` (facilitator turn), `delegating` (delegated re-review),
+`synthesizing`, `facilitator` (a facilitator turn — twice on a delegated turn: before
+and after the delegated re-review/synthesis), `delegating` (delegated re-review),
 `finalizing` (report rendering). It is `null` whenever no request for the session is
 in flight. It is advisory only — clients poll `GET /sessions` / `GET /sessions/{id}`
 for it while their synchronous POST is outstanding; no correctness decision may be
@@ -825,6 +841,7 @@ class CanonicalTurnResult(StrictModel):
     outcome: TurnOutcome
     state: Literal["active", "parked", "completed"]
     facilitator_reply: Text | None = None
+    delegation_rationale_reply: Text | None = None
     issues: list[Text] = Field(default_factory=list, max_length=100)
     delegation: DelegationDecision | None = None
     synthesis: ArtifactReference | None = None
@@ -889,7 +906,11 @@ enters `completed`.
 The opening facilitator call is facilitator turn 1 and counts toward the cap of 10.
 Explicit PO acceptance does not invoke the facilitator and therefore does not increment
 `facilitator_turn_count`; its persisted API turn number remains the next chronological
-turn number.
+turn number. A delegated turn still counts as **one** facilitator turn despite its two
+invocations (Item G / D21): the second (post-delegation summary) call is part of the
+same PO turn — `facilitator_turn_count` increments once per turn, not per invocation.
+Each invocation carries its own invocation id and its own bounded corrective re-prompt
+budget; reconciliation on an ambiguous timeout is per invocation id.
 
 ## Durable Cloud SQL records
 
@@ -969,6 +990,7 @@ class TurnRecord(StrictModel):
     po_message: Text | None = None
     po_accepted: bool = False
     facilitator_reply: Text | None = None
+    delegation_rationale_reply: Text | None = None
     delegation: DelegationDecision | None = None
     resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=100)
     new_issues: list[IssueDraft] = Field(default_factory=list, max_length=100)

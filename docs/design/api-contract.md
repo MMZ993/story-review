@@ -106,7 +106,8 @@ by `updated_at` descending.
 **Processing-stage progress**: while a session's flow-1/flow-2/flow-3 request is
 executing server-side, every summary/detail read carries a non-null
 `processing_stage` (`reviewing` → `synthesizing` → `facilitator` for flow 1;
-`facilitator` → `delegating` → `synthesizing` → `finalizing` for flow 2/3 — see
+`facilitator` → `delegating` → `synthesizing` → `facilitator` (second call on
+delegated turns) → `finalizing` for flow 2/3 — see
 [schemas.md](schemas.md)). A synchronous `POST /sessions` or `POST /turns` caller may
 poll these reads while its POST is outstanding to show honest stage-level progress;
 the stage is advisory (derived from the server's own position in the pipeline) and is
@@ -149,11 +150,18 @@ it happens (`TurnResponse`; abbreviated references, authoritative shapes in
   "outcome": "continue | park | finalize",
   "state": "active | parked | completed",
   "facilitator_reply": "…",
+  "delegation_rationale_reply": "… | null",
   "issues": ["…"],
   "synthesis": { "artifact_id": "art-…", "version": 2 },
   "report": []
 }
 ```
+
+- On a turn that ran a delegation or re-synthesis, `facilitator_reply` is the **final**
+  post-delegation summary reply (the second facilitator call — see
+  [data-flow.md](data-flow.md) §2) and `delegation_rationale_reply` carries the
+  pre-delegation reply (hidden from the PO in the default chat view; audit/appendix
+  material). On turns without delegation the field is `null`.
 
 - `outcome = finalize`: `report` contains one download entry per requested format
   (reference + signed URL), `state` = `completed`. When a turn enters finalization,
