@@ -119,7 +119,8 @@ function actionButton(id, label) {
  */
 function renderStateControls() {
   const actions = document.querySelector("#session-actions");
-  actions.replaceChildren();
+  const accept = document.querySelector("#accept-turn");
+  actions.replaceChildren(accept);
 
   if (sessionState === "active") {
     const abandon = actionButton("abandon-session", "abandon session");

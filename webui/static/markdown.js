@@ -55,3 +55,22 @@ export function renderMarkdown(element, source, isFinal) {
 
   element.innerHTML = safeHtml;
 }
+
+/**
+ * Render a StoryDetail plain-text field as readable Markdown paragraphs.
+ *
+ * Input: one plain-text story field whose source paragraphs are newline-separated.
+ * Output: no return value.
+ * Side effects: replaces `element` children through the sanitized Markdown renderer.
+ * Errors: propagates parser or DOM errors.
+ * Constraint: this preserves source paragraph boundaries without interpreting or
+ * reconstructing the ADO HTML formatting stripped by story preparation.
+ */
+export function renderStoryPreview(element, source) {
+  const paragraphMarkdown = source
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n\n");
+  renderMarkdown(element, paragraphMarkdown, true);
+}

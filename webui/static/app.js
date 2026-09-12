@@ -19,7 +19,7 @@
 
 import { createSession, fetchSessions, fetchStories, fetchStoryDetail } from "./api.js";
 import { openSession } from "./chat.js";
-import { renderMarkdown } from "./markdown.js";
+import { renderStoryPreview } from "./markdown.js";
 import { stageText } from "./progress.js";
 import { renderOpenSessions, renderPastSessions } from "./sessions-list.js";
 
@@ -42,8 +42,8 @@ let selectedStoryId = null;
 async function showOrchestrationStatus() {
   const result = await fetchStories();
   statusElement.textContent = result.ok
-    ? "orchestration: reachable"
-    : `orchestration: error (${result.status})`;
+    ? "FastAPI backend: reachable"
+    : `FastAPI backend: error (${result.status})`;
 }
 
 /**
@@ -154,7 +154,7 @@ async function showPreview(storyId) {
   const heading = document.createElement("h3");
   heading.textContent = detail.title ?? storyId;
   const body = document.createElement("div");
-  renderMarkdown(body, detail.description ?? "", true);
+  renderStoryPreview(body, detail.description ?? "");
   preview.replaceChildren(heading, body);
 }
 

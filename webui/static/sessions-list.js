@@ -45,7 +45,7 @@ export function renderOpenSessions(listElement, summaryElement, sessions, storie
     resume.textContent = "resume";
     resume.addEventListener("click", () => onResume(session.session_id));
 
-    li.append(label, resume);
+    li.append(resume, label);
     listElement.append(li);
   }
 }
@@ -83,7 +83,7 @@ export function renderPastSessions(listElement, summaryElement, sessions, storie
     open.textContent = "open";
     open.addEventListener("click", () => onOpen(session.session_id));
 
-    li.append(label, open);
+    li.append(open, label);
     listElement.append(li);
   }
 }
