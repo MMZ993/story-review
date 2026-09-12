@@ -8,15 +8,14 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-17 (session 45 — **D20: Item F live progress +
-webui debt fixes implemented, live-verified on story-15** (stages shown
-turn 4); three live bugs found and fixed in-session (leading-null poll
-race, stale report links, missing static no-cache); **Item G recorded**
-(owner: delegated turns should be facilitator → reviewers → synthesis →
-facilitator → PO, first reply hidden); review-schemas **171**,
-orchestration **100+11s**, webui **12 + vitest 59**, agent-kit **104**,
-mcp-report **36**. Increment 4 (exit gate + close) remains. Prior:
-session 44 — D19 live gate PASS on story-05; webui debt observed.)
+Last updated: 2026-09-17 (session 46 — **D21: Item G design decided +
+docs applied** — post-delegation facilitator summary turn in flow 2, all
+open decisions resolved, `docs/design/` updated + committed (`e64c34b`,
+frozen cherry-pick `5e0de47`) + `docs-local` (`a5a195b`); implementation
+follows in a fresh session. Prior: session 45 — **D20: Item F live progress +
+webui debt fixes implemented, live-verified on story-15**; Item G recorded;
+review-schemas **171**, orchestration **100+11s**, webui **12 + vitest 59**,
+agent-kit **104**, mcp-report **36**. Increment 4 (exit gate + close) remains.)
 
 ## Where we are
 
@@ -48,6 +47,33 @@ session 44 — D19 live gate PASS on story-05; webui debt observed.)
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+Session 46 (2026-09-17, main PC — **Item G design (D21), docs-only**; no
+cloud actions, Cloud SQL STOPPED, no suites run — documentation only):
+- **Blocker check clean**: D20 docs commit + frozen cherry-pick already done,
+tree clean; Phase 7 increment 4 independent.
+- **Owner decision D21** (chat, resolving Item G's open questions):
+presentation **option (a)** — chat shows only the final (second-call) reply;
+pre-delegation reply persisted as new `delegation_rationale_reply` field
+(TurnResponse/TurnView/TurnRecord/CanonicalTurnResult); **prompt rule** that
+the pre-delegation reply is invisible to the PO (second reply must repeat
+important findings); **gate precedence on the final typed output** — old
+"synthesis ⇒ continue" rule removed, delegated turns can finalize same-turn;
+**one facilitator-turn count despite two invocations** (distinct invocation
+ids, reconciliation + corrective re-prompt budget each); second call cannot
+chain a delegation within the same turn; extra model-call cost accepted.
+- **Docs applied**: `docs/design/data-flow.md` §2 (prose, mermaid, gate
+precedence, ASCII regenerated from `flow2.puml`), `agents.md`,
+`api-contract.md` (TurnResponse + flow-2 stage sequence now `facilitator →
+delegating → synthesizing → facilitator → finalizing`), `schemas.md`,
+`architecture.md`, `observability.md`, `example-interaction.md`; D21 recorded
+in local-decisions; future-extensions Item G → design-decided status.
+- **Commits**: `e64c34b` (docs, atomic) + `a5a195b` (docs-local) on main;
+`e64c34b` cherry-picked to `docs/initial-frozen` as `5e0de47` (clean).
+Owner to push both branches. Intermediate `flow2.atxt` in `trash/`.
+- **Risk noted for implementation**: the 5-min turn deadline now covers two
+facilitator calls + reviewers + synthesis; per-attempt clamping should hold,
+watch at the live gate.
+
 Session 45 (2026-09-17, main PC — **D20: Item F live progress + webui
 debt fixes**; local Docker, Cloud SQL STOPPED, no cloud actions):
 - **Owner decision D20**: Item F via option (a) — orchestration
@@ -536,8 +562,16 @@ after changes):
    regression suites, independent read-only review of the phase diff,
    Phase 7 COMPLETE in development-plan.md, Runbook 13 completion
    review.
-2. **Item G** (future-extensions): plan the flow-2 two-call facilitator
-   design change before/with Phase 8 planning.
+2. **Item G implementation (D21 — design ready)**: fresh session; requires
+   review-schemas **0.7.0 → 0.8.0** (`delegation_rationale_reply` on
+   TurnResponse/TurnView/TurnRecord/CanonicalTurnResult), orchestration
+   flow-2 two-call sequencing (second invocation id, per-invocation
+   corrective budget/reconciliation, gate on final output, second
+   facilitator stage publication), facilitator prompt rules (pre-delegation
+   reply invisible; repeat important findings; no same-turn delegation
+   chaining), webui chat rendering (final reply only; history replay from
+   `facilitator_reply`), migration if TurnRecord storage needs the new
+column; live gate on a delegated turn (watch the 5-min deadline).
 3. Owner push `main` + `docs/initial-frozen` (identifier check re-ran
    clean post-commit, session 45).
 
