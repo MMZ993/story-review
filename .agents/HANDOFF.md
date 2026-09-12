@@ -8,26 +8,27 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-12 (session 49 — **increment-4 walkthrough PASS** incl.
-story-run release fix (orchestration); **D22 docs applied** (abandon endpoint +
-historical sessions view) — implementation next). Prior: session 48 — Item G live
-gate PASS + three webui UX fixes.
+Last updated: 2026-09-20 (session 50 — **D22 implemented + Phase 7 COMPLETE**:
+abandon endpoint + webui abandon button + past-sessions list, six legacy
+stuck sessions parked live, full regressions green, independent phase
+review Ready-to-proceed with findings fixed). Prior: session 49 —
+increment-4 walkthrough PASS + D22 docs.
 
 ## Where we are
 
+- **Phase 7 (Web UI) COMPLETE and CLOSED** (sessions 39–50; increments 0–4
+  + Items E/F/G + D18–D22, walkthrough gate PASS session 49, phase-close
+  review session 50 Ready-to-proceed with findings fixed in-session.
+  Detail: Runbook 13, D16–D22). D22 shipped session 50: `POST
+  /sessions/{id}/abandon` (state table per api-contract) + webui abandon
+  button + past-sessions list; the six legacy stuck compose sessions
+  (story-01/-03/-04/-06/-14 active; story-15 was already completed — 409
+  SESSION_READ_ONLY live) are parked and their stories released.
+  Compose Postgres sessions remaining: story-13 second session active,
+  plus parked/completed history.
 - **Phase 6 — Orchestration (FastAPI): COMPLETE and CLOSED**
   (sessions 32–38; detail in Runbook 12, decisions D15 + amendments
   1–3). All gates green; live integration suite PASS (3 passed in 367 s).
-- **Phase 7 (Web UI) in progress** — increments 0–3 + Items E/F/G done with
-  live gates PASS (Runbook 13 + D17–D21). **Session 49: increment-4
-  walkthrough PASS** (park at 10, restart-on-same-story, accept → finalize →
-report + regenerate, mid-turn refresh functionally — one minor deferred
-  webui finding; story-run terminal-state fix in orchestration). **D22 docs
-  applied, implementation pending**: abandon endpoint + historical sessions
-  view, then phase close (regressions, independent review, COMPLETE).
-  Compose Postgres sessions: story-02/-05/-07/-09/-13(parked) completed,
-  story-13 second session active, legacy story-01/-03/-04/-06/-14/-15
-  active-but-stuck (to be abandoned once D22 ships).
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -44,6 +45,27 @@ report + regenerate, mid-turn refresh functionally — one minor deferred
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+Session 50 (2026-09-20, main PC — **D22 implementation + Phase 7 close**;
+local Docker stack, images rebuilt twice, no cloud actions, Cloud SQL STOPPED):
+- **D22 test-first**: review-schemas 0.8.0 → 0.9.0 (`AbandonSessionResponse`,
+  +3); orchestration `abandon_api.py` (+10 tests — full state table, story
+  release incl. 201-on-same-story, same-key replay, lease contention,
+  stale-claim release, non-v4 key, stage clearing) with drive-by fix of a
+  latent `records_store.update_session` no-conn-branch crash (`None` passed
+  to `_retire_story_run`); webui `abandonSession` + abandon button
+  (active/finalizing, confirm) + `renderPastSessions` picker list (+9
+  vitest).
+- **Live**: five stuck active sessions parked via the new endpoint,
+  story runs verified `parked`; story-15 already completed → 409
+  SESSION_READ_ONLY (live terminal-branch evidence).
+- **Phase 7 close**: full regression battery at/above baseline
+  (review-schemas 176, orchestration 116+11s, webui 12+76, all others
+  unchanged); independent phase review (subagent, `b8a1416..HEAD` + tree)
+  **Ready-to-proceed** — Important (missing public export of
+  `AbandonSessionResponse`) + 2 minors, all fixed in-session, suites
+  re-run green; Phase 7 COMPLETE in development-plan. Evidence: Runbook 13
+  §Session 50.
+
 Session 49 (2026-09-12, main PC — **increment-4 walkthrough + story-run release
 fix + D22 docs**; local Docker stack, images rebuilt twice, no cloud actions,
 Cloud SQL STOPPED):
@@ -573,17 +595,17 @@ and the git log.
 Baseline (latest green run of every suite — re-verify against these counts
 after changes):
 
-- review-schemas **173** (session 47: +2 delegation_rationale_reply), ado-wire **7**, dataset **36**, mcp-ingress **7**,
+- review-schemas **176** (session 50: +3 AbandonSessionResponse), ado-wire **7**, dataset **36**, mcp-ingress **7**,
   mcp-story **67**, mcp-artifact **32**, mcp-report **36**, compose contract
   **20** (session 40; re-run after compose changes), agent-kit **104**, agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **105+11s** (session 47: +5 Item G);
-  **webui 12 + vitest 65** (session 48: +6); live gates: business/engineering/synthesis
+  facilitator adapter **3+1s**, orchestration **116+11s** (session 50: +10 abandon);
+  **webui 12 + vitest 76** (session 50: +9); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
   webui browser gates PASS: increment 0 reachability, increment 1 picker +
   creation + 409 path, increment 2 dialogue turns + resume, increment 3
-  acceptance → finalize → report download (Runbook 13).
+  acceptance → finalize → report download, increment 4 walkthrough (Runbook 13).
 - Per-session verification evidence (commands, counts, review verdicts,
   gotchas): append-only in the runbooks — Runbook 11 §0–4 + completion
   review for Phase 5; Runbook 10 for Phase 4; earlier phases in 03–09.
@@ -623,17 +645,17 @@ after changes):
 
 ## Next Steps
 
-1. **Implement D22** (fresh session; docs already applied): orchestration
-   `POST /sessions/{id}/abandon` (state table per api-contract, test-first,
-   same-key replay) + webui abandon button (active/finalizing only, confirm
-   dialog) + historical-sessions list (past parked/completed sessions,
-   read-only open, multiple per story). Then use it to close the six legacy
-   stuck compose sessions (story-01/-03/-04/-06/-14/-15).
-2. **Phase 7 close-out**: full regression suites against baseline,
-   independent read-only review of the phase diff, Phase 7 COMPLETE in
-   development-plan.md, Runbook 13 completion review.
-3. Owner push `main` + `docs/initial-frozen` (identifier check re-run after
-   this session's commits — Runbook 13 gained walkthrough evidence).
+1. Owner reviews session 50's commits (code + docs-local), identifier
+   check after the last commit, then owner push `main` +
+   `docs/initial-frozen` (D22 frozen cherry-pick `63349f8` already on the
+   branch — verify it covers `dab82c4`).
+2. **Phase 8 planning** (next session): real GCP deployment & versioning
+   proof; fold in the deferred review minors due before cloud runs
+   (run-migrations.sh argv credential + startup race) and the Item D
+   observability sub-item.
+3. Optional housekeeping: `make agents-compose-down` when the local stack
+   is no longer needed (compose Postgres is volume-backed — state
+   survives).
 
 ## Important Notes
 
@@ -662,15 +684,14 @@ after changes):
   az fallback.
 - Throwaway-postgres startup race now 8 observations (Runbook 12);
   run-migrations.sh small-retry fix stays due before Phase 8 cloud runs.
-- **Local stack is UP, carries the D20+D21+run-release code** (webui and
-  orchestration images rebuilt session 49; rebuilds wipe fake-gcs's
+- **Local stack is UP, carries the D20+D21+run-release+D22 code** (webui and
+  orchestration images rebuilt session 50; rebuilds wipe fake-gcs's
   memory-backend artifacts — old completed sessions' downloads 404,
   expected; compose Postgres is volume-backed and needs manual migrations —
   0003 + 0004 applied): orchestration (:8130) + webui (:8120) compose
-  services. Compose sessions: completed story-02/-05/-07/-09 + story-13
-  (parked, turn 10); active story-13 second session + story-14/-15;
-  **stuck-legacy** story-01/-03/-04/-06 (pre-rebuild, fake-gcs artifacts
-  gone — abandon once D22 ships). `agents-compose-down` when done.
+  services. Compose sessions: completed story-02/-05/-07/-09; parked
+  story-13 (turn 10) + the five session-50 abandons (story-01/-03/-04/-06/
+  -14); active story-13 second session. `agents-compose-down` when done.
   `compose-contract-test` needs `compose-up` first. Signed fake-gcs URLs
   point at `https://127.0.0.1:9026` (self-signed cert — accept the browser
   warning; recorded in Runbook 13).

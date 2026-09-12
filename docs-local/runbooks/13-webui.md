@@ -923,3 +923,76 @@ Local Docker stack up throughout, no cloud actions, Cloud SQL STOPPED.
 - Remaining for Phase 7 close: D22 implementation (abandon + history
   view), then full regression suites, independent phase review,
   development-plan COMPLETE, completion review.
+
+## Session 50 (2026-09-20) — D22 implementation + Phase 7 close
+
+Local Docker stack up throughout (orchestration + webui images rebuilt twice
+this session), no cloud actions, Cloud SQL STOPPED.
+
+### D22 implementation (test-first, per api-contract.md state table)
+
+- **review-schemas 0.8.0 → 0.9.0**: `AbandonSessionResponse` in
+  `api.py`, exported via `__init__`/`__all__`/install-test EXPECTED_EXPORTS
+  (the export was the phase-review Important — both package and test omitted
+  it, so the equality test could not catch it; fixed in-session).
+- **Orchestration** `abandon_api.py`: `POST /sessions/{id}/abandon` — key-v4
+  422, unknown 404, lease acquire (`SESSION_LOCKED` retryable w/
+  retry_after), claim under the lease (REPLAY returns the stored canonical;
+  IN_PROGRESS proceeds — we own the lease), re-read state (active/finalizing
+  → park; terminal → `SESSION_READ_ONLY` + fresh-claim release), atomic
+  transaction `update_session(state=parked)` + `idempotency.complete`
+  (story run parks in the same statement batch; count unchanged), stage
+  cleared + lease released in `finally`. Route
+  `POST /api/v1/sessions/{}/abandon`.
+- **Drive-by bug fix** in `records_store.update_session`: the no-`conn`
+  branch passed `None` (not the borrowed connection) to
+  `_retire_story_run` — a latent crash on any future pool-path terminal
+  transition; one word (`borrowed`), caught while implementing abandon.
+- **Webui**: `abandonSession` in `api.js` (empty body + key scope
+  `pending:abandon:{id}`, 503/SESSION_LOCKED same-key retry,
+  budget-exhausted SESSION_LOCKED keeps the key — same core as
+  finalizeRetry); abandon button (confirm dialog) on the active and
+  finalizing views in `chat.js`, success → parked read-only view;
+  SESSION_LOCKED hint reworded to "session lease" (review minor);
+  `renderPastSessions` in `sessions-list.js` wired into the picker
+  (`#past-sessions` block in `index.html`) — parked/completed sessions,
+  multiple per story, read-only open via the existing session view.
+- **Tests**: review-schemas +3 (model rules); orchestration +10 in
+  `tests/test_abandon.py` (full state table, story release incl. new
+  201-on-same-story, same-key replay, lease contention, stale-claim release
+  on read-only, non-v4 key, stage clearing); webui +9 vitest
+  (abandonSession idempotency/retry/read-only, abandon button
+  active/finalizing/absent-on-terminal/error path, past-sessions render).
+
+### Live: six legacy stuck sessions abandoned
+
+Through orchestration :8130 directly (keys uuidgen): story-01/-03/-04/-06/-14
+active sessions → `200 {"state":"parked"}`; their story runs verified `parked`
+in the compose Postgres (stories released). story-15's session turned out
+already `completed` — the abandon returned `409 SESSION_READ_ONLY`
+(non-retryable) exactly per the state table: live evidence of the terminal
+branch. Remaining compose sessions: story-13 active (second session, turn
+history intact) + parked/completed history.
+
+### Phase 7 close
+
+- **Regressions** (all at/above baseline): review-schemas **176** (+3),
+  ado-wire 7, dataset 36, mcp-ingress 7, mcp-story 67, mcp-artifact 32,
+  mcp-report 36, compose contract 20, agent-kit 104, agents 4×4,
+  adapters 6+2s / 7+1s / 7+2s / 3+1s, orchestration **116 +11s** (+10),
+  webui **12 + vitest 76** (+9).
+- **Independent phase review** (read-only subagent, snapshot
+  `b8a1416..HEAD` + working tree): verdict **Ready to proceed** with
+  1 Important (`AbandonSessionResponse` missing from the public
+  exports) + 2 minors (stale-claim-release test, SESSION_LOCKED hint
+  wording) — all three fixed in-session; suites re-run green
+  (review-schemas 176, orchestration 116+11s, webui 12+76).
+- Phase 7 marked COMPLETE in development-plan.md.
+- Commits: `1b0f2ad` (feat, D22 code + tests) + this runbook/handoff commit.
+
+### Gotchas
+
+- The review-schemas export-equality test can never catch a name missing
+  from *both* `__all__` and EXPECTED_EXPORTS — new public models must be
+  added consciously in three places (api.py, `__init__` import + `__all__`,
+  EXPECTED_EXPORTS) and cross-checked against schemas.md.

@@ -106,7 +106,7 @@ Exit criteria: integration tests against compose stack (local adapters) cover fl
 
 Cost: Vertex AI tokens only.
 
-## Phase 7 — Web UI (minimal chat MVP) — planned
+## Phase 7 — Web UI (minimal chat MVP) — COMPLETE (sessions 39–50; increments 0–4 all green, walkthrough gate PASS, D18–D22 implemented, phase-close review 2026-09-20 Ready-to-proceed with 1 Important (missing public export) + 2 minors fixed same session; plan in plans/phase-7-webui.md, decisions D16–D22, evidence in runbooks/13-webui.md)
 
 Scope: simple web client over the orchestration API (design change from TUI,
 D16): pre-conversation story picker (list with hover preview / story detail
