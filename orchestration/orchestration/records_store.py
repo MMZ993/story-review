@@ -282,7 +282,13 @@ async def update_session(
     """Apply a session-state transition (park / finalizing / completed
     with its persisted references) and the facilitator-turn count; bumps
     updated_at. `conn` joins an outer transaction (atomic transitions +
-    idempotency completion)."""
+    idempotency completion).
+
+    Terminal states (parked / completed) transition the session's story
+    run in the same statement batch, keeping the one-active-run-per-story
+    partial index in step with the session: a parked/completed session
+    must release its story for a new run (api-contract.md: new sessions
+    may use the same story)."""
     assignments = ["updated_at = now()"]
     args: list = [session_id]
     if state is not None:
@@ -305,11 +311,30 @@ async def update_session(
                 "where session_id = $1",
                 *args,
             )
+            if state in ("parked", "completed"):
+                await _retire_story_run(executor, session_id, state)
         return
     await executor.execute(
         f"update sessions set {', '.join(assignments)} "
         "where session_id = $1",
         *args,
+    )
+    if state in ("parked", "completed"):
+        await _retire_story_run(executor, session_id, state)
+
+
+async def _retire_story_run(
+    conn: asyncpg.Connection, session_id: str, state: str
+) -> None:
+    """Move the session's story run to the same terminal state, releasing
+    the story for a new run. Runs on the caller's connection so it joins
+    the surrounding session-transition transaction."""
+    await conn.execute(
+        "update story_runs set state = $2, updated_at = now() "
+        "where story_run_id = "
+        "(select story_run_id from sessions where session_id = $1)",
+        session_id,
+        state,
     )
 
 
