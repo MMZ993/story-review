@@ -157,7 +157,11 @@ async def test_completed_session_releases_story_for_new_run(
         "select story_id from sessions where session_id = $1",
         session["session_id"],
     )
-    await records_store.create_story_run(pool, story_run(story_id=story_id))
+    from .conftest import TEST_USER
+
+    await records_store.create_story_run(
+        pool, story_run(story_id=story_id, user_id=TEST_USER)
+    )
 
 
 async def test_finalize_active_session_409_not_finalizing(pool, settings, artifact):

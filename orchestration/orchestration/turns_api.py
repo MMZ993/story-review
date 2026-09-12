@@ -7,13 +7,14 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Header, Request
+from fastapi import APIRouter, Depends, Header, Request
 from review_schemas.api import TurnRequest, TurnResponse
 
 from . import flows, turns_flow
 from .api_errors import ApiError, make_error
 from .errors import IdempotencyKeyReused, SessionLocked
 from .finalization import FinalizationFailed
+from .users import require_user_id
 
 router = APIRouter(prefix="/api/v1/sessions/{session_id}", tags=["turns"])
 
@@ -28,6 +29,7 @@ async def post_turn(
     payload: TurnRequest,
     request: Request,
     idempotency_key: uuid.UUID = Header(alias="Idempotency-Key"),
+    user_id: uuid.UUID = Depends(require_user_id),
 ):
     """One PO action = one dialogue turn (data-flow.md §2)."""
     correlation_id = _correlation(request)
@@ -54,6 +56,7 @@ async def post_turn(
             payload=payload.model_dump(mode="json"),
             key=idempotency_key,
             correlation_id=correlation_id,
+            user_id=user_id,
         )
     except FinalizationFailed as exc:
         raise exc.api_error from exc

@@ -85,6 +85,9 @@ HttpsUrl = Annotated[
 UtcDatetime = AwareDatetime
 IdempotencyKey = UUID4
 CorrelationId = UUID4
+# Anonymous per-user scoping key (X-User-Id): an opaque grouping key the
+# client generates once — never a proof of identity (api-contract.md).
+UserId = UUID4
 LeaseToken = UUID4
 
 Format = Literal["md", "pdf"]

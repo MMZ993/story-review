@@ -31,12 +31,26 @@ class TestStoryRunAndLease:
             {
                 "story_run_id": RUN_ID,
                 "story_id": STORY_ID,
+                "user_id": FIXED_UUID,
                 "state": "active",
                 "created_at": FIXED_TS,
                 "updated_at": FIXED_TS,
             }
         )
         assert record.state == "active"
+        assert record.user_id == FIXED_UUID
+
+    def test_story_run_requires_user_id(self):
+        with pytest.raises(ValidationError):
+            StoryRunRecord.model_validate(
+                {
+                    "story_run_id": RUN_ID,
+                    "story_id": STORY_ID,
+                    "state": "active",
+                    "created_at": FIXED_TS,
+                    "updated_at": FIXED_TS,
+                }
+            )
 
     def test_lease_record(self):
         lease = TurnLeaseRecord.model_validate(
@@ -56,6 +70,7 @@ class TestSessionRecord:
             "session_id": SESSION_ID,
             "story_run_id": RUN_ID,
             "story_id": STORY_ID,
+            "user_id": FIXED_UUID,
             "state": "active",
             "requested_formats": ["md"],
             "created_at": FIXED_TS,

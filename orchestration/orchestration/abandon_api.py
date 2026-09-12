@@ -14,12 +14,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Header, Request
+from fastapi import APIRouter, Depends, Header, Request
 from review_schemas.api import AbandonSessionResponse
 
 from . import flows, idempotency, lease, records_store, turns_flow
 from .api_errors import ApiError, make_error
 from .errors import IdempotencyKeyReused, SessionLocked
+from .users import require_user_id
 
 router = APIRouter(prefix="/api/v1/sessions/{session_id}", tags=["abandon"])
 
@@ -56,6 +57,7 @@ async def abandon_session(
     session_id: str,
     request: Request,
     idempotency_key: uuid.UUID = Header(alias="Idempotency-Key"),
+    user_id: uuid.UUID = Depends(require_user_id),
 ):
     """Explicit park-now of an active/finalizing session (state table in
     api-contract.md)."""
@@ -71,14 +73,16 @@ async def abandon_session(
             ),
         )
     pool = request.app.state.pool
-    if await records_store.get_session(pool, session_id) is None:
+    if await records_store.get_session(pool, session_id, user_id=user_id) is None:
         raise _not_found(correlation_id)
     try:
         token = await lease.acquire(pool, session_id)
     except SessionLocked as exc:
         raise turns_flow.map_session_locked(exc, correlation_id) from exc
     try:
-        return await _park_now(pool, session_id, idempotency_key, correlation_id)
+        return await _park_now(
+            pool, session_id, idempotency_key, correlation_id, user_id
+        )
     except IdempotencyKeyReused as exc:
         raise flows.map_idempotency_reused(exc, correlation_id) from exc
     finally:
@@ -92,6 +96,7 @@ async def _park_now(
     session_id: str,
     key: uuid.UUID,
     correlation_id: str,
+    user_id: uuid.UUID,
 ) -> AbandonSessionResponse:
     """Under the lease: claim the idempotency slot, re-read the state
     (the previous lease holder may have transitioned it), park atomically."""
@@ -102,7 +107,7 @@ async def _park_now(
         assert claim.canonical_response is not None
         return AbandonSessionResponse.model_validate(claim.canonical_response)
 
-    session = await records_store.get_session(pool, session_id)
+    session = await records_store.get_session(pool, session_id, user_id=user_id)
     assert session is not None  # re-read under the lease of a known session
     if session.state not in ("active", "finalizing"):
         # a new key on a read-only session: release the fresh claim row so

@@ -12,7 +12,7 @@ from datetime import datetime
 import time
 import uuid
 
-from fastapi import APIRouter, Header, Request
+from fastapi import APIRouter, Depends, Header, Request
 from review_schemas.api import (
     CreateSessionRequest,
     CreateSessionResponse,
@@ -26,6 +26,7 @@ from review_schemas.mcp import ListArtifactsInput, ListArtifactsOutput
 from review_schemas.synthesis import ArtifactReference
 
 from . import finalization, flows, records_store
+from .users import require_user_id
 from .api_errors import ApiError, make_error
 from .errors import ConstraintViolation, IdempotencyKeyReused
 from .mcp_client import (
@@ -78,6 +79,7 @@ async def create_session(
     payload: CreateSessionRequest,
     request: Request,
     idempotency_key: uuid.UUID = Header(alias="Idempotency-Key"),
+    user_id: uuid.UUID = Depends(require_user_id),
 ):
     """Select a story and run the initial flow (data-flow.md §1)."""
     correlation_id = _correlation(request)
@@ -101,6 +103,7 @@ async def create_session(
             payload=payload.model_dump(mode="json"),
             key=idempotency_key,
             correlation_id=correlation_id,
+            user_id=user_id,
         )
     except IdempotencyKeyReused as exc:
         raise flows.map_idempotency_reused(exc, correlation_id) from exc
@@ -114,6 +117,7 @@ async def list_sessions(
     cursor: str | None = None,
     *,
     request: Request,
+    user_id: uuid.UUID = Depends(require_user_id),
 ):
     """List restorable sessions, newest update first."""
     try:
@@ -144,7 +148,7 @@ async def list_sessions(
                 ),
             ) from exc
     page, more = await records_store.list_sessions(
-        request.app.state.pool, limit=query.limit, before=before
+        request.app.state.pool, user_id=user_id, limit=query.limit, before=before
     )
     sessions = [
         SessionSummary(
@@ -166,11 +170,16 @@ async def list_sessions(
 
 
 @router.get("/{session_id}", response_model=SessionDetail)
-async def get_session(session_id: str, *, request: Request):
+async def get_session(
+    session_id: str,
+    *,
+    request: Request,
+    user_id: uuid.UUID = Depends(require_user_id),
+):
     """History replay incl. artifact references (fetched server-side)."""
     correlation_id = _correlation(request)
     record = await records_store.get_session(
-        request.app.state.pool, session_id
+        request.app.state.pool, session_id, user_id=user_id
     )
     if record is None:
         raise _not_found(correlation_id)

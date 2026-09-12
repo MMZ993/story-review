@@ -17,9 +17,12 @@ async def test_story_run_round_trip_and_active_run_uniqueness(pool):
     await records_store.create_story_run(pool, run)
     assert (await records_store.get_story_run(pool, run.story_run_id)) == run
 
-    # A second non-completed/non-parked run for the same story is rejected.
+    # A second non-completed/non-parked run for the same (user, story) is
+    # rejected (Phase 8: the one-active-run rule is per user).
     with pytest.raises(ConstraintViolation):
-        await records_store.create_story_run(pool, factories.story_run("story-07"))
+        await records_store.create_story_run(
+            pool, factories.story_run("story-07", user_id=run.user_id)
+        )
 
     # Completing (or parking) the first run frees the story for a new run.
     completed = run.model_copy(update={"state": "completed", "updated_at": factories.now()})
@@ -76,8 +79,15 @@ async def test_session_round_trip(pool):
     await records_store.create_story_run(pool, run)
     await records_store.create_session(pool, session)
 
-    assert (await records_store.get_session(pool, session.session_id)) == session
-    assert await records_store.get_session(pool, factories.session_id()) is None
+    assert (
+        await records_store.get_session(pool, session.session_id, user_id=session.user_id)
+    ) == session
+    assert (
+        await records_store.get_session(
+            pool, factories.session_id(), user_id=session.user_id
+        )
+        is None
+    )
 
 
 async def test_completed_session_round_trip_including_artifacts(pool):
@@ -101,7 +111,9 @@ async def test_completed_session_round_trip_including_artifacts(pool):
     await records_store.create_story_run(pool, run)
     await records_store.create_session(pool, completed)
 
-    stored = await records_store.get_session(pool, session.session_id)
+    stored = await records_store.get_session(
+        pool, session.session_id, user_id=completed.user_id
+    )
     assert stored == completed
     assert stored.final_review_reference == final_review
     assert stored.report_references == [report]

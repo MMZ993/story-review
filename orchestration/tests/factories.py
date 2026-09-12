@@ -43,10 +43,13 @@ def artifact_id() -> str:
     return f"art-{_suffix()}"
 
 
-def story_run(story_id: str = "story-07", state: str = "active") -> StoryRunRecord:
+def story_run(
+    story_id: str = "story-07", state: str = "active", user_id: uuid.UUID | None = None
+) -> StoryRunRecord:
     return StoryRunRecord(
         story_run_id=run_id(),
         story_id=story_id,
+        user_id=user_id or uuid.uuid4(),
         state=state,
         created_at=_now(),
         updated_at=_now(),
@@ -62,6 +65,7 @@ def session(
         session_id=session_id(),
         story_run_id=story_run_record.story_run_id,
         story_id=story_run_record.story_id,
+        user_id=story_run_record.user_id,
         state="active",
         requested_formats=requested_formats or ["md"],
         created_at=_now(),
