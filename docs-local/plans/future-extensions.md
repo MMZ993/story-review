@@ -337,8 +337,16 @@ Local deterministic tests only; one live gate session for evidence.
 
 ## Item G — Post-delegation facilitator summary turn (flow-2 design change)
 
-**Status: proposed (owner request, 2026-09-17, session 45 live testing of
-story-15).**
+**Status: DESIGN DECIDED (D21, 2026-09-17) — docs applied, implementation pending.**
+Open decisions resolved in `docs-local/local-decisions.md` D21: presentation
+option (a) (final reply only in chat; pre-delegation reply persisted as
+`delegation_rationale_reply`), prompt rule that the pre-delegation reply is
+invisible to the PO, gate precedence on the second call's output (old
+"synthesis ⇒ continue" rule removed), one turn count despite two invocations,
+extra model-call cost accepted. `docs/design/` updated (data-flow §2, agents,
+api-contract, schemas, architecture, observability, example-interaction,
+flow2.puml). Owner request recorded 2026-09-17 (session 45 live testing of
+story-15).
 
 ### Motivation
 

@@ -866,3 +866,35 @@ The webui debt items (Runbook 13 §D19) are fixed in the same pass.
    re-issues the same logical request (same key → canonical replay
    server-side); legacy key-only pending keys are cleared (no body to
    re-issue).
+
+## D21 — Post-delegation facilitator summary turn (Item G, 2026-09-17)
+
+Owner decision (chat, session 46): implement future-extensions **Item G** —
+a delegated dialogue turn becomes **facilitator → reviewer(s) → synthesis →
+facilitator (second call) → PO**. Open decisions resolved:
+
+1. **Presentation: option (a)** — the default chat view shows **only the
+   final (second-call) reply**; the pre-delegation reply is persisted as
+   `delegation_rationale_reply` (TurnResponse / TurnView / TurnRecord /
+   CanonicalTurnResult) and is audit/report-appendix material.
+2. **Prompt rule**: the facilitator is explicitly instructed that its
+   pre-delegation reply is **not visible to the PO/user**, so the second
+   reply must repeat any important findings from the first alongside the
+   re-review summary (what was resolved, what remains).
+3. **Gate precedence on the final output**: the "synthesis produced ⇒
+   continue" rule (old data-flow gate 3) is removed — the second call has
+   already evaluated the fresh synthesis, so a delegated turn with empty
+   `open_issues` and `invoke=none` in its **second** output finalizes in
+   the same turn. `po_accepted` and park-at-10 unchanged.
+4. **Turn accounting**: a delegated turn still counts as **one**
+   facilitator turn (once per turn, not per invocation); two invocation ids
+   per delegated turn, each with its own reconciliation and corrective
+   re-prompt budget; the second call cannot chain a new delegation within
+   the same turn (executes on the next PO turn).
+5. **Cost accepted**: one extra facilitator model call per delegated turn.
+
+Docs applied (this session): `docs/design/data-flow.md` §2 (prose, mermaid,
+regenerated ASCII from `flow2.puml`), `agents.md`, `api-contract.md`,
+`schemas.md`, `architecture.md`, `observability.md`, `example-interaction.md`
++ `diagrams/flow2.puml`. Review-schemas package bump (0.7.0 → 0.8.0) and
+implementation are follow-up work (with/after Phase 8 planning).
