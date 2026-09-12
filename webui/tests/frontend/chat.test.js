@@ -281,7 +281,25 @@ describe("increment 3 — parked, accepted, completed, finalizing", () => {
 
     const leave = document.querySelector("#leave-session");
     expect(leave).not.toBeNull();
+    globalThis.confirm ??= () => true;
+    vi.spyOn(globalThis, "confirm").mockReturnValue(true);
     leave.click();
+    expect(onLeaveSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("requires confirmation before leaving even when no turn is in flight", async () => {
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()])));
+    const onLeaveSession = vi.fn();
+    await openSession("s-1", { onLeaveSession });
+
+    globalThis.confirm ??= () => false;
+    const confirmSpy = vi.spyOn(globalThis, "confirm").mockReturnValue(false);
+    document.querySelector("#leave-session").click();
+    expect(onLeaveSession).not.toHaveBeenCalled();
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+
+    confirmSpy.mockReturnValue(true);
+    document.querySelector("#leave-session").click();
     expect(onLeaveSession).toHaveBeenCalledTimes(1);
   });
 
@@ -482,6 +500,8 @@ describe("passive processing view (another client / creation in flight)", () => 
       ok({ ...sessionDetail([turn()]), processing_stage: "synthesizing" }),
     );
     await openSession("s-1", { onLeaveSession });
+    globalThis.confirm ??= () => true;
+    vi.spyOn(globalThis, "confirm").mockReturnValue(true);
     document.querySelector("#leave-session").click();
     expect(onLeaveSession).toHaveBeenCalledTimes(1);
     // the poll was stopped: no further fetches fire after leaving
