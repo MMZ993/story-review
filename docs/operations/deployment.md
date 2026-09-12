@@ -38,7 +38,15 @@
 - `deploy/cloud-sql/run-migrations.sh` applies ordered migrations before an application
   deploy that requires them.
 - FastAPI is reachable via service-account ingress, or via an authenticated demo route
-  for the live demo; root `/health` stays unauthenticated.
+  for the live demo; root `/health` stays unauthenticated. The demo Web UI (deployed
+  Cloud Run service reaching orchestration through its same-origin `/api` proxy) is
+  intentionally unauthenticated: the client generates a UUID v4 user id, persists it
+  as a long-lived browser cookie (refreshed on visit), and sends it as `X-User-Id`
+  (see [../design/api-contract.md](../design/api-contract.md)). That identifier groups a
+  user's sessions — it is not authentication; access control beyond scoping (e.g.
+  identity-aware proxy or rate limiting) is a deployment concern, not an application
+  schema concern. User-scoped records are purged after the retention period (project
+  lifetime in sandbox/dev; production defines timed retention).
 
 ## Versioning and rollback
 
