@@ -113,6 +113,9 @@ class TurnRecord(StrictModel):
     po_message: Text | None = None
     po_accepted: bool = False
     facilitator_reply: Text | None = None
+    # Pre-delegation reply on turns that ran a delegation / re-synthesis
+    # (Item G / D21); `facilitator_reply` is always the final reply.
+    delegation_rationale_reply: Text | None = None
     delegation: DelegationDecision | None = None
     resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=100)
     new_issues: list[IssueDraft] = Field(default_factory=list, max_length=100)

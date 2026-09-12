@@ -6,15 +6,15 @@ TurnRecord persistence → delegation execution per DelegationDecision (see
 `turn_execution`) → at-most-once synthesis per turn → gate precedence →
 one TurnResponse.
 
-Gate precedence (evaluated before the response is sent): park at
-facilitator turn 10; continue whenever a synthesis was produced this turn;
-finalize only when `open_issues` is empty and `invoke` = none — otherwise
-continue. Both finalize paths (the gate outcome and an explicit
-`po_accepted` client action, which skips the facilitator and delegated
-work entirely and never increments `facilitator_turn_count`) continue
-synchronously into flow 3 (see `finalization`) while retaining the turn
-lock, answering with one TurnResponse whose `report` carries the signed
-downloads.
+Gate precedence (evaluated before the response is sent, on the turn's
+FINAL typed facilitator output — the second call's when the turn produced
+a synthesis, Item G / D21): park at facilitator turn 10; finalize when
+`open_issues` is empty and `invoke` = none; otherwise continue. Both
+finalize paths (the gate outcome and an explicit `po_accepted` client
+action, which skips the facilitator and delegated work entirely and never
+increments `facilitator_turn_count`) continue synchronously into flow 3
+(see `finalization`) while retaining the turn lock, answering with one
+TurnResponse whose `report` carries the signed downloads.
 """
 
 from __future__ import annotations
@@ -56,14 +56,13 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def evaluate_gate(
-    *, facilitator_turn: int, synthesis_produced: bool, delegation
-) -> str:
-    """Gate precedence, pure (data-flow.md §2 "Gate precedence")."""
+def evaluate_gate(*, facilitator_turn: int, delegation) -> str:
+    """Gate precedence, pure (data-flow.md §2 "Gate precedence"), on the
+    turn's FINAL typed output: a delegated turn's second call has already
+    evaluated the fresh synthesis, so no synthesis-forces-continue rule
+    exists (Item G / D21) — the final output may finalize same-turn."""
     if facilitator_turn >= PARK_TURN:
         return "park"
-    if synthesis_produced:
-        return "continue"
     if not delegation.open_issues and delegation.invoke == "none":
         return "finalize"
     return "continue"
@@ -294,7 +293,7 @@ async def _execute(
     )
 
     await records_store.set_processing_stage(pool, session_id, "synthesizing")
-    synthesis_reference, synthesis_produced = await turn_execution.maybe_synthesize(
+    synthesis = await turn_execution.maybe_synthesize(
         pool,
         artifact_client,
         agents,
@@ -307,10 +306,42 @@ async def _execute(
         correlation_id=correlation_id,
         fallback_synthesis=synthesis_reference,
     )
+    synthesis_reference = synthesis.reference
+
+    if synthesis.produced:
+        # Item G / D21: the post-delegation summary turn — the facilitator
+        # is invoked a second time within the same turn, sees the fresh
+        # synthesis, and produces the turn's final, gate-authoritative
+        # output; the pre-delegation reply persists as audit rationale
+        assert synthesis.report is not None
+        await records_store.set_processing_stage(pool, session_id, "facilitator")
+        summary = await _invoke_summary_facilitator(
+            pool,
+            agents,
+            artifact_client=artifact_client,
+            session=session,
+            key=key,
+            turn_number=turn_number,
+            facilitator_turn=facilitator_turn,
+            message=message,
+            synthesis_report=synthesis.report,
+            synthesis_reference=synthesis_reference,
+            prior_state=_decision_state(turns),
+            first_output=facilitator.output,
+            deadline=deadline,
+            correlation_id=correlation_id,
+        )
+        final_output = summary.output
+        delegation_rationale_reply = facilitator.output.reply
+    else:
+        final_output = facilitator.output
+        delegation_rationale_reply = None
+
+    delegation = final_output.delegation
+    resolutions = _stamped_resolutions(final_output.resolutions, turn_number)
 
     outcome = evaluate_gate(
         facilitator_turn=facilitator_turn,
-        synthesis_produced=synthesis_produced,
         delegation=delegation,
     )
     turn = await records_store.create_turn_or_get(
@@ -322,12 +353,13 @@ async def _execute(
             state="succeeded",
             po_message=message,
             po_accepted=False,
-            facilitator_reply=facilitator.output.reply,
+            facilitator_reply=final_output.reply,
+            delegation_rationale_reply=delegation_rationale_reply,
             delegation=delegation,
             resolutions=resolutions,
-            new_issues=list(facilitator.output.new_issues),
+            new_issues=list(final_output.new_issues),
             outcome=outcome,
-            produced_artifacts=([synthesis_reference] if synthesis_produced else []),
+            produced_artifacts=([synthesis_reference] if synthesis.produced else []),
             created_at=_now(),
             completed_at=_now(),
         ),
@@ -366,6 +398,89 @@ async def _execute(
         resolutions,
         facilitator_turn_count=facilitator_turn,
     )
+
+
+def _merged_decision_state(prior, first_output, turn_number: int):
+    """Decision state for the post-delegation summary call (Item G / D21):
+    the prior turns' authoritative state PLUS this turn's first output
+    (latest-wins resolutions, the pre-delegation open list) — the second
+    call reconciles against decisions the first call already made."""
+    base = prior or DecisionState(resolutions=[], open_issues=[])
+    first_stamped = _stamped_resolutions(first_output.resolutions, turn_number)
+    return DecisionState(
+        resolutions=latest_resolutions([*base.resolutions, *first_stamped]),
+        open_issues=list(first_output.delegation.open_issues),
+    )
+
+
+async def _invoke_summary_facilitator(
+    pool: asyncpg.Pool,
+    agents: AgentSet,
+    *,
+    artifact_client: McpClient,
+    session,
+    key: uuid.UUID,
+    turn_number: int,
+    facilitator_turn: int,
+    message: str,
+    synthesis_report,
+    synthesis_reference,
+    prior_state,
+    first_output,
+    deadline: float,
+    correlation_id: str,
+):
+    """Second facilitator invocation of a delegated turn (Item G / D21):
+    distinct invocation id (own reconciliation + corrective budget), the
+    fresh synthesis report/reference, and lineage-fresh evidence
+    references (the re-review artifacts just saved). Its output is the
+    turn's final one; any delegation it emits executes on the next PO
+    turn — orchestration simply does not execute it here."""
+    run_references = await lineage.list_run_artifacts(
+        artifact_client, session.story_run_id, deadline, correlation_id
+    )
+    evidence_references = [
+        lineage.latest(run_references, "story", None, correlation_id),
+        lineage.latest(run_references, "review-business", "business", correlation_id),
+        lineage.latest(
+            run_references, "review-engineering", "engineering", correlation_id
+        ),
+    ]
+    try:
+        summary = await agents.facilitator.invoke(
+            FacilitatorInvocation(
+                session_id=session.session_id,
+                turn_number=facilitator_turn,
+                invocation_id=flows.facilitator_summary_invocation_id(
+                    key, session.session_id, facilitator_turn
+                ),
+                po_message=message,
+                synthesis_report=synthesis_report,
+                synthesis_reference=synthesis_reference,
+                evidence_references=evidence_references,
+                decision_state=_merged_decision_state(
+                    prior_state, first_output, turn_number
+                ),
+            ),
+            deadline=deadline,
+        )
+    except Exception as exc:
+        raise flows._agent_failure(exc, correlation_id, "facilitator") from exc
+    await turn_execution.record_run(
+        pool,
+        key,
+        correlation_id,
+        session,
+        turn_number,
+        (
+            summary,
+            [synthesis_reference],
+            [synthesis_reference, *evidence_references],
+            "facilitator",
+        ),
+        run_label=f"facilitator-summary:{turn_number}",
+    )
+    return summary
 
 
 def deadline_of(settings: Settings) -> float:
@@ -456,6 +571,7 @@ async def _finalize_and_respond(
         outcome="finalize",
         state="completed",
         facilitator_reply=turn.facilitator_reply,
+        delegation_rationale_reply=turn.delegation_rationale_reply,
         issues=turn.delegation.open_issues if turn.delegation else [],
         delegation=turn.delegation,
         synthesis=synthesis_reference,
@@ -490,6 +606,7 @@ def _turn_response(
         outcome=canonical.outcome,
         state=canonical.state,
         facilitator_reply=canonical.facilitator_reply,
+        delegation_rationale_reply=canonical.delegation_rationale_reply,
         issues=canonical.issues,
         delegation=canonical.delegation,
         resolutions=resolutions,
@@ -525,6 +642,7 @@ async def _persist_and_respond(
         outcome=turn.outcome or "continue",
         state="parked" if outcome == "park" else "active",
         facilitator_reply=turn.facilitator_reply,
+        delegation_rationale_reply=turn.delegation_rationale_reply,
         issues=turn.delegation.open_issues if turn.delegation else [],
         delegation=turn.delegation,
         synthesis=synthesis_reference,
@@ -553,6 +671,7 @@ async def _persist_and_respond(
         outcome=canonical.outcome,
         state=canonical.state,
         facilitator_reply=canonical.facilitator_reply,
+        delegation_rationale_reply=canonical.delegation_rationale_reply,
         issues=canonical.issues,
         delegation=canonical.delegation,
         resolutions=resolutions,

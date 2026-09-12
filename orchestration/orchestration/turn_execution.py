@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import asyncpg
 from review_schemas.records import AgentRunRecord
 from review_schemas.review import ReviewReport
-from review_schemas.synthesis import ArtifactReference
+from review_schemas.synthesis import ArtifactReference, SynthesisReport
 
 from . import flows, lineage, records_store
 from .agent_clients import (
@@ -134,11 +135,14 @@ async def maybe_synthesize(
     deadline: float,
     correlation_id: str,
     fallback_synthesis: ArtifactReference,
-) -> tuple[ArtifactReference, bool]:
+) -> SynthesisOutcome:
     """At-most-once synthesis per turn: only when new artifacts exist or
-    reuse_previous; pairs the latest artifact per perspective."""
+    reuse_previous; pairs the latest artifact per perspective. Returns the
+    (possibly new) synthesis reference, the fresh report when one was
+    produced (the post-delegation summary call's input), and whether the
+    synthesis ran this turn."""
     if not new_review_references and not reuse_previous:
-        return fallback_synthesis, False
+        return SynthesisOutcome(fallback_synthesis, None, False)
 
     references = await lineage.list_run_artifacts(
         artifact_client, session.story_run_id, deadline, correlation_id
@@ -187,7 +191,17 @@ async def maybe_synthesize(
             "synthesis",
         ),
     )
-    return reference, True
+    return SynthesisOutcome(reference, result.report, True)
+
+
+@dataclass(frozen=True)
+class SynthesisOutcome:
+    """Result of `maybe_synthesize`: the turn's synthesis reference, the
+    fresh report when produced (None otherwise), and whether it ran."""
+
+    reference: ArtifactReference
+    report: SynthesisReport | None
+    produced: bool
 
 
 async def record_run(
@@ -197,13 +211,21 @@ async def record_run(
     session,
     turn_number: int,
     run: tuple,
+    run_label: str | None = None,
 ) -> None:
-    """Persist one agent invocation's audit AgentRunRecord (per turn)."""
+    """Persist one agent invocation's audit AgentRunRecord (per turn).
+
+    `run_label` overrides the deterministic agent-run id label when one
+    turn holds two invocations of the same agent (Item G / D21: the
+    facilitator's post-delegation summary call uses label
+    `facilitator-summary:<turn>` so the two runs stay distinct)."""
     result, output_references, input_references, agent = run
     await records_store.create_agent_run_or_get(
         pool,
         AgentRunRecord(
-            agent_run_id=flows._agent_run_id(key, f"{agent}:{turn_number}"),
+            agent_run_id=flows._agent_run_id(
+                key, run_label or f"{agent}:{turn_number}"
+            ),
             agent=agent,  # type: ignore[arg-type]
             agent_version=result.agent_version,
             prompt_sha256=result.prompt_sha256,

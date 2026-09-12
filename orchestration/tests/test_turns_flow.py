@@ -65,6 +65,13 @@ def dialogue_output(
     )
 
 
+def summary_output() -> FacilitatorTurnOutput:
+    """The post-delegation summary output (second facilitator call):
+    distinct reply so tests can tell final from rationale apart."""
+    output = dialogue_output("none")
+    return output.model_copy(update={"reply": "Summary after re-review."})
+
+
 class ScriptedFacilitator:
     """Frozen-contract facilitator fake with adapter-shaped result
     persistence: one stored result per (session, invocation id) — a retry
@@ -147,7 +154,10 @@ async def test_delegation_both_reruns_reviewers_and_synthesis(
     pool, settings, artifact
 ):
     facilitator = ScriptedFacilitator(
-        [dialogue_output("both", extra_context="Rate limit confirmed by ops.")]
+        [
+            dialogue_output("both", extra_context="Rate limit confirmed by ops."),
+            summary_output(),
+        ]
     )
     agents_holder = {}
 
@@ -180,12 +190,28 @@ async def test_delegation_both_reruns_reviewers_and_synthesis(
     assert body["turn_number"] == 2
     assert body["outcome"] == "continue"
     assert body["state"] == "active"
-    assert body["delegation"]["invoke"] == "both"
+    assert body["delegation"]["invoke"] == "none"
+    assert body["facilitator_reply"] == "Summary after re-review."
+    assert body["delegation_rationale_reply"] == "Here is my reply."
     assert body["issues"] == ["B-1"]
     # reviewers re-ran; synthesis re-ran; synthesis version bumped
     assert agents_holder["business-calls"] == 1
     assert agents_holder["engineering-calls"] == 1
     assert body["synthesis"]["version"] == 2
+
+    # Item G / D21: a delegated turn invokes the facilitator twice
+    assert len(facilitator.calls) == 2
+    first_call, summary_call = facilitator.calls
+    assert first_call.turn_number == summary_call.turn_number == 2
+    assert first_call.po_message == summary_call.po_message
+    assert first_call.invocation_id != summary_call.invocation_id
+    # the summary call sees the fresh synthesis and the new reviews
+    assert summary_call.synthesis_reference.version == 2
+    assert {
+        ref.type for ref in summary_call.evidence_references
+    } == {"story", "review-business", "review-engineering"}
+    # reconciles against prior turns plus this turn's first output
+    assert summary_call.decision_state.open_issues == ["B-1"]
 
     async with pool.acquire() as conn:
         turn = await conn.fetchrow(
@@ -194,16 +220,22 @@ async def test_delegation_both_reruns_reviewers_and_synthesis(
         )
         assert turn is not None and turn["outcome"] == "continue"
         assert turn["po_message"] == "The API limit is 100 rps."
-        assert json.loads(turn["delegation"])["invoke"] == "both"
+        assert json.loads(turn["delegation"])["invoke"] == "none"
+        assert turn["facilitator_reply"] == "Summary after re-review."
+        assert turn["delegation_rationale_reply"] == "Here is my reply."
         count = await conn.fetchval(
             "select facilitator_turn_count from sessions where session_id = $1",
             session["session_id"],
         )
-        assert count == 2
+        assert count == 2  # one facilitator turn despite two invocations
+        facilitator_runs = await conn.fetch(
+            "select agent_run_id from agent_runs "
+            "where session_id = $1 and agent = 'facilitator'",
+            session["session_id"],
+        )
+        assert len(facilitator_runs) == 3  # opening + turn-2 pre-call + summary
     # reviewer got previous review + extra context
-    request = facilitator.calls[0]
-    assert request.turn_number == 2
-    assert request.po_message == "The API limit is 100 rps."
+    request = first_call
     assert request.synthesis_reference.type == "synthesis"
 
 
@@ -226,7 +258,8 @@ async def test_invoke_none_dialogue_only(pool, settings, artifact):
 
 async def test_reuse_previous_reruns_synthesis_only(pool, settings, artifact):
     facilitator = ScriptedFacilitator(
-        [dialogue_output("none", reuse_previous=True, open_issues=[])]
+        [dialogue_output("none", reuse_previous=True, open_issues=[]),
+         dialogue_output("none")]
     )
     client = dialogue_client(pool, settings, artifact)
     session = await create_session_with(client, facilitator)
@@ -238,9 +271,12 @@ async def test_reuse_previous_reruns_synthesis_only(pool, settings, artifact):
     response = await post_turn(client, session["session_id"])
     assert response.status_code == 200, response.text
     body = response.json()
-    # synthesis produced -> continue even though open_issues is empty
+    # reuse_previous produced a synthesis -> a second facilitator call ran;
+    # the final output (here: open issues remain) decides the outcome
     assert body["outcome"] == "continue"
     assert body["synthesis"]["version"] == 2
+    assert body["delegation_rationale_reply"] is not None
+    assert len(facilitator.calls) == 2
     assert (
         len(client._transport.app.state.agents.business.calls),
         len(client._transport.app.state.agents.engineering.calls),
@@ -403,7 +439,9 @@ async def test_park_at_facilitator_turn_10(pool, settings, artifact):
 async def test_park_beats_synthesis_at_turn_10(pool, settings, artifact):
     """Gate precedence rule 2 > 3: facilitator turn 10 parks even when a
     synthesis was produced that turn."""
-    facilitator = ScriptedFacilitator([dialogue_output("both")])
+    facilitator = ScriptedFacilitator(
+        [dialogue_output("both"), summary_output()]
+    )
     client = dialogue_client(pool, settings, artifact)
     session = await create_session_with(client, facilitator)
     async with pool.acquire() as conn:
@@ -418,6 +456,7 @@ async def test_park_beats_synthesis_at_turn_10(pool, settings, artifact):
     body = response.json()
     assert body["outcome"] == "park"
     assert body["synthesis"]["version"] == 2  # synthesis still produced
+    assert len(facilitator.calls) == 2  # the summary call still ran
 
     # a lost park response still replays on the parked session (same key)
     replay = await post_turn(client, session["session_id"], key=KEY_TURN)
@@ -511,6 +550,162 @@ async def test_po_accepted_finalizes_without_facilitator(pool, settings, artifac
     assert count == 1  # acceptance never increments the facilitator count
     assert turn is not None and turn["po_accepted"] is True
     assert turn["outcome"] == "finalize"
+
+
+# --- Item G: post-delegation summary turn -------------------------------
+
+
+async def test_delegated_turn_finalizes_same_turn(pool, settings, artifact):
+    """D21: the gate evaluates the FINAL (second-call) output — a delegated
+    turn whose summary call reports empty open_issues + invoke=none
+    finalizes in the same turn (no synthesis-forces-continue rule)."""
+    from .fakes import FakeReportMcp
+
+    facilitator = ScriptedFacilitator(
+        [
+            dialogue_output("both"),
+            FacilitatorTurnOutput(
+                reply="All resolved after the re-review.",
+                delegation=DelegationDecision(
+                    invoke="none",
+                    open_issues=[],
+                    readiness="ready",
+                ),
+            ),
+        ]
+    )
+    report = FakeReportMcp(artifact)
+    client = dialogue_client(pool, settings, artifact, report=report)
+    session = await create_session_with(client, facilitator)
+
+    response = await post_turn(client, session["session_id"])
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["outcome"] == "finalize"
+    assert body["state"] == "completed"
+    assert body["facilitator_reply"] == "All resolved after the re-review."
+    assert body["delegation_rationale_reply"] == "Here is my reply."
+    assert body["delegation"]["open_issues"] == []
+
+
+async def test_summary_call_decision_state_merges_first_output(
+    pool, settings, artifact
+):
+    """The summary call reconciles against prior turns PLUS this turn's
+    first output (latest-wins): a reopened disposition from the pre-
+    delegation call is already recorded state."""
+    from review_schemas.facilitator import ResolutionDraft
+
+    facilitator = ScriptedFacilitator(
+        [
+            dialogue_output(
+                "both",
+                open_issues=["B-1"],
+                resolutions=[
+                    ResolutionDraft(
+                        issue="B-1",
+                        disposition="resolved",
+                        explanation="Ops confirmed.",
+                    )
+                ],
+            ),
+            summary_output(),
+        ]
+    )
+    client = dialogue_client(pool, settings, artifact)
+    session = await create_session_with(client, facilitator)
+
+    response = await post_turn(client, session["session_id"])
+    assert response.status_code == 200, response.text
+    state = facilitator.calls[1].decision_state
+    assert state is not None
+    assert [(i.issue, i.disposition) for i in state.resolutions] == [
+        ("B-1", "resolved")
+    ]
+
+
+async def test_summary_call_cannot_chain_delegation_in_turn(
+    pool, settings, artifact
+):
+    """A delegation emitted by the summary call executes on the NEXT PO
+    turn: nothing extra runs this turn, and the decision is persisted."""
+    facilitator = ScriptedFacilitator(
+        [
+            dialogue_output("business"),
+            dialogue_output("both"),  # summary call asks for another run
+        ]
+    )
+    agents_holder = {}
+
+    class CountingReviewer(FakeReviewer):
+        def __init__(self, perspective):
+            super().__init__(perspective)
+            agents_holder[f"{perspective}-calls"] = 0
+
+        async def invoke(self, request, *, deadline):
+            agents_holder[f"{self.perspective}-calls"] += 1
+            return await super().invoke(request, deadline=deadline)
+
+    client = dialogue_client(pool, settings, artifact)
+    session = await create_session_with(client, facilitator)
+    from orchestration.agent_clients import AgentSet as _AS
+
+    client._transport.app.state.agents = _AS(
+        business=CountingReviewer("business"),
+        engineering=CountingReviewer("engineering"),
+        synthesis=FakeSynthesis(),
+        facilitator=facilitator,
+    )
+
+    response = await post_turn(client, session["session_id"])
+    assert response.status_code == 200, response.text
+    body = response.json()
+    # only the FIRST delegation ran (business); the summary's "both" is
+    # stored as next-turn state and executes on the next PO turn
+    assert body["delegation"]["invoke"] == "both"
+    assert agents_holder["business-calls"] == 1
+    assert agents_holder["engineering-calls"] == 0
+    assert len(facilitator.calls) == 2
+    assert body["outcome"] == "continue"
+
+
+async def test_session_detail_exposes_delegation_rationale(
+    pool, settings, artifact
+):
+    facilitator = ScriptedFacilitator(
+        [dialogue_output("both"), summary_output()]
+    )
+    client = dialogue_client(pool, settings, artifact)
+    session = await create_session_with(client, facilitator)
+
+    response = await post_turn(client, session["session_id"])
+    assert response.status_code == 200, response.text
+    detail = await client.get(f"/api/v1/sessions/{session['session_id']}")
+    assert detail.status_code == 200, detail.text
+    turn = detail.json()["turns"][1]
+    assert turn["facilitator_reply"] == "Summary after re-review."
+    assert turn["delegation_rationale_reply"] == "Here is my reply."
+
+
+async def test_delegated_turn_same_key_replay_returns_rationale(
+    pool, settings, artifact
+):
+    """The canonical result stores the rationale, so a lost response
+    replayed with the same key returns it unchanged."""
+    facilitator = ScriptedFacilitator(
+        [dialogue_output("both"), summary_output()]
+    )
+    client = dialogue_client(pool, settings, artifact)
+    session = await create_session_with(client, facilitator)
+
+    first = await post_turn(client, session["session_id"], key=KEY_TURN)
+    assert first.status_code == 200, first.text
+    calls = len(facilitator.calls)
+    replay = await post_turn(client, session["session_id"], key=KEY_TURN)
+    assert replay.status_code == 200
+    assert replay.json() == first.json()
+    assert replay.json()["delegation_rationale_reply"] is not None
+    assert len(facilitator.calls) == calls
 
 
 # --- lease, validation, errors ----------------------------------------------
@@ -682,7 +877,8 @@ async def test_turn_stage_progresses_and_clears(pool, settings, artifact):
     from .test_create_session_flow import StageWatcher
 
     facilitator = ScriptedFacilitator(
-        [dialogue_output("both", extra_context="Rate limit confirmed.")]
+        [dialogue_output("both", extra_context="Rate limit confirmed."),
+         summary_output()]
     )
     client = dialogue_client(pool, settings, artifact)
     session = await create_session_with(client, facilitator)
@@ -697,7 +893,7 @@ async def test_turn_stage_progresses_and_clears(pool, settings, artifact):
 
     response = await post_turn(client, session["session_id"])
     assert response.status_code == 200, response.text
-    assert wrapped.facilitator.stages == ["facilitator"]
+    assert wrapped.facilitator.stages == ["facilitator", "facilitator"]
     assert wrapped.business.stages == ["delegating"]
     assert wrapped.engineering.stages == ["delegating"]
     assert wrapped.synthesis.stages == ["synthesizing"]

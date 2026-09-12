@@ -56,13 +56,16 @@ async def test_turn_round_trip_preserves_nested_models(pool):
     session = factories.session(run, requested_formats=["md", "pdf"])
     await records_store.create_story_run(pool, run)
     await records_store.create_session(pool, session)
-    turn = factories.turn(session, 2, with_delegation=True)
+    turn = factories.turn(
+        session, 2, with_delegation=True, delegation_rationale_reply="Why: rate limit."
+    )
 
     await records_store.create_turn(pool, turn)
     stored = await records_store.get_turn(pool, session.session_id, 2)
 
     assert stored == turn
     assert stored.delegation is not None and stored.delegation.invoke == "both"
+    assert stored.delegation_rationale_reply == "Why: rate limit."
     assert stored.resolutions[0].turn_number == 2
     assert stored.produced_artifacts[0].type == "synthesis"
 

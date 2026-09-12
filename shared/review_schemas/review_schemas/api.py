@@ -90,6 +90,11 @@ class TurnView(StrictModel):
     po_message: Text | None = None
     po_accepted: bool = False
     facilitator_reply: Text | None = None
+    # Pre-delegation facilitator reply (Item G / D21): present only on turns
+    # that ran a delegation / re-synthesis; `facilitator_reply` is then the
+    # final post-delegation summary reply. Clients show only the final reply
+    # in the default chat view; this field is audit/appendix material.
+    delegation_rationale_reply: Text | None = None
     delegation: DelegationDecision | None = None
     resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=100)
     outcome: TurnOutcome
@@ -151,6 +156,9 @@ class TurnResponse(StrictModel):
     outcome: TurnOutcome
     state: Literal["active", "parked", "completed"]
     facilitator_reply: Text | None = None
+    # Pre-delegation reply when the turn ran a delegation (Item G / D21);
+    # see TurnView — `facilitator_reply` above is always the final reply.
+    delegation_rationale_reply: Text | None = None
     issues: list[Text] = Field(default_factory=list, max_length=100)
     delegation: DelegationDecision | None = None
     resolutions: list[ResolutionItem] = Field(default_factory=list, max_length=100)
@@ -234,6 +242,9 @@ class CanonicalTurnResult(StrictModel):
     outcome: TurnOutcome
     state: Literal["active", "parked", "completed"]
     facilitator_reply: Text | None = None
+    # Pre-delegation reply when the turn ran a delegation (Item G / D21);
+    # see TurnView above.
+    delegation_rationale_reply: Text | None = None
     issues: list[Text] = Field(default_factory=list, max_length=100)
     delegation: DelegationDecision | None = None
     synthesis: ArtifactReference | None = None

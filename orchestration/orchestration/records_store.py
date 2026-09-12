@@ -320,9 +320,10 @@ async def create_turn(pool: asyncpg.Pool, record: TurnRecord) -> None:
     await _insert(
         pool,
         "insert into turns (session_id, turn_number, correlation_id, state, "
-        "po_message, po_accepted, facilitator_reply, delegation, resolutions, "
-        "new_issues, outcome, produced_artifacts, created_at, completed_at) "
-        "values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+        "po_message, po_accepted, facilitator_reply, delegation_rationale_reply, "
+        "delegation, resolutions, new_issues, outcome, produced_artifacts, "
+        "created_at, completed_at) "
+        "values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
         record.session_id,
         record.turn_number,
         record.correlation_id,
@@ -330,6 +331,7 @@ async def create_turn(pool: asyncpg.Pool, record: TurnRecord) -> None:
         record.po_message,
         record.po_accepted,
         record.facilitator_reply,
+        record.delegation_rationale_reply,
         _dumps(record.delegation),
         _dumps(record.resolutions),
         _dumps(record.new_issues),
@@ -378,6 +380,7 @@ def _turn_from_row(row) -> TurnRecord:
         po_message=row["po_message"],
         po_accepted=row["po_accepted"],
         facilitator_reply=row["facilitator_reply"],
+        delegation_rationale_reply=row["delegation_rationale_reply"],
         delegation=(
             DelegationDecision.model_validate_json(row["delegation"])
             if row["delegation"]

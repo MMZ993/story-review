@@ -92,6 +92,18 @@ def facilitator_invocation_id(
     )
 
 
+def facilitator_summary_invocation_id(
+    key: uuid.UUID, session_id: str, turn_number: int
+) -> uuid.UUID:
+    """Stable invocation id for the SECOND facilitator call of a delegated
+    turn (Item G / D21) — the post-delegation summary invocation, distinct
+    from the pre-delegation one so each keeps its own reconciliation result
+    and corrective budget (agents.md: two invocations per delegated turn)."""
+    return uuid.uuid5(
+        FLOW_NAMESPACE, f"{key}|{session_id}|facilitator-summary:{turn_number}"
+    )
+
+
 async def _save_artifact(
     artifact_client: McpClient,
     *,
