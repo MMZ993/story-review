@@ -8,11 +8,10 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-17 (session 47 — **D21/Item G implemented**: review-schemas 0.8.0,
-flow-2 second facilitator call, gate on final output, migration 0004,
-prompt rules; review Ready-to-proceed, minors fixed/recorded. Prior:
-session 46 — D21 docs decided + applied (`e64c34b` / frozen `5e0de47` /
-docs-local `a5a195b`).)
+Last updated: 2026-09-12 (session 48 — **Item G live gate PASS** on story-07;
+three owner-reported webui findings fixed: open-session resume list, leave
+confirmation, picker button bug; owner-verified live. Prior: session 47 —
+D21/Item G implemented.)
 
 ## Where we are
 
@@ -23,11 +22,13 @@ docs-local `a5a195b`).)
   40–42, Runbook 13 + D17 amendment 1). Item E (D18) and D19 done with
   live gates PASS (sessions 43–44). **Session 45: D20 — Item F live
   processing-stage progress (option a) + all three webui debt items
-  fixed** (Runbook 13 §Item F; uncommitted). Remaining: increment 4
+  fixed** (Runbook 13 §Item F; uncommitted). **Session 48: Item G live
+gate PASS + three webui UX fixes**. Remaining: increment 4
   (exit gate — example-interaction walkthrough end-to-end + close;
-  walkthrough should exercise the new stage placeholders). Compose
+walkthrough should exercise the new stage placeholders). Compose
   Postgres sessions: story-02 + story-09 + story-05 completed,
-  story-01/-04/-06 active (pre-D19 slots), story-03 gate-abandoned.
+  story-01/-03/-04/-06/-14/-15 + story-07 (2/10, the Item G gate session)
+  active.
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -44,6 +45,33 @@ docs-local `a5a195b`).)
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+Session 48 (2026-09-12, main PC — **Item G live gate + increment-4 webui
+fixes**; local Docker stack rebuilt and up throughout, no cloud actions,
+Cloud SQL STOPPED):
+- **Stack rebuilt** (`make agents-compose-up`): orchestration now carries
+  the D21/0004 code (`delegation_rationale_reply` confirmed in the running
+  image); migration 0004 already applied to the volume-backed compose
+  Postgres.
+- **Item G live gate PASS** (owner-driven, story-07, fresh session
+  `sess-f5e115d5-e445…`): delegated turn 2 — PO saw only the summary
+  reply; `delegation_rationale_reply` persisted (1824 chars); no same-turn
+  delegation chaining; one turn count despite two facilitator invocations;
+  B-6–B-9 minted with descriptors (D19 intact); two-call arc ≈ 78 s — well
+  inside the 300 s deadline (the session-47 review risk did not
+  materialize). Observed: `corrective_reprompts = 1` on both facilitator
+  calls (succeeded; recorded, no action). Evidence in Runbook 13 §Item G
+  live gate.
+- **Three webui findings fixed** (owner-reported at the gate, test-first,
+  owner-verified live): (1) "choose another story" always confirms;
+  (2) open-sessions list in the picker with resume buttons + 409 hint
+  pointing at it (new `sessions-list.js`; new-session-per-active-story
+  stays blocked by design — fresh start = resume → park → restart);
+  (3) picker confirm-button re-enabled on `showPicker` (root cause:
+  success path never re-enabled it).
+- Verification: webui pytest **12 + vitest 65** (+6); no server changes;
+independent review skipped (small client-side, test-covered,
+  owner-verified — recorded in the runbook).
+
 Session 47 (2026-09-17, main PC — **Item G (D21) implementation**; local
 Docker stack up, no cloud actions, Cloud SQL STOPPED):
 - **review-schemas 0.7.0 → 0.8.0**: `delegation_rationale_reply` on
@@ -525,7 +553,7 @@ after changes):
   **20** (session 40; re-run after compose changes), agent-kit **104**, agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
   facilitator adapter **3+1s**, orchestration **105+11s** (session 47: +5 Item G);
-  **webui 11 + vitest 54** (session 45: +10 D20/debt); live gates: business/engineering/synthesis
+  **webui 12 + vitest 65** (session 48: +6); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
   webui browser gates PASS: increment 0 reachability, increment 1 picker +
@@ -570,28 +598,20 @@ after changes):
 
 ## Next Steps
 
-1. **Phase 7 increment 4 (exit gate + close)**: owner-driven
-   example-interaction walkthrough end-to-end from the browser (fresh
-   session on a free story — check `GET /api/v1/sessions` first; the
-   walkthrough should exercise the new stage placeholders during
-   creation and a delegated turn — story-15 already covers creation +
-   delegated stages; remaining: park, mid-turn refresh resume, finalize
-   stage + fresh report links, regenerate links): story pick → dialogue
-   arc → park or accept → report download; idempotency replay mid-flow;
-   **live park verification** (deferred from increment 3). Then all
-   regression suites, independent read-only review of the phase diff,
-   Phase 7 COMPLETE in development-plan.md, Runbook 13 completion
-   review.
-2. **Item G live gate (D21 — deterministic tier done session 47)**: on a
-delegated turn of the increment-4 walkthrough (or before it): rebuild
-orchestration image (stack still runs pre-0004 code — rebuild also wipes
-fake-gcs artifacts, expected), verify a delegated turn shows only the
-summary reply to the PO while `delegation_rationale_reply` persists in
-the turn record / SessionDetail; watch the 5-min deadline over two
-facilitator calls (per-attempt clamping holds; failure → same-key retry
-reconciles per invocation id).
+1. **Phase 7 increment 4 (exit gate + close)**: finish the owner-driven
+   walkthrough on the story-07 session (`sess-f5e115d5…`, 2/10 turns;
+   creation + delegated stages + Item G gate already covered — Runbook 13):
+   remaining items are **mid-turn refresh resume** (reload while a turn is
+   processing → persisted-body replay), **live park** (deferred from
+   increment 3), and **accept → finalize stage + fresh report links +
+   regenerate**. Then all regression suites, independent read-only review
+   of the phase diff, Phase 7 COMPLETE in development-plan.md, Runbook 13
+   completion review.
+2. ~~Item G live gate~~ **DONE (session 48, PASS)** — evidence in
+   Runbook 13 §Item G live gate.
 3. Owner push `main` + `docs/initial-frozen` (identifier check re-ran
-clean post-commit, session 45; re-run after the Item G commit).
+clean post-commit, session 45; re-run after this session's commits —
+session 48 included webui/session evidence in the runbook).
 
 ## Important Notes
 
@@ -620,15 +640,15 @@ clean post-commit, session 45; re-run after the Item G commit).
   az fallback.
 - Throwaway-postgres startup race now 8 observations (Runbook 12);
   run-migrations.sh small-retry fix stays due before Phase 8 cloud runs.
-- **Local stack is UP, carries the D20 code** (webui/orchestration
-  rebuilt session 45; note: rebuilds wipe fake-gcs's memory-backend
+- **Local stack is UP, carries the D20+D21 code** (fully rebuilt session
+  48; note: rebuilds wipe fake-gcs's memory-backend
   artifacts — old completed sessions' downloads 404, expected; compose
-  Postgres is volume-backed and needs manual migrations — 0003 applied): orchestration (:8130) + webui (:8120) compose services; orchestration uses the separate
+  Postgres is volume-backed and needs manual migrations — 0003 + 0004
+  applied): orchestration (:8130) + webui (:8120) compose services; orchestration uses the separate
   `orchestration` database in the compose postgres. Compose Postgres
-  now holds 5 sessions: story-02 + story-09 **completed** (increment-3
-  gate, Item E gate), story-01/-04/-06 still **active** (they hold those
-  stories' active-session slots; the webui "choose another story" button
-  leaves client-side only). `agents-compose-down`
+  active sessions: story-01/-03/-04/-06/-14/-15 + story-07
+  (`sess-f5e115d5…`, 2/10 turns — the increment-4 walkthrough session).
+  `agents-compose-down`
   when done. `compose-contract-test` needs `compose-up` first.
   Signed fake-gcs URLs point at `https://127.0.0.1:9026` (self-signed
   cert — accept the browser warning; recorded in Runbook 13).

@@ -762,3 +762,89 @@ Live gate on a delegated turn (fresh session; watch the 5-min deadline
 over two facilitator calls + reviewers + synthesis) folds into the
 increment-4 walkthrough or runs before it; orchestration + webui images
 must be rebuilt first (compose stack still carries pre-0004 code).
+
+## Item G live gate — post-delegation summary turn (session 48, 2026-09-12; **PASS**)
+
+Owner-driven from the browser (webui :8120), fresh session
+`sess-f5e115d5-e445…` on **story-07** ("30-minute order edit window after
+purchase"; free-story check first — active slots were story-01/-03/-04/-06/
+-14/-15). Stack rebuilt first (`make agents-compose-up`, all services
+recreated; `delegation_rationale_reply` confirmed present in the running
+orchestration image; migration 0004 already applied to the volume-backed
+compose Postgres — no re-run needed).
+
+### Gate evidence (turn 2, delegated; correlation `8af05e6e…`)
+
+- PO message answered the turn-1 clarifications and explicitly requested a
+  focused reviewer analysis of payment partial-charges/refunds — delegation
+  trigger.
+- **PO view**: chat shows only the final summary reply ("The re-review has
+  been completed…") — self-contained, repeats the important findings (D21
+  prompt rule); the pre-delegation reply does **not** appear.
+- **Turn record** (SessionDetail): `delegation_rationale_reply` persisted
+  (1824 chars, "Thank you for the clarifications… C-1, which is now
+  resolved…"); `facilitator_reply` = the summary the PO saw; second-call
+  `delegation.invoke = "none"` (no same-turn chaining); one turn count
+  (2/10) despite two facilitator invocations.
+- **agent_runs (turn 2)**: facilitator (first call, delegation decision)
+  → business-reviewer v2 + engineering-reviewer v2 (parallel) → synthesis
+  v2 → facilitator (second call, summary). All succeeded.
+- **D19 behavior intact**: new issues B-6–B-9 minted with same-turn
+  descriptors; E-3/E-4/E-6/E-11 resolved with superseded-by explanations.
+- **Timing**: first facilitator call → second facilitator call ≈ **78 s**
+  visible span — well inside the 300 s deadline. The session-47 review
+  risk (two-call worst case vs deadline) did not materialize.
+- Observed behavior, no action: `corrective_reprompts = 1` on both
+  facilitator calls (validation loop engaged once each, succeeded).
+
+### Webui findings from this walkthrough (owner-reported; to address)
+
+1. **"Choose another story" needs a confirmation dialog** — currently a
+   single miss-click leaves the session (client-side leave only).
+2. **Story picker needs an open/active sessions list with resume**, and/or
+   the ability to open a new session for a story that already has an
+   active one. Today selecting such a story yields only the 409
+   `STORY_SESSION_ACTIVE` error ("this story already has an active
+   session — finish it before starting a new one") with **no way back into
+   that session from the picker**. Note the server side is correct
+   (one-active-per-story); this is a client UX gap. Cross-check the
+   pre-D19 active sessions (story-01/-04/-06) caveat from the Item E gate
+   — those may be un-finalizable; a resume path must not deadlock the
+   story (consider park + restart affordance from the parked view).
+3. **Bug**: after leaving an active session via "choose another story",
+   the "start review session" button stays disabled until a page reload.
+   Probably stale client state / listener wiring on re-entering the
+   picker; likely an easy fix.
+
+## Increment 4 webui fixes — open-session resume, leave confirmation, picker button (session 48, 2026-09-12)
+
+Owner-reported findings from the Item G gate walkthrough (§ above), fixed
+in-session, test-first (5 new sessions-list vitest + 1 chat confirm test).
+
+- **Leave confirmation**: "choose another story" now always confirms
+  ("Leave this session? It stays active and can be resumed from the story
+  picker."); the in-flight variant ("A turn is still processing — leave
+  anyway?") is kept. Prevents miss-clicks (finding 1).
+- **Open-sessions list**: new `webui/static/sessions-list.js` renders the
+  active sessions (story title, processing-stage annotation when mid-turn)
+  with a resume button in a new `#open-sessions` block above the story
+  list; `app.js showPicker` fetches `GET /sessions` in parallel with the
+  stories and `resumeSession` stores the id + opens the chat view. The 409
+  `STORY_SESSION_ACTIVE` hint now points at the list instead of dead-ending
+  (finding 2). Starting a *new* session on a story with an active one
+  stays blocked server-side (one-active-per-story, by design) — the
+  fresh-start path is resume → park → "start a new session on this story".
+- **Picker button bug**: `startSession` disables the confirm button and only
+  the error path re-enables it, so returning from a created session left it
+  disabled until reload; `showPicker` now resets it (finding 3, one line,
+  root cause recorded).
+
+Verification: webui pytest **12** + vitest **65** (+6); webui image
+rebuilt + redeployed; owner verified live in the browser (confirm dialog,
+open-sessions list with resume, button re-enabled, 409 hint). No
+orchestration/server changes; independent review skipped (small
+client-side, test-covered, owner-verified — recorded here).
+
+Remaining increment-4 walkthrough items on the story-07 session
+(`sess-f5e115d5-e445…`, 2/10 turns): mid-turn refresh resume, live park,
+accept → finalize → fresh report links + regenerate.
