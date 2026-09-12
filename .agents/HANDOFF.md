@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-12 (pre-Phase-8 Web UI presentation pass — GitHub-dark
+Last updated: 2026-09-21 (Phase 8 planning session — decisions D24 settled, plan + Runbook 14 written, no code/cloud actions, Cloud SQL STOPPED). Prior: pre-Phase-8 Web UI presentation pass — GitHub-dark
 responsive styling and requested attribution footer; deterministic Web UI
 suite green; no compose rebuild or cloud action). Prior: post-Phase-7 UI/UX
 follow-up — picker/session layout, paragraph previews, comment-story fix;
@@ -45,6 +45,22 @@ local compose rebuilt and smoke-checked.
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Phase 8 planning (2026-09-21, main PC; docs-only, no compose/cloud
+actions, Cloud SQL STOPPED):
+- **D24 settled** (owner, chat): no CI/CD this phase (make-driven local
+deploys); webui deployed to Cloud Run under the owner's Cloudflare
+`mmz.sh` subdomain via the same-origin `/api` proxy; **anonymous
+multi-user scoping** (user_id on sessions/story runs, migration 0005,
+90-day sliding cookie, no auth, 90-day retention via owner-run purge
+make target); Item D **facilitator-first**; AE pruning per D5 after the
+versioning proof.
+- **Plan written**: `docs-local/plans/phase-8-gcp-deployment.md`
+(increments 0–7); Runbook 14 opened; D24 recorded in local-decisions;
+development-plan Phase 8 + this HANDOFF updated. Increment 1 adds user
+scoping before any deployment; increment 3 has one open design point
+(facilitator AE session backend) to raise with the owner.
+
 Pre-Phase-8 Web UI presentation pass (2026-09-12, main PC; no compose or
 cloud actions, Cloud SQL remains STOPPED):
 - **Web UI**: replaced browser-default styling with a compact, responsive
@@ -679,10 +695,7 @@ after changes):
    check after the last commit, then owner push `main` +
    `docs/initial-frozen` (D22 frozen cherry-pick `63349f8` already on the
    branch — verify it covers `dab82c4`).
-2. **Phase 8 planning** (next session): real GCP deployment & versioning
-   proof; fold in the deferred review minors due before cloud runs
-   (run-migrations.sh argv credential + startup race) and the Item D
-   observability sub-item.
+2. **Phase 8** (plan written this session — `docs-local/plans/phase-8-gcp-deployment.md`, decisions D24; Runbook 14 opened): start at increment 0 (run-migrations.sh argv-credential + startup-race fixes), then increment 1 (anonymous cookie-user scoping — docs change + migration 0005 + orchestration + webui). Folded into the phase: Item D facilitator-first observability, webui Cloud Run deploy under the owner's Cloudflare `mmz.sh` subdomain, the CR→AE live-leg gate, and the versioning/rollback proof; deferred minors list above shrinks accordingly.
 3. Optional housekeeping: `make agents-compose-down` when the local stack
    is no longer needed (compose Postgres is volume-backed — state
    survives).

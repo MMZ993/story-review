@@ -945,3 +945,37 @@ green send action and reachable-backend status, a blue-accented primary
 story-selection panel, and the footer `@ 2026 Marcin Żak / mmz.sh` with
 `mmz.sh` linked to `https://mmz.sh/`.
 No server, API, workflow, or animation changes are in scope.
+
+## D24 — Phase 8 deployment decisions (2026-09-21)
+
+Owner decisions (chat, Phase 8 planning session), all recorded in
+`docs-local/plans/phase-8-gcp-deployment.md`:
+
+1. **No CI/CD this phase**: deploys run from the local machine via
+   Makefile targets + runbook; `pipelines/*.yml` stay a designed intent.
+2. **Web UI deployed** to Cloud Run, served under the owner's Cloudflare
+   `mmz.sh` zone via a subdomain (e.g. `story-review.mmz.sh`); exact
+   routing (Cloud Run custom-domain mapping vs Cloudflare-proxied CNAME)
+   settled empirically at the deployment increment. Orchestration is
+   reached only through the webui same-origin `/api` proxy (D17-1 shape).
+3. **Anonymous multi-user scoping, full**: `user_id` on sessions/story
+   runs (migration 0005); one-active-session-per-story per user; webui
+   90-day sliding cookie auto-refreshed on visit, forwarded as a header
+   through the proxy; no auth for MVP (budget alert backstop; Cloudflare
+   Access/rate-limiting later if needed). Retention 90 days via an
+   owner-run `make` purge command — no scheduled job.
+4. **Item D scope: facilitator-first** — telemetry callbacks + 50%/75%
+   context policy on the facilitator only; stateless agents later via the
+   shared helper.
+5. **AE retention per D5**: keep >= N-1 versions; superseded Agent Engine
+   resources pruned after the versioning proof (owner-run destructive).
+
+### D24 amendment 1 — Facilitator AE session backend (2026-09-21)
+
+Owner decision (chat, Phase 8 planning session): the deployed facilitator's
+ADK session store is the **Cloud SQL PostgreSQL** `DatabaseSessionService`
+(IAM database login, per connectivity-identity.md) — the same engine the
+local adapter already uses via the compose Postgres. Agent Engine's managed
+session option is not adopted; local runs keep using the local Postgres
+substitute. Closes the increment-3 open design point in
+`docs-local/plans/phase-8-gcp-deployment.md`.

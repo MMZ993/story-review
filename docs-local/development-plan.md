@@ -120,7 +120,7 @@ a browser against the local stack.
 
 Cost: Vertex AI tokens only.
 
-## Phase 8 — Real GCP deployment & versioning proof — planned
+## Phase 8 — Real GCP deployment & versioning proof — planned (plan written 2026-09-21: plans/phase-8-gcp-deployment.md, decisions D24; increments 0–7 incl. anonymous multi-user scoping, AE client + CR→AE gate, webui Cloud Run + mmz.sh subdomain, facilitator-first Item D, versioning/rollback proof)
 
 Scope: deploy all units to Cloud Run + Agent Engine via runbook/Makefile; env
 pointers; smoke tests; observability wiring (structured logs, traces, dashboards,
