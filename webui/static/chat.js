@@ -133,7 +133,10 @@ function renderStateControls() {
   }
   const leave = actionButton("leave-session", "choose another story");
   leave.addEventListener("click", () => {
-    if (inFlight && !globalThis.confirm?.("A turn is still processing — leave anyway? (it keeps running server-side)")) {
+    const question = inFlight
+      ? "A turn is still processing — leave anyway? (it keeps running server-side)"
+      : "Leave this session? It stays active and can be resumed from the story picker.";
+    if (!globalThis.confirm?.(question)) {
       return;
     }
     if (stagePollStop) {

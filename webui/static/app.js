@@ -21,6 +21,7 @@ import { createSession, fetchSessions, fetchStories, fetchStoryDetail } from "./
 import { openSession } from "./chat.js";
 import { renderMarkdown } from "./markdown.js";
 import { stageText } from "./progress.js";
+import { renderOpenSessions } from "./sessions-list.js";
 
 const statusElement = document.querySelector("#orchestration-status");
 const pickerView = document.querySelector("#picker-view");
@@ -195,7 +196,7 @@ async function startSession() {
   confirmButton.disabled = false;
   const activeHint =
     result.status === 409 && result.error?.code === "STORY_SESSION_ACTIVE"
-      ? " (this story already has an active session — finish it before starting a new one)"
+      ? " (this story already has an active session — resume it from the open sessions list)"
       : "";
   // Errors stay in the picker's visible status line (the session-view
   // #status element is hidden while the picker is shown); if the progress
@@ -262,19 +263,39 @@ function restartStory(storyId) {
   showPicker();
 }
 
+/** Resume a listed open session: store its id and open the session view. */
+async function resumeSession(sessionId) {
+  globalThis.localStorage.setItem("session:id", sessionId);
+  await openSession(sessionId, {
+    onRestartStory: restartStory,
+    onLeaveSession: leaveSession,
+  });
+}
+
 /**
- * Load the browsing view: story list, filter input wiring, confirm button.
+ * Load the browsing view: open-sessions list (resume path for active
+ * sessions), story list, filter input wiring, confirm button. The confirm
+ * button is re-enabled here — a successful creation disables it and only
+ * the error path re-enables it, so returning to the picker must reset it.
  */
 async function showPicker() {
   pickerView.hidden = false;
-  const result = await fetchStories();
-  if (!result.ok) {
+  pickerView.querySelector("#confirm-story").disabled = false;
+  const [storiesResult, sessionsResult] = await Promise.all([fetchStories(), fetchSessions()]);
+  if (!storiesResult.ok) {
     document.querySelector("#picker-status").textContent =
-      describeError(result);
+      describeError(storiesResult);
     return;
   }
 
-  allStories = result.body.stories ?? [];
+  allStories = storiesResult.body.stories ?? [];
+  renderOpenSessions(
+    pickerView.querySelector("#open-sessions-list"),
+    pickerView.querySelector("#open-sessions-summary"),
+    sessionsResult.ok ? sessionsResult.body.sessions : null,
+    allStories,
+    resumeSession,
+  );
   // Wire once: showPicker runs again on parked-session restart.
   const picker = pickerView.querySelector("#story-picker");
   if (!picker.dataset.wired) {
