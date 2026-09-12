@@ -16,10 +16,20 @@ vi.mock("../../static/api.js", () => ({
   postTurn: vi.fn(),
   fetchReport: vi.fn(),
   finalizeRetry: vi.fn(),
+  getPendingTurn: vi.fn(),
+  clearPendingTurn: vi.fn(),
 }));
 
 import { openSession } from "../../static/chat.js";
-import { fetchReport, fetchSession, finalizeRetry, postTurn } from "../../static/api.js";
+import { setStagePollInterval } from "../../static/progress.js";
+import {
+  clearPendingTurn,
+  fetchReport,
+  fetchSession,
+  finalizeRetry,
+  getPendingTurn,
+  postTurn,
+} from "../../static/api.js";
 
 const SESSION_VIEW_HTML = `
 <section id="picker-view" hidden></section>
@@ -67,7 +77,7 @@ const reportDownload = (format = "md") => ({
 const ok = (body) => ({ ok: true, status: 200, body });
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   installDom();
 });
 
@@ -314,5 +324,183 @@ describe("increment 3 — parked, accepted, completed, finalizing", () => {
       expect(document.querySelector("#report-links a").href).toContain("report.md"),
     );
     expect(finalizeRetry).toHaveBeenCalledWith("s-1");
+  });
+});
+
+describe("webui debt fixes + live progress (Item F)", () => {
+  it("a failed turn removes the optimistic PO bubble and restores the message for editing", async () => {
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()])));
+    await openSession("s-1");
+    const input = document.querySelector("#turn-input");
+
+    postTurn.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: { code: "UPSTREAM_UNAVAILABLE", message: "reviewers unreachable" },
+    });
+    input.value = "please re-check the rate limit";
+    document.querySelector("#send-turn").click();
+    await vi.waitFor(() =>
+      expect(document.querySelector("#status").textContent).toContain(
+        "reviewers unreachable",
+      ),
+    );
+    const bubbles = [...document.querySelectorAll("#messages .message-user")];
+    expect(bubbles.map((b) => b.textContent)).toEqual([
+      "the API limit is 100 rps", // history only — optimistic bubble gone
+    ]);
+    expect(input.value).toBe("please re-check the rate limit");
+    expect(input.disabled).toBe(false);
+  });
+
+  it("opening a session clears a stale status line from a previous session", async () => {
+    document.querySelector("#status").textContent = "old error from another session";
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()])));
+    await openSession("s-1");
+    expect(document.querySelector("#status").textContent).toBe("");
+  });
+
+  it("resumes a pending turn after a mid-turn reload by re-issuing it with the stored body", async () => {
+    getPendingTurn.mockReturnValue({ message: "mid-flight message", poAccepted: false });
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()])));
+
+    let resolveTurn;
+    postTurn.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveTurn = resolve;
+        }),
+    );
+    const opening = openSession("s-1"); // awaits the resumed turn inside
+
+    await vi.waitFor(() => expect(postTurn).toHaveBeenCalled());
+    expect(postTurn).toHaveBeenCalledWith(
+      "s-1",
+      { message: "mid-flight message", poAccepted: false },
+    );
+    expect(document.querySelector("#turn-input").disabled).toBe(true);
+    const bubbles = [...document.querySelectorAll("#messages .message-user")];
+    expect(bubbles.at(-1).textContent).toBe("mid-flight message");
+
+    resolveTurn(
+      ok({
+        session_id: "s-1",
+        turn_number: 3,
+        outcome: "continue",
+        state: "active",
+        facilitator_reply: "resumed reply",
+        issues: ["limit"],
+      }),
+    );
+    await opening;
+    expect([...document.querySelectorAll("#messages li")].at(-1).textContent).toContain(
+      "open issues: 1",
+    );
+    expect(getPendingTurn).toHaveBeenCalledWith("s-1");
+    expect(document.querySelector("#turn-input").disabled).toBe(false);
+  });
+
+  it("shows live stage placeholders while a turn is processing and removes them on completion", async () => {
+    setStagePollInterval(10);
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()])));
+    await openSession("s-1");
+    const input = document.querySelector("#turn-input");
+
+    let resolveTurn;
+    postTurn.mockReturnValue(
+      new Promise((resolve) => {
+        resolveTurn = resolve;
+      }),
+    );
+    // arm the staged mock BEFORE the click: the poll's first read is immediate
+    fetchSession.mockResolvedValue(
+      ok({ ...sessionDetail([turn()]), processing_stage: "facilitator" }),
+    );
+    input.value = "status?";
+    document.querySelector("#send-turn").click();
+
+    // first poll observes the facilitator stage
+    await vi.waitFor(() => {
+      const placeholder = document.querySelector(".message-progress");
+      expect(placeholder?.textContent).toContain("facilitator is drafting the turn");
+    });
+
+    // stage advances to delegated re-review
+    fetchSession.mockResolvedValue(
+      ok({ ...sessionDetail([turn()]), processing_stage: "delegating" }),
+    );
+    await vi.waitFor(() => {
+      const placeholder = document.querySelector(".message-progress");
+      expect(placeholder?.textContent).toContain("reviewers are re-checking");
+    });
+
+    resolveTurn(
+      ok({
+        session_id: "s-1",
+        turn_number: 3,
+        outcome: "continue",
+        state: "active",
+        facilitator_reply: "done",
+        issues: [],
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(document.querySelector(".message-progress")).toBeNull(),
+    );
+  });
+});
+
+describe("passive processing view (another client / creation in flight)", () => {
+  it("clears the placeholder and re-enables the composer when the stage clears", async () => {
+    const { setStagePollInterval } = await import("../../static/progress.js");
+    setStagePollInterval(10);
+    fetchSession.mockResolvedValue(
+      ok({ ...sessionDetail([turn()]), processing_stage: "reviewing" }),
+    );
+    await openSession("s-1");
+
+    // passive mode: composer locked, placeholder shows the stage
+    expect(document.querySelector("#turn-input").disabled).toBe(true);
+    expect(document.querySelector(".message-progress")?.textContent).toContain(
+      "reviewers are reviewing the story",
+    );
+
+    // stage clears -> placeholder removed, history re-rendered, composer back
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()])));
+    await vi.waitFor(() =>
+      expect(document.querySelector(".message-progress")).toBeNull(),
+    );
+    await vi.waitFor(() =>
+      expect(document.querySelector("#turn-input").disabled).toBe(false),
+    );
+    expect(document.querySelectorAll("#messages .message-user").length).toBe(1);
+  });
+
+  it("stops the passive poll when leaving via choose another story", async () => {
+    const onLeaveSession = vi.fn();
+    fetchSession.mockResolvedValue(
+      ok({ ...sessionDetail([turn()]), processing_stage: "synthesizing" }),
+    );
+    await openSession("s-1", { onLeaveSession });
+    document.querySelector("#leave-session").click();
+    expect(onLeaveSession).toHaveBeenCalledTimes(1);
+    // the poll was stopped: no further fetches fire after leaving
+    const callsAfterLeave = fetchSession.mock.calls.length;
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 40));
+    expect(fetchSession.mock.calls.length).toBe(callsAfterLeave);
+  });
+});
+
+describe("report-links hygiene", () => {
+  it("clears report links left by a previous completed session when opening an active one", async () => {
+    const links = document.querySelector("#report-links");
+    const stale = document.createElement("a");
+    stale.href = "https://127.0.0.1:9026/old/report.md";
+    links.append(stale);
+
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()]))); // active
+    await openSession("s-1");
+
+    expect(links.children.length).toBe(0);
   });
 });

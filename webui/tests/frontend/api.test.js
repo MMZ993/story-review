@@ -12,12 +12,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  clearPendingTurn,
   createSession,
   fetchReport,
   fetchSession,
+  fetchSessions,
   fetchStories,
   fetchStoryDetail,
   finalizeRetry,
+  getPendingTurn,
   postTurn,
   uuidv4,
 } from "../../static/api.js";
@@ -210,7 +213,6 @@ describe("postTurn 503 retry and 409 no-retry", () => {
   });
 
   it.each([
-    [409, "SESSION_LOCKED", "session locked"],
     [409, "SESSION_READ_ONLY", "parked"],
     [422, "VALIDATION_ERROR", "empty message"],
     [422, "DELEGATION_VALIDATION", "bad delegation"],
@@ -453,4 +455,123 @@ describe("createSession non-retryable errors", () => {
       expect(storage.getItem("pending:create-session")).toBeNull();
     },
   );
+});
+
+describe("pending-turn body persistence (refresh-resume)", () => {
+  const SCOPE = "pending:turn:s-1";
+  const BODY_SCOPE = `${SCOPE}:body`;
+
+  async function drivePostTurn(storage, responses) {
+    const calls = [...responses];
+    const fetchImpl = vi.fn(async () => jsonResponse(200, calls.shift()));
+    await postTurn(
+      "s-1",
+      { message: "hello" },
+      { fetchImpl, storage, sleep: async () => {}, attempts: 1 },
+    );
+    return fetchImpl;
+  }
+
+  it("persists the turn body next to the idempotency key before the fetch", async () => {
+    const storage = memoryStorage();
+    const fetchImpl = vi.fn(async () => {
+      expect(storage.getItem(SCOPE)).toMatch(/-/);
+      expect(JSON.parse(storage.getItem(BODY_SCOPE))).toEqual({
+        message: "hello",
+        po_accepted: false,
+      });
+      return jsonResponse(200, { session_id: "s-1", turn_number: 2 });
+    });
+    await postTurn("s-1", { message: "hello" }, { fetchImpl, storage, attempts: 1 });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(storage.getItem(SCOPE)).toBeNull();
+    expect(storage.getItem(BODY_SCOPE)).toBeNull();
+  });
+
+  it("keeps the pending body while a retryable 503 is pending", async () => {
+    const storage = memoryStorage();
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) return jsonResponse(503, errorEnvelope("UPSTREAM_UNAVAILABLE", "x"));
+      expect(storage.getItem(BODY_SCOPE)).not.toBeNull();
+      return jsonResponse(200, { session_id: "s-1", turn_number: 2 });
+    });
+    await postTurn(
+      "s-1",
+      { message: "hello" },
+      { fetchImpl, storage, sleep: async () => {}, attempts: 2 },
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(storage.getItem(BODY_SCOPE)).toBeNull();
+  });
+
+  it("getPendingTurn reads the stored body; clearPendingTurn removes both keys", async () => {
+    const storage = memoryStorage();
+    storage.setItem(SCOPE, "22222222-2222-4222-8222-222222222222");
+    storage.setItem(BODY_SCOPE, JSON.stringify({ message: "hi", po_accepted: false }));
+    expect(getPendingTurn("s-1", { storage })).toEqual({
+      message: "hi",
+      poAccepted: false,
+    });
+    expect(getPendingTurn("s-9", { storage })).toBeNull();
+    clearPendingTurn("s-1", { storage });
+    expect(storage.getItem(SCOPE)).toBeNull();
+    expect(storage.getItem(BODY_SCOPE)).toBeNull();
+    expect(getPendingTurn("s-1", { storage })).toBeNull();
+  });
+});
+
+describe("fetchSessions", () => {
+  it("returns the session list envelope", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse(200, {
+        sessions: [
+          {
+            session_id: "s-1",
+            story_id: "story-04",
+            state: "active",
+            processing_stage: "reviewing",
+          },
+        ],
+        next_cursor: null,
+      }),
+    );
+    const result = await fetchSessions({ fetchImpl });
+    expect(result.ok).toBe(true);
+    expect(result.body.sessions[0].processing_stage).toBe("reviewing");
+    expect(fetchImpl).toHaveBeenCalledWith("/api/v1/sessions", { method: "GET" });
+  });
+});
+
+describe("SESSION_LOCKED replay retry", () => {
+  it("retries a locked session with the SAME key, honoring retry_after_seconds", async () => {
+    const storage = memoryStorage();
+    const sleep = vi.fn(async () => {});
+    const calls = [
+      jsonResponse(409, {
+        error: {
+          code: "SESSION_LOCKED",
+          message: "lease held",
+          retry_after_seconds: 30,
+        },
+      }),
+      jsonResponse(200, { session_id: "s-1", turn_number: 3 }),
+    ];
+    const keys = [];
+    const fetchImpl = vi.fn(async (url, request) => {
+      keys.push(request.headers["Idempotency-Key"]);
+      return calls.shift() ?? jsonResponse(200, {});
+    });
+    const result = await postTurn("s-1", { message: "hi" }, {
+      fetchImpl,
+      storage,
+      sleep,
+      attempts: 3,
+    });
+    expect(result.ok).toBe(true);
+    expect(keys[0]).toBe(keys[1]);
+    expect(sleep).toHaveBeenCalledWith(30000);
+    expect(storage.getItem("pending:turn:s-1")).toBeNull();
+  });
 });

@@ -167,6 +167,9 @@ async def _resume_finalizing(
         synthesis_reference = lineage.latest(
             references, "synthesis", None, correlation_id
         )
+        await records_store.set_processing_stage(
+            pool, fresh.session_id, "finalizing"
+        )
         result = await finalization.run_flow3(
             pool,
             request.app.state.settings,
@@ -194,6 +197,7 @@ async def _resume_finalizing(
             fresh.session_id, result.report_references, request.app.state.signer
         )
     finally:
+        await records_store.set_processing_stage(pool, session.session_id, None)
         await lease.release(pool, session.session_id, token)
 
 

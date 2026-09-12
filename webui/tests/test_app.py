@@ -141,3 +141,13 @@ def test_proxy_has_no_client_side_read_timeout(app):
     # finding: httpx's 5 s default would surface live turns as 503s).
     assert app.state.orchestration_client.timeout.connect is None
     assert app.state.orchestration_client.timeout.read is None
+
+
+def test_static_responses_are_never_heuristically_cached(client):
+    # The static shell is baked into the image and changes across rebuilds;
+    # without an explicit Cache-Control the browser may heuristically cache
+    # a stale chat.js across deploys (live finding, Runbook 13).
+    for path in ("/", "/chat.js", "/progress.js"):
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert response.headers["cache-control"] == "no-cache", path

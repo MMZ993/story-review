@@ -111,6 +111,8 @@ class SessionSummary(StrictModel):
     story_id: StoryId
     state: SessionState
     requested_formats: list[Format] = Field(min_length=1, max_length=2)
+    # advisory live-progress marker; null whenever no request is in flight
+    processing_stage: ProcessingStage | None = None
     created_at: UtcDatetime
     updated_at: UtcDatetime
 
@@ -182,6 +184,16 @@ class TurnResponse(StrictModel):
 class ListSessionsResponse(StrictModel):
     sessions: list[SessionSummary] = Field(default_factory=list, max_length=100)
     next_cursor: ShortText | None = None
+
+
+#: Advisory pipeline stage of an in-flight flow-1/2/3 request (schemas.md).
+ProcessingStage = Literal[
+    "reviewing",
+    "synthesizing",
+    "facilitator",
+    "delegating",
+    "finalizing",
+]
 
 
 class SessionDetail(SessionSummary):

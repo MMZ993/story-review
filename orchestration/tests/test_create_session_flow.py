@@ -381,3 +381,95 @@ async def test_non_v4_idempotency_key_422(client):
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+class StageWatcher:
+    """Wraps one agent client and records the session's `processing_stage`
+    as observed at each invocation (Item F stage-marker behavior test)."""
+
+    def __init__(self, pool, inner):
+        self.pool = pool
+        self.inner = inner
+        self.stages: list[str | None] = []
+
+    async def _stage(self, request):
+        session_id = getattr(request, "session_id", None)
+        async with self.pool.acquire() as conn:
+            if session_id is not None:
+                return await conn.fetchval(
+                    "select processing_stage from sessions where session_id = $1",
+                    session_id,
+                )
+            return await conn.fetchval(
+                "select processing_stage from sessions "
+                "order by created_at desc limit 1"
+            )
+
+    async def invoke(self, request, *, deadline):
+        self.stages.append(await self._stage(request))
+        return await self.inner.invoke(request, deadline=deadline)
+
+
+def wrapped_agents(pool, agents):
+    """AgentSet with every client wrapped in a stage-observing watcher."""
+    from orchestration.agent_clients import AgentSet
+
+    return AgentSet(
+        business=StageWatcher(pool, agents.business),
+        engineering=StageWatcher(pool, agents.engineering),
+        synthesis=StageWatcher(pool, agents.synthesis),
+        facilitator=StageWatcher(pool, agents.facilitator),
+    )
+
+
+async def test_processing_stage_progresses_and_clears(
+    pool, settings, artifact, agents
+):
+    wrapped = wrapped_agents(pool, agents)
+    async with flow_client(settings, pool, artifact, wrapped) as client:
+        response = await post_create(client, KEY_B, create_payload())
+        assert response.status_code == 201, response.text
+        assert wrapped.business.stages == ["reviewing"]
+        assert wrapped.engineering.stages == ["reviewing"]
+        assert wrapped.synthesis.stages == ["synthesizing"]
+        assert wrapped.facilitator.stages == ["facilitator"]
+        body = response.json()
+        detail = await client.get(f"/api/v1/sessions/{body['session_id']}")
+        assert detail.status_code == 200, detail.text
+        assert detail.json()["processing_stage"] is None
+        listing = (await client.get("/api/v1/sessions")).json()
+        assert listing["sessions"], "the created session must be listed"
+        assert all(
+            entry["processing_stage"] is None for entry in listing["sessions"]
+        )
+
+
+async def test_processing_stage_cleared_on_failed_creation(
+    pool, settings, artifact, agents
+):
+    from review_schemas.facilitator import DelegationDecision
+
+    from .fakes import opening_turn_output
+
+    bad = opening_turn_output()
+    bad.delegation = DelegationDecision(
+        invoke="both", open_issues=["x"], readiness="needs_work"
+    )
+
+    async def invoke(request, *, deadline):
+        from orchestration.agent_clients import FacilitatorResult
+
+        return FacilitatorResult(
+            output=bad, agent_version="0.1.0", prompt_sha256="e" * 64
+        )
+
+    agents.facilitator.invoke = invoke
+    async with flow_client(settings, pool, artifact, agents) as client:
+        response = await post_create(client, KEY_B, create_payload())
+        assert response.status_code == 422, response.text
+        async with pool.acquire() as conn:
+            stage = await conn.fetchval(
+                "select processing_stage from sessions "
+                "order by created_at desc limit 1"
+            )
+        assert stage is None, "a failed flow must clear the stage marker"

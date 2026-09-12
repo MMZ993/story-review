@@ -58,6 +58,27 @@ function scrollList(list) {
 }
 
 /**
+ * Ephemeral processing placeholder (Item F): an assistant-side bubble
+ * that shows the server's current pipeline stage and is removed when the
+ * real response arrives — never persisted, never part of history replay.
+ */
+export function appendProgress(list) {
+  const li = bubble("assistant", document.createTextNode(""));
+  li.classList.add("message-progress");
+  list.append(li);
+  scrollList(list);
+  return {
+    update(text) {
+      li.textContent = text;
+      scrollList(list);
+    },
+    remove() {
+      li.remove();
+    },
+  };
+}
+
+/**
  * Replace the message list with the full turn history (TurnView list from
  * SessionDetail): PO messages, acceptance actions ("(accepted the
  * report)"), and facilitator replies in chronological order.

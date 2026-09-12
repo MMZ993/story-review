@@ -17,9 +17,10 @@
  * created session id under "session:id" for increment-2 resume).
  */
 
-import { createSession, fetchStories, fetchStoryDetail } from "./api.js";
+import { createSession, fetchSessions, fetchStories, fetchStoryDetail } from "./api.js";
 import { openSession } from "./chat.js";
 import { renderMarkdown } from "./markdown.js";
+import { stageText } from "./progress.js";
 
 const statusElement = document.querySelector("#orchestration-status");
 const pickerView = document.querySelector("#picker-view");
@@ -159,9 +160,14 @@ async function showPreview(storyId) {
 /**
  * Confirm-button handler: create the session on the selected story.
  * Disables the picker for the duration (one in-flight request), shows the
- * "reviewing…" spinner, persists the session id on success. A 409 means
- * the story already has an active session — surfaced with a hint instead
- * of any automatic retry.
+ * "reviewing…" spinner, persists the session id on success. While the
+ * synchronous POST is outstanding, the session list is polled for the
+ * story's *processing* session (one active session per story; only the
+ * processing one carries a stage) — once discovered, the session view
+ * opens early and shows live stage placeholders (Item F), replaced by the
+ * real opening turn when the POST completes. A 409 means the story
+ * already has an active session — surfaced with a hint instead of any
+ * automatic retry.
  */
 async function startSession() {
   const selected = pickerView.querySelector("input[name=story]:checked");
@@ -170,11 +176,14 @@ async function startSession() {
   const confirmButton = pickerView.querySelector("#confirm-story");
   confirmButton.disabled = true;
   setSpinner(`reviewing ${storyId}… (this can take up to 5 minutes)`);
+  const stopProgressPolling = pollCreationProgress(storyId);
 
   const result = await createSession(storyId);
+  stopProgressPolling();
 
   if (result.ok) {
     globalThis.localStorage.setItem("session:id", result.body.session_id);
+    setSpinner(null);
     await openSession(result.body.session_id, {
       onRestartStory: restartStory,
       onLeaveSession: leaveSession,
@@ -189,8 +198,40 @@ async function startSession() {
       ? " (this story already has an active session — finish it before starting a new one)"
       : "";
   // Errors stay in the picker's visible status line (the session-view
-  // #status element is hidden while the picker is shown).
-  setSpinner(`${describeError(result)}${activeHint}`);
+  // #status element is hidden while the picker is shown); if the progress
+  // poll already switched to the session view, surface it there instead.
+  const message = `${describeError(result)}${activeHint}`;
+  setSpinner(message);
+  if (!document.querySelector("#session-view").hidden) {
+    document.querySelector("#status").textContent = message;
+  }
+}
+
+/**
+ * Poll GET /sessions while a creation POST is outstanding; once the
+ * story's processing session appears, open the session view early — its
+ * passive processing mode (chat.js) renders the live stage placeholder
+ * from the polled detail. Returns a stop() handle.
+ */
+function pollCreationProgress(storyId) {
+  const timer = globalThis.setInterval(async () => {
+    const result = await fetchSessions();
+    if (!result.ok) return;
+    const processing = (result.body.sessions ?? []).find(
+      (session) =>
+        session.story_id === storyId &&
+        session.state === "active" &&
+        session.processing_stage,
+    );
+    if (!processing) return;
+    globalThis.clearInterval(timer);
+    setSpinner(`reviewing ${storyId}… — ${stageText(processing.processing_stage)}`);
+    await openSession(processing.session_id, {
+      onRestartStory: restartStory,
+      onLeaveSession: leaveSession,
+    });
+  }, 4000);
+  return () => globalThis.clearInterval(timer);
 }
 
 /** Show or clear the picker's spinner/status line. */

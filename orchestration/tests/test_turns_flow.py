@@ -674,3 +674,71 @@ async def test_crashed_in_progress_claim_takeover_reuses_invocation(
     assert recovered.status_code == 200, recovered.text
     assert len(facilitator.calls) == 1  # model seam used exactly once
     assert recovered.json()["outcome"] == "continue"
+
+
+async def test_turn_stage_progresses_and_clears(pool, settings, artifact):
+    from orchestration.agent_clients import AgentSet
+
+    from .test_create_session_flow import StageWatcher
+
+    facilitator = ScriptedFacilitator(
+        [dialogue_output("both", extra_context="Rate limit confirmed.")]
+    )
+    client = dialogue_client(pool, settings, artifact)
+    session = await create_session_with(client, facilitator)
+
+    wrapped = AgentSet(
+        business=StageWatcher(pool, FakeReviewer("business")),
+        engineering=StageWatcher(pool, FakeReviewer("engineering")),
+        synthesis=StageWatcher(pool, FakeSynthesis()),
+        facilitator=StageWatcher(pool, facilitator),
+    )
+    client._transport.app.state.agents = wrapped
+
+    response = await post_turn(client, session["session_id"])
+    assert response.status_code == 200, response.text
+    assert wrapped.facilitator.stages == ["facilitator"]
+    assert wrapped.business.stages == ["delegating"]
+    assert wrapped.engineering.stages == ["delegating"]
+    assert wrapped.synthesis.stages == ["synthesizing"]
+    detail = await client.get(f"/api/v1/sessions/{session['session_id']}")
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["processing_stage"] is None
+
+
+async def test_finalize_stage_visible_during_flow3(pool, settings, artifact):
+    class StageReportMcp:
+        """Report-server seam recording the session stage at each render."""
+
+        def __init__(self, pool_mcp, inner):
+            self.pool_mcp = pool_mcp
+            self.inner = inner
+            self.stages: list[str | None] = []
+
+        async def __call__(self, url, tool, arguments, timeout_s):
+            async with self.pool_mcp.acquire() as conn:
+                self.stages.append(
+                    await conn.fetchval(
+                        "select processing_stage from sessions "
+                        "order by created_at desc limit 1"
+                    )
+                )
+            return await self.inner(url, tool, arguments, timeout_s)
+
+    from .fakes import FakeReportMcp
+
+    reports = StageReportMcp(pool, FakeReportMcp(artifact))
+    client = dialogue_client(pool, settings, artifact, report=reports)
+    session = await create_session(client)
+
+    response = await client.post(
+        f"/api/v1/sessions/{session['session_id']}/turns",
+        json={"po_accepted": True},
+        headers={"Idempotency-Key": KEY_TURN, "X-Correlation-Id": CORR},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["outcome"] == "finalize"
+    assert reports.stages, "flow 3 must render at least one format"
+    assert set(reports.stages) == {"finalizing"}
+    detail = await client.get(f"/api/v1/sessions/{session['session_id']}")
+    assert detail.json()["processing_stage"] is None
