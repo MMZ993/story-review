@@ -198,6 +198,7 @@ async def get_session(session_id: str, *, request: Request):
                 po_message=turn.po_message,
                 po_accepted=turn.po_accepted,
                 facilitator_reply=turn.facilitator_reply,
+                delegation_rationale_reply=turn.delegation_rationale_reply,
                 delegation=turn.delegation,
                 resolutions=turn.resolutions,
                 outcome=turn.outcome,

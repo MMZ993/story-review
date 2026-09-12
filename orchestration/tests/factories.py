@@ -115,6 +115,7 @@ def turn(
     po_message: str | None = None,
     po_accepted: bool = False,
     with_delegation: bool = False,
+    delegation_rationale_reply: str | None = None,
 ) -> TurnRecord:
     if turn_number == 1:
         po_message, po_accepted = None, False
@@ -130,6 +131,7 @@ def turn(
         po_message=po_message,
         po_accepted=po_accepted,
         facilitator_reply="Understood, delegating.",
+        delegation_rationale_reply=delegation_rationale_reply,
         delegation=delegation() if with_delegation else None,
         resolutions=[resolution(turn_number)] if turn_number > 1 else [],
         outcome="continue",

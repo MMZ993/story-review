@@ -213,6 +213,36 @@ class TestTurnModels:
         with pytest.raises(ValidationError, match="mirror"):
             TurnResponse.model_validate(self._turn_response(issues=["i1", "extra"]))
 
+    def test_delegation_rationale_reply_field(self):
+        """Item G / D21: the pre-delegation reply rides on TurnResponse,
+        TurnView, and CanonicalTurnResult (default None, optional)."""
+        response = TurnResponse.model_validate(
+            self._turn_response(delegation_rationale_reply="why delegating")
+        )
+        assert response.delegation_rationale_reply == "why delegating"
+        assert (
+            TurnResponse.model_validate(self._turn_response()).delegation_rationale_reply
+            is None
+        )
+        view = TurnView.model_validate(
+            {"turn_number": 2, "po_message": "hi", "outcome": "continue",
+             "delegation_rationale_reply": "why delegating"}
+        )
+        assert view.delegation_rationale_reply == "why delegating"
+        assert TurnView.model_validate(
+            {"turn_number": 2, "po_message": "hi", "outcome": "continue"}
+        ).delegation_rationale_reply is None
+        canonical = CanonicalTurnResult.model_validate(
+            {
+                "session_id": SESSION_ID,
+                "turn_number": 2,
+                "outcome": "continue",
+                "state": "active",
+                "delegation_rationale_reply": "why delegating",
+            }
+        )
+        assert canonical.delegation_rationale_reply == "why delegating"
+
     def test_synthesis_reference_must_be_synthesis_type(self):
         with pytest.raises(ValidationError, match="synthesis"):
             TurnResponse.model_validate(

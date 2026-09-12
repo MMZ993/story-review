@@ -137,6 +137,12 @@ class TestTurnRecord:
         ok = self._record(state="succeeded", outcome="continue", completed_at=FIXED_TS)
         assert ok.outcome == "continue"
 
+    def test_delegation_rationale_reply_optional(self):
+        """Item G / D21: the pre-delegation reply persists on the turn."""
+        assert self._record().delegation_rationale_reply is None
+        record = self._record(delegation_rationale_reply="why delegating")
+        assert record.delegation_rationale_reply == "why delegating"
+
     def test_new_issues_stamped_drafts_accepted(self):
         ok = self._record(
             new_issues=[
