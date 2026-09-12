@@ -11,6 +11,16 @@ Conventions:
 - `Idempotency-Key` header (UUID) **required** on every mutating `POST`. Retrying a
   request with the same key returns the original result (stored response, no duplicate
   side effects). Keys are scoped per endpoint + session.
+- `X-User-Id` header (UUID v4) **required** on every `/api/v1` request except the
+  story-browse and health endpoints. It identifies the (unauthenticated) user the
+  client acts for: the client generates it once, persists it, and sends it on every
+  call. Sessions and story runs are **scoped per user** — a session is only visible
+  and only mutable through requests carrying its owner's `X-User-Id`; another
+  user's session id yields `404` (no cross-user reads or writes). The
+  one-active-session-per-story rule is likewise per user. A missing or malformed
+  header is `422 VALIDATION_ERROR`. There is no authentication: the identifier is
+  an opaque grouping key, not a proof of identity (see
+  [deployment.md](../operations/deployment.md)).
 - Every response carries `X-Correlation-Id`; the client may supply one via the same
   header on any request.
 - Errors use the single structured error model (code, message, agent, correlation ID,
@@ -27,7 +37,7 @@ Conventions:
 | `GET /api/v1/stories` | query `filter` | `ListStoriesResponse` | Browse the mock backlog. |
 | `GET /api/v1/stories/{story_id}` | path `story_id` | `StoryDetail` | Story + epic/roadmap context. |
 | `POST /api/v1/sessions` | `CreateSessionRequest` | `CreateSessionResponse` (`201`) | Select a story, run the initial flow. |
-| `GET /api/v1/sessions` | query `limit`/`cursor` | `ListSessionsResponse` | List restorable sessions. |
+| `GET /api/v1/sessions` | query `limit`/`cursor` | `ListSessionsResponse` | List the requesting user's restorable sessions. |
 | `GET /api/v1/sessions/{session_id}` | path `session_id` | `SessionDetail` | History replay + artifact references. |
 | `POST /api/v1/sessions/{session_id}/turns` | `TurnRequest` | `TurnResponse` | One PO action; may finalize. |
 | `POST /api/v1/sessions/{session_id}/finalize` | empty body | `ReportResponse` | Finalization retry (flow 3). |
@@ -52,7 +62,7 @@ Selecting a story is done by creating a session — that triggers the initial fl
 | Method & path | Purpose |
 |---|---|
 | `POST /sessions` | select a story, run the initial flow (flow 1), open the dialogue |
-| `GET /sessions` | list sessions (story, date, status) for restore |
+| `GET /sessions` | list the requesting user's sessions (story, date, status) for restore |
 | `GET /sessions/{session_id}` | full history replay incl. artifact references (flow 4) |
 | `POST /sessions/{session_id}/turns` | one PO message = one dialogue turn (flow 2) |
 | `POST /sessions/{session_id}/finalize` | explicit/idempotent finalization retry (flow 3) |
@@ -93,8 +103,8 @@ authoritative shapes in [schemas.md](schemas.md)):
 }
 ```
 
-Errors: `404` unknown story; `409` story already has an active session (client should
-restore it instead) or `IDEMPOTENCY_KEY_REUSED` (same key, different body); `503`
+Errors: `404` unknown story; `409` the user already has an active session for this
+story (client should restore it instead) or `IDEMPOTENCY_KEY_REUSED` (same key, different body); `503`
 retryable deadline/upstream failure — the session creation is idempotent by
 `Idempotency-Key`, so the client retries the same request.
 
@@ -115,8 +125,12 @@ poll these reads while its POST is outstanding to show honest stage-level progre
 the stage is advisory (derived from the server's own position in the pipeline) and is
 `null` when no request is in flight. During flow 1 the client does not know its
 session id yet — it may find the processing session via `GET /sessions` filtered by
-`story_id` (at most one active session per story, and only the processing one carries
+`story_id` (at most one active session per user per story, and only the processing one carries
 a non-null stage).
+
+Reads are scoped to the requesting user: `GET /sessions` returns only that user's
+sessions, and a `session_id` owned by another user behaves exactly like an unknown
+session (`404`).
 
 `404` unknown session. Parked/completed sessions are read-only — a `POST` turn against
 them returns `409` with code `SESSION_READ_ONLY`; the client may instead create a **new
@@ -282,3 +296,7 @@ Client rules:
   active one is no longer active).
 - The client persists the idempotency key with the in-flight logical request so a lost
   response can be replayed safely.
+- The client generates a UUID v4 **user id** once, persists it locally (long-lived,
+  refreshed on visit), and sends it as `X-User-Id` on every call. Losing it means
+  losing access to prior sessions — a new id starts an empty history. Multiple
+  browsers on one machine get independent users.
