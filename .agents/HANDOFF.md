@@ -8,11 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-21 (Phase 8 planning + user-scoping docs change — session closed clean, owner pushed main + docs/initial-frozen). Prior: pre-Phase-8 Web UI presentation pass — GitHub-dark
-responsive styling and requested attribution footer; deterministic Web UI
-suite green; no compose rebuild or cloud action). Prior: post-Phase-7 UI/UX
-follow-up — picker/session layout, paragraph previews, comment-story fix;
-local compose rebuilt and smoke-checked.
+Last updated: 2026-09-21 (Phase 8 increments 0+1 — run-migrations.sh deploy fixes + anonymous per-user scoping, implemented, reviewed Ready-to-proceed, live gate PASS; commits `81baefd` + `984953c` on main, owner push due). Prior: Phase 8 planning + user-scoping docs change — session closed clean, owner pushed main + docs/initial-frozen.
 
 ## Where we are
 
@@ -45,6 +41,44 @@ local compose rebuilt and smoke-checked.
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Phase 8 increments 0+1 (2026-09-21, main PC; local compose only, no cloud
+actions, Cloud SQL STOPPED):
+- **Increment 0**: run-migrations.sh deploy fixes — DATABASE_URL parsed
+once into libpq PG* env (`dsn_to_pg_env`, percent-decoded, query params
+rejected; docker fallback forwards only set vars) so no credential ever
+reaches argv; first-contact retry around the bootstrap (env-tunable);
+script sourceable; `test_run_migrations.py` (parser + full-script run
+through a DSN-detecting psql wrapper — skipped here, no local psql, so
+the Makefile target exercised the docker fallback).
+- **Increment 1 (user scoping, D24-3)**: review-schemas 0.9.0 → 0.10.0
+(`UserId`; `user_id` on StoryRun/SessionRecord); migration **0005**
+(`user_id uuid not null` both tables, legacy rows under sentinel
+`00000000-…0000`, per-(user, story) active index **same constraint
+name** so 409 mapping unchanged); orchestration `users.py` dependency
+(422 on missing/malformed/non-v4 header) on all session routes
+(stories/health exempt), ownership-scoped `get_session`/`list_sessions`
+(cross-user → 404), flow-1 idempotency fingerprint includes user_id
+(cross-user key replay → 409 REUSED); webui proxy forwards `x-user-id`,
+new `user.js` 90-day sliding `sr_user` cookie + `X-User-Id` on every
+api.js call, boot refresh.
+- **Live gate PASS** (compose, migration 0005 hand-applied like 0003/0004,
+images rebuilt): no header → 422; two users on story-02 → two 201s
+(≈44 s each, real flow 1); scoped lists 1/1; cross-user detail 404 vs
+owner 200; same-user re-create 409 STORY_SESSION_ACTIVE; sentinel user
+sees all 15 legacy sessions; both gate sessions abandoned (parked).
+- **Review**: read-only subagent **Ready to proceed** (no Critical) —
+Important here-string swallowed parser failures (fixed: `|| exit 2` +
+empty-parse guard, verified rc=2) + a stories-exemption test added;
+minors deferred (cookie `secure` → increment 5 behind TLS; bootstrap
+retry masks non-connection errors; migration-name interpolation).
+Evidence + dispositions: Runbook 14.
+- **Verification**: review-schemas **177**, orchestration **128+12s**,
+webui **pytest 14 + vitest 87**, compose contract **20**. Commits:
+`81baefd` (feat: schemas bump, migration 0005, orchestration scoping,
+webui cookie/header, run-migrations.sh fixes + all tests) and `984953c`
+(chore: Runbook 14 + HANDOFF). No `docs/` changes → no frozen cherry-pick
+due. Identifier check clean (0 hits). Owner pushes main.
 
 Phase 8 planning (2026-09-21, main PC; docs-only, no compose/cloud
 actions, Cloud SQL STOPPED):
@@ -653,12 +687,13 @@ and the git log.
 Baseline (latest green run of every suite — re-verify against these counts
 after changes):
 
-- review-schemas **176** (session 50: +3 AbandonSessionResponse), ado-wire **7**, dataset **36**, mcp-ingress **7**,
+- review-schemas **177** (Phase 8 inc 1: +1 user_id), ado-wire **7**, dataset **36**, mcp-ingress **7**,
   mcp-story **67**, mcp-artifact **32**, mcp-report **36**, compose contract
   **20** (session 40; re-run after compose changes), agent-kit **104**, agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **116+11s** (session 50: +10 abandon);
-  **webui 12 + vitest 76** (session 50: +9); live gates: business/engineering/synthesis
+  facilitator adapter **3+1s**, orchestration **128+12s** (Phase 8 inc 0+1:
+  +10 user scoping/migrations tests, 1 skipped without local psql);
+  **webui 14 + vitest 87** (Phase 8 inc 1: +11); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
   webui browser gates PASS: increment 0 reachability, increment 1 picker +
@@ -672,11 +707,12 @@ after changes):
 
 ## Remaining Tasks
 
-- Deferred review minors (fix in Phase 6 where natural, else later):
-  - Session 34: run-migrations.sh docker fallback startup race (first psql
-    contact can fail after pg_isready; add a small retry).
-  - Session 33: run-migrations.sh passes credentialed DATABASE_URL in argv
-    (revisit before Phase 8 Cloud SQL runs; PGPASSWORD/env alternative).
+- Deferred review minors (fix where natural, else later):
+  - Phase 8 inc 0+1 review (Runbook 14): `sr_user` cookie `secure`
+    attribute — add at increment 5 (local compose origin is plain HTTP);
+    run-migrations.sh bootstrap retry masks non-connection errors behind
+    the generic message; migration-name string interpolation in the
+    tracking insert (repo-controlled filenames).
   - Session 28: named-but-unmapped local deps in pyprojects; adapter generic
     handler maps model 400-class errors retryable; `previous_review_version`
     echo not cross-checked (contract doesn't require it).
@@ -706,13 +742,10 @@ after changes):
 1. ~~Owner reviews session 50's commits~~ done — pushed (main +
    `docs/initial-frozen`, D22 cherry-pick `63349f8` and this session's
    `8ad3570`/`06deff0` included).
-2. **Phase 8 increment 0** (next session): run-migrations.sh argv-credential
-   + startup-race fixes (test-first where practical), then **increment 1**:
-   user scoping per the new docs — review-schemas bump, migration
-   `0005_user_scoping.sql`, orchestration scoping (header validation,
-   per-user claims/lists/404 semantics), webui cookie manager + header
-   forwarding; deterministic multi-user tests. Detailed increments 2–7 in
-   `docs-local/plans/phase-8-gcp-deployment.md`.
+2. **Phase 8 increment 2** (next session): Cloud SQL live + migrations
+0001–0005 over IAM (tier-2, owner approval). Increments 0+1 committed
+(`81baefd` + `984953c`, owner push due; no frozen cherry-pick).
+Detailed increments 2–7 in `docs-local/plans/phase-8-gcp-deployment.md`.
 3. Optional housekeeping: `make agents-compose-down` when the local stack
    is no longer needed (compose Postgres is volume-backed — state
    survives).
@@ -742,20 +775,22 @@ after changes):
   `infra/envs/ado.env`), project `story-review` (Agile), ids 5–55,
   conventions in Runbook 08; re-export needs `$ADO_PAT` (`rest-verify`) or
   az fallback.
-- Throwaway-postgres startup race now 9 observations (Runbook 12/13);
-  run-migrations.sh small-retry fix stays due before Phase 8 cloud runs.
-- **Local stack is UP, carries the D20+D21+run-release+D22 code plus the
-  post-Phase-7 UI/UX fixes** (webui and orchestration images rebuilt in the
-  follow-up session; rebuilds wipe fake-gcs's
-  memory-backend artifacts — old completed sessions' downloads 404,
-  expected; compose Postgres is volume-backed and needs manual migrations —
-  0003 + 0004 applied): orchestration (:8130) + webui (:8120) compose
-  services. Compose sessions: completed story-02/-05/-07/-09; parked
-  story-13 (turn 10) + the five session-50 abandons (story-01/-03/-04/-06/
-  -14); active story-13 second session. `agents-compose-down` when done.
-  `compose-contract-test` needs `compose-up` first. Signed fake-gcs URLs
-  point at `https://127.0.0.1:9026` (self-signed cert — accept the browser
-  warning; recorded in Runbook 13).
+- Throwaway-postgres startup race now 10 observations (Runbook 12/13 +
+  this session); the run-migrations.sh bootstrap retry now covers it.
+- **Local stack was UP for the increment-1 live gate, then exited cleanly**
+  (host stop after the session's gate; all 10 containers Exited(0), volume-
+  backed Postgres + fake-gcs data intact). Restart with `make
+  agents-compose-up`. It carries the Phase 8 increment-0+1 code (both
+  images rebuilt this session; migration **0005** applied to the volume-
+  backed compose Postgres — all five migrations now recorded): orchestration
+  (:8130) + webui (:8120). Compose sessions: completed story-02/-05/-07/
+  -09; parked story-13 (turn 10) + the five session-50 abandons + the two
+  increment-1 gate sessions (story-02, test users `1111…`/`2222…`);
+  active story-13 second session; 15 legacy rows grouped under sentinel
+  user `00000000-0000-4000-8000-000000000000`. `agents-compose-down` when
+  done. `compose-contract-test` needs `compose-up` first. Signed fake-gcs
+  URLs point at `https://127.0.0.1:9026` (self-signed cert — accept the
+  browser warning; recorded in Runbook 13).
 - **Keep private** until final review; GitHub mirror pending (owner).
 - Repo layout/plans/runbooks index: `docs-local/development-plan.md` and
   the per-phase plans under `docs-local/plans/`.
