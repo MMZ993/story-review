@@ -8,27 +8,26 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-12 (session 48 — **Item G live gate PASS** on story-07;
-three owner-reported webui findings fixed: open-session resume list, leave
-confirmation, picker button bug; owner-verified live. Prior: session 47 —
-D21/Item G implemented.)
+Last updated: 2026-09-12 (session 49 — **increment-4 walkthrough PASS** incl.
+story-run release fix (orchestration); **D22 docs applied** (abandon endpoint +
+historical sessions view) — implementation next). Prior: session 48 — Item G live
+gate PASS + three webui UX fixes.
 
 ## Where we are
 
 - **Phase 6 — Orchestration (FastAPI): COMPLETE and CLOSED**
   (sessions 32–38; detail in Runbook 12, decisions D15 + amendments
   1–3). All gates green; live integration suite PASS (3 passed in 367 s).
-- **Phase 7 (Web UI) in progress** — increments 0–3 COMPLETE (sessions
-  40–42, Runbook 13 + D17 amendment 1). Item E (D18) and D19 done with
-  live gates PASS (sessions 43–44). **Session 45: D20 — Item F live
-  processing-stage progress (option a) + all three webui debt items
-  fixed** (Runbook 13 §Item F; uncommitted). **Session 48: Item G live
-gate PASS + three webui UX fixes**. Remaining: increment 4
-  (exit gate — example-interaction walkthrough end-to-end + close;
-walkthrough should exercise the new stage placeholders). Compose
-  Postgres sessions: story-02 + story-09 + story-05 completed,
-  story-01/-03/-04/-06/-14/-15 + story-07 (2/10, the Item G gate session)
-  active.
+- **Phase 7 (Web UI) in progress** — increments 0–3 + Items E/F/G done with
+  live gates PASS (Runbook 13 + D17–D21). **Session 49: increment-4
+  walkthrough PASS** (park at 10, restart-on-same-story, accept → finalize →
+report + regenerate, mid-turn refresh functionally — one minor deferred
+  webui finding; story-run terminal-state fix in orchestration). **D22 docs
+  applied, implementation pending**: abandon endpoint + historical sessions
+  view, then phase close (regressions, independent review, COMPLETE).
+  Compose Postgres sessions: story-02/-05/-07/-09/-13(parked) completed,
+  story-13 second session active, legacy story-01/-03/-04/-06/-14/-15
+  active-but-stuck (to be abandoned once D22 ships).
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -45,6 +44,32 @@ walkthrough should exercise the new stage placeholders). Compose
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+Session 49 (2026-09-12, main PC — **increment-4 walkthrough + story-run release
+fix + D22 docs**; local Docker stack, images rebuilt twice, no cloud actions,
+Cloud SQL STOPPED):
+- **Exit-gate bug found at the walkthrough**: completed/parked sessions never
+  released their story (new session → 409 `STORY_SESSION_ACTIVE` forever) —
+  `story_runs.state` was never transitioned (park + finalize wrote only the
+  session row; the partial index excludes terminal run states). Fixed in
+  `records_store.update_session` (single chokepoint, same transaction;
+  test-first). Orchestration **106+11s**; 4 stale compose rows backfilled;
+  image rebuilt; live 201 through the webui proxy.
+- **Walkthrough PASS** on a fresh story-07 session: delegated turns 2–4,
+  mid-turn refresh (functionally carried by persisted body + key; the
+  passive-view pending PO bubble fix deferred as minor debt — D22-4,
+  test-covered but the owner's browser still showed old behavior,
+  suspected caching), accept → finalize → both reports + regenerate
+  (fresh signed URLs verified), live park at turn 10 (story-13, run also
+  `parked` — fix verified live), restart-on-same-story (new session,
+  no 409). Evidence: Runbook 13 §Increment 4.
+- **D22 recorded + docs applied** (owner decisions): `POST
+  /sessions/{id}/abandon` (park-now for stuck active/finalizing sessions;
+  `AbandonSessionResponse`; no new error codes) + webui historical-sessions
+  view; parallel active sessions per story rejected. Docs: api-contract,
+  schemas, architecture; frozen cherry-pick due.
+- Verification: orchestration **106+11s**, webui **pytest 12 + vitest 67**
+  (+2); both images rebuilt + redeployed.
+
 Session 48 (2026-09-12, main PC — **Item G live gate + increment-4 webui
 fixes**; local Docker stack rebuilt and up throughout, no cloud actions,
 Cloud SQL STOPPED):
@@ -598,20 +623,17 @@ after changes):
 
 ## Next Steps
 
-1. **Phase 7 increment 4 (exit gate + close)**: finish the owner-driven
-   walkthrough on the story-07 session (`sess-f5e115d5…`, 2/10 turns;
-   creation + delegated stages + Item G gate already covered — Runbook 13):
-   remaining items are **mid-turn refresh resume** (reload while a turn is
-   processing → persisted-body replay), **live park** (deferred from
-   increment 3), and **accept → finalize stage + fresh report links +
-   regenerate**. Then all regression suites, independent read-only review
-   of the phase diff, Phase 7 COMPLETE in development-plan.md, Runbook 13
-   completion review.
-2. ~~Item G live gate~~ **DONE (session 48, PASS)** — evidence in
-   Runbook 13 §Item G live gate.
-3. Owner push `main` + `docs/initial-frozen` (identifier check re-ran
-clean post-commit, session 45; re-run after this session's commits —
-session 48 included webui/session evidence in the runbook).
+1. **Implement D22** (fresh session; docs already applied): orchestration
+   `POST /sessions/{id}/abandon` (state table per api-contract, test-first,
+   same-key replay) + webui abandon button (active/finalizing only, confirm
+   dialog) + historical-sessions list (past parked/completed sessions,
+   read-only open, multiple per story). Then use it to close the six legacy
+   stuck compose sessions (story-01/-03/-04/-06/-14/-15).
+2. **Phase 7 close-out**: full regression suites against baseline,
+   independent read-only review of the phase diff, Phase 7 COMPLETE in
+   development-plan.md, Runbook 13 completion review.
+3. Owner push `main` + `docs/initial-frozen` (identifier check re-run after
+   this session's commits — Runbook 13 gained walkthrough evidence).
 
 ## Important Notes
 
@@ -640,18 +662,18 @@ session 48 included webui/session evidence in the runbook).
   az fallback.
 - Throwaway-postgres startup race now 8 observations (Runbook 12);
   run-migrations.sh small-retry fix stays due before Phase 8 cloud runs.
-- **Local stack is UP, carries the D20+D21 code** (fully rebuilt session
-  48; note: rebuilds wipe fake-gcs's memory-backend
-  artifacts — old completed sessions' downloads 404, expected; compose
-  Postgres is volume-backed and needs manual migrations — 0003 + 0004
-  applied): orchestration (:8130) + webui (:8120) compose services; orchestration uses the separate
-  `orchestration` database in the compose postgres. Compose Postgres
-  active sessions: story-01/-03/-04/-06/-14/-15 + story-07
-  (`sess-f5e115d5…`, 2/10 turns — the increment-4 walkthrough session).
-  `agents-compose-down`
-  when done. `compose-contract-test` needs `compose-up` first.
-  Signed fake-gcs URLs point at `https://127.0.0.1:9026` (self-signed
-  cert — accept the browser warning; recorded in Runbook 13).
+- **Local stack is UP, carries the D20+D21+run-release code** (webui and
+  orchestration images rebuilt session 49; rebuilds wipe fake-gcs's
+  memory-backend artifacts — old completed sessions' downloads 404,
+  expected; compose Postgres is volume-backed and needs manual migrations —
+  0003 + 0004 applied): orchestration (:8130) + webui (:8120) compose
+  services. Compose sessions: completed story-02/-05/-07/-09 + story-13
+  (parked, turn 10); active story-13 second session + story-14/-15;
+  **stuck-legacy** story-01/-03/-04/-06 (pre-rebuild, fake-gcs artifacts
+  gone — abandon once D22 ships). `agents-compose-down` when done.
+  `compose-contract-test` needs `compose-up` first. Signed fake-gcs URLs
+  point at `https://127.0.0.1:9026` (self-signed cert — accept the browser
+  warning; recorded in Runbook 13).
 - **Keep private** until final review; GitHub mirror pending (owner).
 - Repo layout/plans/runbooks index: `docs-local/development-plan.md` and
   the per-phase plans under `docs-local/plans/`.

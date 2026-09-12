@@ -898,3 +898,39 @@ regenerated ASCII from `flow2.puml`), `agents.md`, `api-contract.md`,
 `schemas.md`, `architecture.md`, `observability.md`, `example-interaction.md`
 + `diagrams/flow2.puml`. Review-schemas package bump (0.7.0 → 0.8.0) and
 implementation are follow-up work (with/after Phase 8 planning).
+
+## D22 — Abandon session (explicit park-now) + historical sessions view (2026-09-12)
+
+Owner decision (chat, session 49), triggered by the increment-4 walkthrough:
+
+1. **Abandon endpoint**: `POST /api/v1/sessions/{id}/abandon` (empty body +
+   Idempotency-Key) parks an `active` or `finalizing` session immediately —
+   no facilitator/model call, no report. Motivation: a stuck session
+   (permanently broken upstream / missing lineage artifacts) otherwise has
+   no exit and locks its story forever (one-active-run-per-story).
+   Semantics: one atomic transition parks the session **and** its story run
+   (story released for a new session; history stays read-only);
+   `facilitator_turn_count` unchanged; terminal states → 409
+   `SESSION_READ_ONLY`; in-progress claim under the lease → 409
+   `SESSION_LOCKED` retryable (lease TTL 6 min); unknown → 404; same-key
+   replay returns the stored canonical response. Response:
+   `AbandonSessionResponse {session_id, state:"parked"}` — no new error
+   codes. `finalizing` is explicitly allowed (a stuck retryable
+   finalization is a target case).
+2. **One active session per story stays** (owner: "is ok to have only one
+   session per story") — parallel active sessions per story were considered
+   and rejected for MVP; not recorded as a future extension.
+3. **Historical sessions view** (webui-only, no design change): the picker
+   gains a past-sessions list from `GET /sessions` (parked/completed,
+   multiple sessions per story), opening the existing read-only session
+   view.
+4. **Deferred webui debt (owner decision)**: the passive processing view
+   does not render the pending PO bubble on mid-turn reload in the owner's
+   browser despite the session-49 fix (test-covered server-side; cause
+   unresolved — possibly browser caching); recorded as minor debt, not
+   MVP-blocking.
+
+Docs applied (this session): `api-contract.md` (endpoint tables + abandon
+section), `schemas.md` (`AbandonSessionResponse`), `architecture.md`
+(session lifecycle bullet). Implementation (orchestration + webui) is
+follow-up work in a fresh session; Phase 7 close-out follows it.

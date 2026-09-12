@@ -848,3 +848,78 @@ client-side, test-covered, owner-verified — recorded here).
 Remaining increment-4 walkthrough items on the story-07 session
 (`sess-f5e115d5-e445…`, 2/10 turns): mid-turn refresh resume, live park,
 accept → finalize → fresh report links + regenerate.
+
+## Increment 4 walkthrough — exit gate items (session 49, 2026-09-12; **PASS with one deferred finding**)
+
+Local Docker stack up throughout, no cloud actions, Cloud SQL STOPPED.
+
+### Walkthrough evidence (owner-driven, browser)
+
+- **Session restart after completion (bug found + fixed)**: after
+  completing story-07 (session 48's `sess-f5e115d5…`), creating a new
+  session on the same story returned **409 `STORY_SESSION_ACTIVE`**
+  although the session was `completed`. Root cause (orchestration): the
+  `one_active_run_per_story` partial index excludes `completed`/`parked`
+  **run** states, but nothing ever transitioned `story_runs` — park
+  (`turns_flow._persist_and_respond`) and finalize
+  (`finalization.complete_session`) updated only the `sessions` row. All
+  10 compose runs sat at `active` (four with completed sessions). Fix:
+  `records_store.update_session` transitions the session's story run to
+  the same terminal state on the same connection (joins the caller's
+  transaction) — single chokepoint, rows can never diverge. Tests written
+  first (red confirmed): `test_park_at_facilitator_turn_10` extended,
+  `test_completed_session_releases_story_for_new_run` new. Orchestration
+  **106 +11s**; image rebuilt; 4 stale compose rows backfilled to
+  `completed`; live check: new story-07 session 201 through the webui
+  proxy.
+- **Delegated dialogue arcs**: turns 2–4 on `sess-230a5104…` (fresh
+  story-07 session) — business clarifications → delegated re-review with
+  minted conflicts C-1/C-2 → re-engaged business reviewer, B-1…B-5 +
+  E-1…E-6/E-10/E-12 resolved. D19/D18 behavior intact in the live UI
+  (titled issues, resolved-by-clarification dispositions).
+- **Mid-turn refresh**: turn carried through reload via persisted
+  body + idempotency key (canonical replay); stage placeholder visible in
+  the passive view. **Deferred finding**: the pending PO bubble is not
+  rendered in the passive view in the owner's browser. Fixed test-first
+  (`postWithIdempotentKey` keeps key+body on budget-exhausted
+  `SESSION_LOCKED`; `openSession` passive branch renders the pending PO
+  bubble when the logical request holds the lease) — vitest 65→67, but
+  the owner still observed the old behavior live (suspected browser
+  caching; server verified serving the new JS byte-level). Owner
+  decision: minor debt, not MVP-blocking (D22-4).
+- **Accept → finalize → report** (story-07, `sess-230a5104…`, turn 5):
+  accept-with-open-issues → synchronous finalize → completed view → both
+  report formats downloaded over signed fake-gcs HTTPS → reload
+  persisted → **regenerate produced fresh signed URLs** (X-Goog-Date
+  08:37→08:39, distinct signatures). Owner-verified.
+- **Live park** (story-13, `sess-74778481…`): driven to turn 10 with
+  short PO turns → **park fired**; session **and** story run both
+  `parked` (run-release fix verified live on the park path).
+- **Restart-on-same-story** (from the parked view): new story-13 session
+  created (`sess-61c863b2…`, turn 1/10 active) — no 409; parked session
+  remains readable.
+
+### New owner decisions → D22 (docs applied this session)
+
+- **Abandon/close session** (`POST /sessions/{id}/abandon`, explicit
+  park-now for stuck active/finalizing sessions) — docs applied
+  (api-contract, schemas `AbandonSessionResponse`, architecture);
+  implementation + review scheduled for the next session.
+- **Historical sessions view** (webui-only past-sessions list) —
+  scheduled with the abandon implementation.
+- Parallel active sessions per story: considered and **rejected** (not
+  even a future extension).
+- Legacy stuck compose sessions (story-01/-03/-04/-06/-14/-15,
+  pre-rebuild, artifacts wiped from fake-gcs memory backend): to be
+  closed via the abandon endpoint once implemented (their "missing
+  synthesis artifact in the session lineage" errors are the rebuild-wipe
+  symptom).
+
+### Verification (session 49)
+
+- orchestration **106 +11s** (+1 story-run release), webui **pytest 12 +
+  vitest 67** (+2 pending-bubble passive view), both images rebuilt +
+  redeployed; orchestration live checks 201/200 through the webui proxy.
+- Remaining for Phase 7 close: D22 implementation (abandon + history
+  view), then full regression suites, independent phase review,
+  development-plan COMPLETE, completion review.
