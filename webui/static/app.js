@@ -22,6 +22,7 @@ import { openSession } from "./chat.js";
 import { renderStoryPreview } from "./markdown.js";
 import { stageText } from "./progress.js";
 import { renderOpenSessions, renderPastSessions } from "./sessions-list.js";
+import { ensureUserId } from "./user.js";
 
 const statusElement = document.querySelector("#orchestration-status");
 const pickerView = document.querySelector("#picker-view");
@@ -327,6 +328,7 @@ async function showPicker() {
  * the picker.
  */
 async function boot() {
+  ensureUserId(); // 90-day sliding refresh on every visit (D24-3)
   const storedId = globalThis.localStorage.getItem("session:id");
   if (storedId) {
     const resumed = await openSession(storedId, {

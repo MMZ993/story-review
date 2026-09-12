@@ -14,6 +14,7 @@ Constraint failures surface as ConstraintViolation for the API layer to map
 from __future__ import annotations
 
 import json
+import uuid
 
 import asyncpg
 
@@ -75,10 +76,11 @@ def _refs(value: str | None) -> list[ArtifactReference]:
 async def create_story_run(pool: asyncpg.Pool, record: StoryRunRecord) -> None:
     await _insert(
         pool,
-        "insert into story_runs (story_run_id, story_id, state, created_at, "
-        "updated_at) values ($1, $2, $3, $4, $5)",
+        "insert into story_runs (story_run_id, story_id, user_id, state, "
+        "created_at, updated_at) values ($1, $2, $3, $4, $5, $6)",
         record.story_run_id,
         record.story_id,
+        record.user_id,
         record.state,
         record.created_at,
         record.updated_at,
@@ -91,16 +93,20 @@ async def create_story_run_or_get(
     """Insert-or-reuse for flow replay convergence.
 
     A same-id conflict (idempotent-key replay of a partially completed
-    flow) returns the existing row; the one-active-run-per-story partial
-    index still raises ConstraintViolation (constraint name preserved)
-    for the API layer to map to STORY_SESSION_ACTIVE.
+    flow) returns the existing row; the one-active-run-per-(user, story)
+    partial index still raises ConstraintViolation (constraint name
+    preserved) for the API layer to map to STORY_SESSION_ACTIVE.
     """
     try:
         await create_story_run(pool, record)
         return record
     except ConstraintViolation:
         existing = await get_story_run(pool, record.story_run_id)
-        if existing is not None and existing.story_id == record.story_id:
+        if (
+            existing is not None
+            and existing.story_id == record.story_id
+            and existing.user_id == record.user_id
+        ):
             return existing
         raise
 
@@ -127,6 +133,7 @@ def _story_run_from_row(row) -> StoryRunRecord:
     return StoryRunRecord(
         story_run_id=row["story_run_id"],
         story_id=row["story_id"],
+        user_id=row["user_id"],
         state=row["state"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
@@ -140,13 +147,14 @@ async def create_session(pool: asyncpg.Pool, record: SessionRecord) -> None:
     """Persist the full validated session record (row equals the record)."""
     await _insert(
         pool,
-        "insert into sessions (session_id, story_run_id, story_id, state, "
-        "requested_formats, facilitator_turn_count, final_review_reference, "
-        "report_references, created_at, updated_at) "
-        "values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+        "insert into sessions (session_id, story_run_id, story_id, user_id, "
+        "state, requested_formats, facilitator_turn_count, "
+        "final_review_reference, report_references, created_at, updated_at) "
+        "values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
         record.session_id,
         record.story_run_id,
         record.story_id,
+        record.user_id,
         record.state,
         record.requested_formats,
         record.facilitator_turn_count,
@@ -180,6 +188,7 @@ def _session_from_row(row) -> SessionRecord:
         session_id=row["session_id"],
         story_run_id=row["story_run_id"],
         story_id=row["story_id"],
+        user_id=row["user_id"],
         state=row["state"],
         requested_formats=list(row["requested_formats"]),
         facilitator_turn_count=row["facilitator_turn_count"],
@@ -194,9 +203,16 @@ def _session_from_row(row) -> SessionRecord:
     )
 
 
-async def get_session(pool: asyncpg.Pool, session_id: str) -> SessionRecord | None:
+async def get_session(
+    pool: asyncpg.Pool, session_id: str, *, user_id: uuid.UUID
+) -> SessionRecord | None:
+    """Fetch one session; ownership-scoped — a session id from another
+    user reads as absent (api-contract.md: cross-user ids yield 404)."""
     row = await _fetchrow(
-        pool, "select * from sessions where session_id = $1", session_id
+        pool,
+        "select * from sessions where session_id = $1 and user_id = $2",
+        session_id,
+        user_id,
     )
     if row is None:
         return None
@@ -206,10 +222,12 @@ async def get_session(pool: asyncpg.Pool, session_id: str) -> SessionRecord | No
 async def list_sessions(
     pool: asyncpg.Pool,
     *,
+    user_id: uuid.UUID,
     limit: int,
     before: tuple[object, str] | None = None,
 ) -> tuple[list[tuple[SessionRecord, str | None]], bool]:
-    """One keyset page ordered by (updated_at desc, session_id desc).
+    """One keyset page of the user's own sessions, ordered by
+    (updated_at desc, session_id desc).
 
     `before` is the previous page's last (updated_at datetime, session_id)
     key; returns the page (record + advisory processing stage, exposed on
@@ -218,11 +236,13 @@ async def list_sessions(
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             "select * from sessions "
-            "where (updated_at, session_id) < ($1::timestamptz, $2::text) "
-            "or $1::timestamptz is null "
-            "order by updated_at desc, session_id desc limit $3",
+            "where user_id = $3 "
+            "and ((updated_at, session_id) < ($1::timestamptz, $2::text) "
+            "or $1::timestamptz is null) "
+            "order by updated_at desc, session_id desc limit $4",
             before[0] if before else None,
             before[1] if before else None,
+            user_id,
             limit + 1,
         )
     more = len(rows) > limit

@@ -21,6 +21,18 @@
 const STORIES_URL = "/api/v1/stories";
 const SESSIONS_URL = "/api/v1/sessions";
 
+import { ensureUserId } from "./user.js";
+
+/**
+ * The X-User-Id header for one request: the anonymous per-user scoping
+ * key (api-contract.md; 90-day sliding cookie, D24-3). `options.getUserId`
+ * overrides the cookie manager for deterministic tests.
+ */
+function userHeader(options = {}) {
+  const getUserId = options.getUserId ?? ensureUserId;
+  return { "X-User-Id": getUserId() };
+}
+
 const DEFAULT_ATTEMPTS = 5;
 const DEFAULT_BACKOFF_MS = 2000;
 
@@ -70,7 +82,9 @@ export async function fetchStories(
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   const url = filter ? `${STORIES_URL}?filter=${encodeURIComponent(filter)}` : STORIES_URL;
   try {
-    return toResult(await fetchImpl(url, { method: "GET" }));
+    return toResult(
+      await fetchImpl(url, { method: "GET", headers: userHeader(options) }),
+    );
   } catch {
     return { ok: false, status: 0, error: { code: "TRANSPORT", message: "request failed" } };
   }
@@ -83,6 +97,7 @@ export async function fetchStoryDetail(storyId, options = {}) {
     return toResult(
       await fetchImpl(`${STORIES_URL}/${encodeURIComponent(storyId)}`, {
         method: "GET",
+        headers: userHeader(options),
       }),
     );
   } catch {
@@ -127,7 +142,11 @@ async function postWithIdempotentKey(url, body, scope, options, pendingBody = nu
   }
   const request = {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Idempotency-Key": key },
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": key,
+      ...userHeader(options),
+    },
     body: JSON.stringify(body),
   };
 
@@ -168,6 +187,7 @@ export async function fetchSession(sessionId, options = {}) {
     return toResult(
       await fetchImpl(`${SESSIONS_URL}/${encodeURIComponent(sessionId)}`, {
         method: "GET",
+        headers: userHeader(options),
       }),
     );
   } catch {
@@ -229,7 +249,12 @@ export function clearPendingTurn(sessionId, options = {}) {
 export async function fetchSessions(options = {}) {
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   try {
-    return toResult(await fetchImpl(SESSIONS_URL, { method: "GET" }));
+    return toResult(
+      await fetchImpl(SESSIONS_URL, {
+        method: "GET",
+        headers: userHeader(options),
+      }),
+    );
   } catch {
     return { ok: false, status: 0, error: { code: "TRANSPORT", message: "request failed" } };
   }
@@ -273,6 +298,7 @@ export async function fetchReport(sessionId, options = {}) {
     return toResult(
       await fetchImpl(`${SESSIONS_URL}/${encodeURIComponent(sessionId)}/report`, {
         method: "GET",
+        headers: userHeader(options),
       }),
     );
   } catch {

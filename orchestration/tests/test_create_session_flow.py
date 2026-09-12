@@ -21,6 +21,7 @@ from orchestration.config import Settings
 from orchestration.main import create_app
 from orchestration.mcp_client import McpClient
 
+from .conftest import USER_HEADERS
 from .fakes import (
     FakeArtifactMcp,
     opening_turn_output,
@@ -135,6 +136,7 @@ def flow_client(
     agents,
     detail=None,
     report=None,
+    client_headers: dict | None = None,
 ) -> httpx.AsyncClient:
     detail = detail or story_detail()
     from .fakes import FakeReportMcp
@@ -155,7 +157,8 @@ def flow_client(
         agents=agents,
     )
     return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://orch"
+        transport=httpx.ASGITransport(app=app), base_url="http://orch",
+        headers=USER_HEADERS if client_headers is None else client_headers,
     )
 
 
@@ -185,7 +188,7 @@ def agents():
 
 @pytest.fixture
 def settings():
-    from .conftest import make_settings
+    from .conftest import USER_HEADERS, make_settings
 
     return make_settings()
 
@@ -292,7 +295,10 @@ async def test_crashed_in_progress_claim_is_taken_over(client, pool):
             "POST /api/v1/sessions",
             uuid.UUID(KEY_A),
             hashlib.sha256(
-                json.dumps(create_payload(), sort_keys=True).encode()
+                json.dumps(
+                    {**create_payload(), "user_id": str(USER_HEADERS["X-User-Id"])},
+                    sort_keys=True,
+                ).encode()
             ).hexdigest(),
         )
     response = await post_create(client, KEY_A, create_payload())

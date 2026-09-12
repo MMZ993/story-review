@@ -607,7 +607,10 @@ describe("fetchSessions", () => {
     const result = await fetchSessions({ fetchImpl });
     expect(result.ok).toBe(true);
     expect(result.body.sessions[0].processing_stage).toBe("reviewing");
-    expect(fetchImpl).toHaveBeenCalledWith("/api/v1/sessions", { method: "GET" });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "/api/v1/sessions",
+      expect.objectContaining({ method: "GET" }),
+    );
   });
 });
 

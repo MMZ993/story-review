@@ -8,6 +8,7 @@ without it so the target can never silently skip the DB tier.
 from __future__ import annotations
 
 import os
+import uuid
 
 import asyncpg
 import pytest
@@ -67,3 +68,9 @@ async def _clean_tables(pool):
             "story_runs, idempotency_claims"
         )
     yield
+
+
+#: Default test user (X-User-Id scoping): one user for the single-user
+#: legacy tests; the multi-user tests mint their own ids.
+TEST_USER = uuid.uuid4()
+USER_HEADERS = {"X-User-Id": str(TEST_USER)}

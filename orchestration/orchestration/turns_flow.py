@@ -81,9 +81,12 @@ async def run_turn(
     payload: dict,
     key: uuid.UUID,
     correlation_id: str,
+    user_id: uuid.UUID,
 ) -> TurnResponse:
     """Execute flow 2 for one (already validated) request body."""
-    session = await records_store.get_session(pool, session_id)
+    session = await records_store.get_session(
+        pool, session_id, user_id=user_id
+    )
     if session is None:
         raise _not_found(correlation_id)
 
@@ -101,6 +104,7 @@ async def run_turn(
             payload=payload,
             key=key,
             correlation_id=correlation_id,
+            user_id=user_id,
         )
     finally:
         # the advisory stage marker never outlives the lease holder
@@ -121,6 +125,7 @@ async def _execute(
     payload: dict,
     key: uuid.UUID,
     correlation_id: str,
+    user_id: uuid.UUID,
 ) -> TurnResponse:
     """Turn body under the lease (claim, agents, gate, persistence)."""
     claim = await idempotency.claim(
@@ -130,7 +135,9 @@ async def _execute(
         assert claim.canonical_response is not None
         return await _response_from_canonical(pool, claim.canonical_response, signer)
 
-    session = await records_store.get_session(pool, session_id)
+    session = await records_store.get_session(
+        pool, session_id, user_id=user_id
+    )
     assert session is not None
     if session.state == "finalizing":
         # same-key retry of a turn whose flow 3 failed retryably resumes

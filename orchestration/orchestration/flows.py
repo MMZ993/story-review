@@ -182,9 +182,14 @@ async def run_create_session(
     payload: dict,
     key: uuid.UUID,
     correlation_id: str,
+    user_id: uuid.UUID,
 ) -> CreateSessionResponse:
-    """Execute flow 1 for one (already validated) request body."""
-    fingerprint_value = fingerprint(payload)
+    """Execute flow 1 for one (already validated) request body.
+
+    The user id joins the idempotency fingerprint, so the same key
+    replayed for a different user is IDEMPOTENCY_KEY_REUSED instead of
+    returning another user's canonical response."""
+    fingerprint_value = fingerprint({**payload, "user_id": str(user_id)})
     claim = await idempotency.claim(pool, ROUTE, "", key, fingerprint_value)
     if claim.outcome is idempotency.ClaimOutcome.REPLAY:
         assert claim.canonical_response is not None
@@ -205,6 +210,7 @@ async def run_create_session(
         StoryRunRecord(
             story_run_id=run_id,
             story_id=story.story_id,
+            user_id=user_id,
             state="active",
             created_at=_now(),
             updated_at=_now(),
@@ -217,6 +223,7 @@ async def run_create_session(
             session_id=session_id,
             story_run_id=run_id,
             story_id=story.story_id,
+            user_id=user_id,
             state="active",
             requested_formats=payload["requested_formats"],
             facilitator_turn_count=1,

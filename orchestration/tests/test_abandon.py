@@ -12,6 +12,7 @@ import pytest
 
 from orchestration import abandon_api, lease, records_store
 
+from .conftest import TEST_USER
 from .factories import (
     artifact_reference,
     session as session_record,
@@ -47,8 +48,9 @@ async def _abandon(client, session_id, key=KEY_ABANDON):
 
 
 async def _seed(pool, state: str):
-    """Insert a session (and its story run) directly in the given state."""
-    run = story_run()
+    """Insert a session (and its story run) directly in the given state;
+    owned by the default test user (the client's X-User-Id)."""
+    run = story_run(user_id=TEST_USER)
     record = session_record(story_run_record=run)
     if state == "completed":
         # SessionRecord requires final review + every requested report
@@ -95,7 +97,7 @@ async def test_active_session_parks_now_and_releases_the_story(
     assert response.status_code == 200, response.text
     assert response.json() == {"session_id": session_id, "state": "parked"}
 
-    session = await records_store.get_session(pool, session_id)
+    session = await records_store.get_session(pool, session_id, user_id=TEST_USER)
     assert session.state == "parked"
     assert session.facilitator_turn_count == 1  # unchanged by the abandon
     run = await records_store.get_story_run(pool, session.story_run_id)
@@ -130,7 +132,7 @@ async def test_terminal_states_are_read_only(pool, settings, artifact, state):
     body = response.json()
     assert body["error"]["code"] == "SESSION_READ_ONLY"
     assert body["error"]["retryable"] is False
-    assert (await records_store.get_session(pool, record.session_id)).state == state
+    assert (await records_store.get_session(pool, record.session_id, user_id=TEST_USER)).state == state
 
 
 async def test_unknown_session_is_404(pool, settings, artifact):

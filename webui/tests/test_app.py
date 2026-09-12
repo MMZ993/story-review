@@ -5,6 +5,9 @@
 import httpx
 import json
 
+#: A v4-shaped sample user id (D24-3 header tests).
+VALID_USER = "12345678-1234-4123-8123-123456789abc"
+
 
 def test_health_reports_liveness_without_dependencies(client):
     response = client.get("/health")
@@ -137,6 +140,20 @@ def test_proxy_forwards_only_the_allowlisted_headers(client, upstream):
     assert "cookie" not in captured and "authorization" not in captured
     assert "x-custom" not in captured
     assert captured["x-correlation-id"] == "c-1"
+
+
+def test_proxy_forwards_the_user_scoping_header(client, upstream):
+    """X-User-Id (D24-3) is a client-hop header: the browser's anonymous
+    user id must reach orchestration so sessions scope per user."""
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["x-user-id"] = request.headers.get("x-user-id")
+        return httpx.Response(200)
+
+    upstream["handler"] = handler
+    client.get("/api/v1/sessions", headers={"X-User-Id": VALID_USER})
+    assert captured["x-user-id"] == VALID_USER
 
 
 def test_proxy_rejects_non_forwarded_methods(client):

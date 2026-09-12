@@ -13,12 +13,13 @@ from __future__ import annotations
 import time
 import uuid
 
-from fastapi import APIRouter, Header, Request
+from fastapi import APIRouter, Depends, Header, Request
 from review_schemas.api import ReportResponse
 
 from . import finalization, flows, idempotency, lease, lineage, records_store, turns_flow
 from .api_errors import ApiError, make_error
 from .errors import IdempotencyKeyReused, SessionLocked
+from .users import require_user_id
 
 router = APIRouter(prefix="/api/v1/sessions/{session_id}", tags=["finalize"])
 
@@ -66,11 +67,12 @@ async def post_finalize(
     session_id: str,
     request: Request,
     idempotency_key: uuid.UUID = Header(alias="Idempotency-Key"),
+    user_id: uuid.UUID = Depends(require_user_id),
 ):
     """Finalization retry / completion recovery (data-flow.md §3)."""
     correlation_id = _correlation(request)
     try:
-        return await _finalize(request, session_id, idempotency_key, correlation_id)
+        return await _finalize(request, session_id, idempotency_key, correlation_id, user_id)
     except SessionLocked as exc:
         raise turns_flow.map_session_locked(exc, correlation_id) from exc
     except IdempotencyKeyReused as exc:
@@ -82,6 +84,7 @@ async def _finalize(
     session_id: str,
     idempotency_key: uuid.UUID,
     correlation_id: str,
+    user_id: uuid.UUID,
 ) -> ReportResponse:
     """Dispatch on session state (api-contract four-state table)."""
     if idempotency_key.version != 4:
@@ -95,7 +98,7 @@ async def _finalize(
             ),
         )
     pool = request.app.state.pool
-    session = await records_store.get_session(pool, session_id)
+    session = await records_store.get_session(pool, session_id, user_id=user_id)
     if session is None:
         raise _not_found(correlation_id)
     signer = request.app.state.signer
@@ -114,6 +117,7 @@ async def _finalize(
         session=session,
         key=idempotency_key,
         correlation_id=correlation_id,
+        user_id=user_id,
     )
 
 
@@ -123,6 +127,7 @@ async def _resume_finalizing(
     session,
     key: uuid.UUID,
     correlation_id: str,
+    user_id: uuid.UUID,
 ) -> ReportResponse:
     """The `finalizing` path: reacquire the turn lease, resume flow 3
     (idempotent downstream work), complete atomically."""
@@ -132,7 +137,9 @@ async def _resume_finalizing(
         # re-read under the lease: the previous holder may have completed
         # between the outer state read and this acquisition (the completed
         # state is read-only — no writes, just fresh URLs)
-        fresh = await records_store.get_session(pool, session.session_id)
+        fresh = await records_store.get_session(
+            pool, session.session_id, user_id=user_id
+        )
         assert fresh is not None
         if fresh.state == "completed":
             return finalization.report_response(
@@ -202,10 +209,17 @@ async def _resume_finalizing(
 
 
 @router.get("/report", response_model=ReportResponse)
-async def get_report(session_id: str, *, request: Request):
+async def get_report(
+    session_id: str,
+    *,
+    request: Request,
+    user_id: uuid.UUID = Depends(require_user_id),
+):
     """Regenerate expiring signed URLs for a completed session's reports."""
     correlation_id = _correlation(request)
-    record = await records_store.get_session(request.app.state.pool, session_id)
+    record = await records_store.get_session(
+        request.app.state.pool, session_id, user_id=user_id
+    )
     if record is None:
         raise _not_found(correlation_id)
     if record.state != "completed":

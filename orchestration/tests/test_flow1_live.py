@@ -19,6 +19,8 @@ from orchestration.config import Settings
 from orchestration.main import create_app
 from orchestration.mcp_client import McpClient
 
+from .conftest import USER_HEADERS
+
 REQUIRED_ENV = (
     "ORCH_LIVE_STORY_URL",
     "ORCH_LIVE_ARTIFACT_URL",
@@ -70,7 +72,7 @@ async def live_client():
         agents=default_agent_set(settings),
     )
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://orch") as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://orch", headers=USER_HEADERS) as client:
         yield client, pool
     await pool.close()
 

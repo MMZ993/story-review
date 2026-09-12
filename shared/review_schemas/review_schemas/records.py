@@ -30,6 +30,7 @@ from review_schemas.base import (
     Text,
     TurnOutcome,
     UtcDatetime,
+    UserId,
 )
 from review_schemas.facilitator import (
     DelegationDecision,
@@ -44,6 +45,7 @@ class StoryRunRecord(StrictModel):
 
     story_run_id: RunId
     story_id: StoryId
+    user_id: UserId
     state: SessionState
     created_at: UtcDatetime
     updated_at: UtcDatetime
@@ -55,6 +57,7 @@ class SessionRecord(StrictModel):
     session_id: SessionId
     story_run_id: RunId
     story_id: StoryId
+    user_id: UserId
     state: SessionState
     requested_formats: list[Format] = Field(min_length=1, max_length=2)
     facilitator_turn_count: Annotated[int, Field(ge=0, le=10)] = 0

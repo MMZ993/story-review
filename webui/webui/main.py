@@ -5,7 +5,8 @@ service so the browser talks to a single origin (no CORS anywhere; the same
 path-routing model carries to the GCP deployment, where an HTTPS load
 balancer routes ``/api`` instead). The proxy is a pure pass-through: no
 business logic, no persistence, no header mutation beyond the client-hop
-headers the API contract defines (Idempotency-Key, X-Correlation-Id).
+headers the API contract defines (Idempotency-Key, X-Correlation-Id,
+X-User-Id — the anonymous per-user scoping key, D24-3).
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from .config import Settings
 
 _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 _FORWARDED_METHODS = ["GET", "POST"]
-_FORWARDED_HEADERS = ["content-type", "idempotency-key", "x-correlation-id"]
+_FORWARDED_HEADERS = ["content-type", "idempotency-key", "x-correlation-id", "x-user-id"]
 
 
 def create_app(
