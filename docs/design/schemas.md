@@ -790,6 +790,16 @@ class ListSessionsResponse(StrictModel):
     next_cursor: ShortText | None = None
 
 
+class AbandonSessionResponse(StrictModel):
+    """`POST /sessions/{id}/abandon` — explicit park-now of an active/finalizing
+    session (client-side escape for a session stuck without an exit; see
+    api-contract.md). The transition also parks the story run, releasing the
+    story for a new session."""
+
+    session_id: SessionId
+    state: Literal["parked"]
+
+
 ProcessingStage = Literal["reviewing", "synthesizing", "facilitator", "delegating", "finalizing"]
 
 `SessionSummary.processing_stage` (and therefore `SessionDetail.processing_stage`)

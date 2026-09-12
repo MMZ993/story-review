@@ -31,6 +31,7 @@ Conventions:
 | `GET /api/v1/sessions/{session_id}` | path `session_id` | `SessionDetail` | History replay + artifact references. |
 | `POST /api/v1/sessions/{session_id}/turns` | `TurnRequest` | `TurnResponse` | One PO action; may finalize. |
 | `POST /api/v1/sessions/{session_id}/finalize` | empty body | `ReportResponse` | Finalization retry (flow 3). |
+| `POST /api/v1/sessions/{session_id}/abandon` | empty body | `AbandonSessionResponse` | Explicit park-now (release a stuck session). |
 | `GET /api/v1/sessions/{session_id}/report` | path `session_id` | `ReportResponse` | Regenerate signed report URLs. |
 | `GET /health` | none | health flags | Liveness; downstream reachability. |
 
@@ -55,6 +56,7 @@ Selecting a story is done by creating a session — that triggers the initial fl
 | `GET /sessions/{session_id}` | full history replay incl. artifact references (flow 4) |
 | `POST /sessions/{session_id}/turns` | one PO message = one dialogue turn (flow 2) |
 | `POST /sessions/{session_id}/finalize` | explicit/idempotent finalization retry (flow 3) |
+| `POST /sessions/{session_id}/abandon` | explicit park-now: release an active/finalizing session without a report |
 | `GET /sessions/{session_id}/report` | regenerate a signed download URL for a completed session |
 
 #### `POST /sessions` — story selection (initial flow)
@@ -193,6 +195,30 @@ Request: empty body + `Idempotency-Key`. Behavior by session state:
 `{ "session_id": "sess-…", "report": [{ "artifact_id": "…", "format": "md", "signed_url": "…" }, …] }`
 — one entry per requested format. Render failure: `503` retryable, session stays
 `finalizing`.
+
+#### `POST /sessions/{session_id}/abandon` — explicit park-now
+
+Request: empty body + `Idempotency-Key`. A client-side escape for a session that is
+stuck without an exit (e.g. upstream permanently broken so neither a turn nor an
+acceptance can succeed): it parks the session immediately — no facilitator or model
+call, no report. One atomic transition moves the session **and** its story run to
+`parked` (the story is released for a new session; the dialogue history stays readable
+read-only); `facilitator_turn_count` is unchanged. Same key replay returns the stored
+canonical response idempotently.
+
+Behavior by session state:
+
+| State | Behavior |
+|---|---|
+| `active` | park now — `200` |
+| `finalizing` | park now (a stuck retryable finalization is exactly the target case) — `200` |
+| `parked` / `completed` | `409` code `SESSION_READ_ONLY` (already terminal) |
+
+If a turn/finalization claim is still in progress under the session lease → `409`
+code `SESSION_LOCKED` (retryable; wait for lease expiry ≤ 6 min, then abandon).
+`404` unknown session; `IDEMPOTENCY_KEY_REUSED` on same-key body mismatch.
+
+`200` response (`AbandonSessionResponse`): `{ "session_id": "sess-…", "state": "parked" }`.
 
 #### `GET /sessions/{session_id}/report`
 
