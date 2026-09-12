@@ -8,9 +8,11 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-12 (post-Phase-7 UI/UX follow-up — picker/session
-layout, paragraph previews, comment-story fix; local compose rebuilt and
-smoke-checked). Prior: session 50 — **D22 implemented + Phase 7 COMPLETE**.
+Last updated: 2026-09-12 (pre-Phase-8 Web UI presentation pass — GitHub-dark
+responsive styling and requested attribution footer; deterministic Web UI
+suite green; no compose rebuild or cloud action). Prior: post-Phase-7 UI/UX
+follow-up — picker/session layout, paragraph previews, comment-story fix;
+local compose rebuilt and smoke-checked.
 
 ## Where we are
 
@@ -43,6 +45,20 @@ smoke-checked). Prior: session 50 — **D22 implemented + Phase 7 COMPLETE**.
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+Pre-Phase-8 Web UI presentation pass (2026-09-12, main PC; no compose or
+cloud actions, Cloud SQL remains STOPPED):
+- **Web UI**: replaced browser-default styling with a compact, responsive
+  GitHub-dark presentation: clearer cards, hierarchy, controls, picker/session
+  rows, accessible focus states, readable chat bubbles, green send/reachable
+  status, a blue-accented primary story-selection panel, and footer
+  `@ 2026 Marcin Żak / mmz.sh` with an `https://mmz.sh/` link. No client
+  behavior or API calls changed.
+- **Decision**: D23 records this owner-requested presentation-only exception
+  to Phase 7's former no-styling-beyond-usability MVP scope.
+- **Verification**: `make webui-test` PASS — pytest 13 and vitest 77;
+  `git diff --check` PASS. Running compose still serves the prior baked image;
+  owner may run `make agents-compose-up` to preview this pass.
+
 Post-Phase-7 UI/UX follow-up (2026-09-12, main PC; local Docker stack
 rebuilt, no cloud actions, Cloud SQL STOPPED):
 - **Web UI**: picker resume/open controls moved left; header now says

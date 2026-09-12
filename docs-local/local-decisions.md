@@ -934,3 +934,14 @@ Docs applied (this session): `api-contract.md` (endpoint tables + abandon
 section), `schemas.md` (`AbandonSessionResponse`), `architecture.md`
 (session lifecycle bullet). Implementation (orchestration + webui) is
 follow-up work in a fresh session; Phase 7 close-out follows it.
+
+## D23 — GitHub-dark Web UI presentation pass (2026-09-12)
+
+Owner request before Phase 8: retain the completed Phase-7 behavior and API
+contract while making the interface more pleasant with minimal UI-only work.
+The static Web UI uses a compact GitHub-dark palette, improved control and
+content hierarchy, responsive small-screen layout, clearer chat bubbles, a
+green send action and reachable-backend status, a blue-accented primary
+story-selection panel, and the footer `@ 2026 Marcin Żak / mmz.sh` with
+`mmz.sh` linked to `https://mmz.sh/`.
+No server, API, workflow, or animation changes are in scope.

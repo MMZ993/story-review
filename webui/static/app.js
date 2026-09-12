@@ -37,10 +37,12 @@ let selectedStoryId = null;
 
 /**
  * Report the orchestration reachability in the header by probing the real
- * stories endpoint (increment-0 behavior, kept).
+ * stories endpoint (increment-0 behavior, kept). The data-status attribute
+ * lets the presentation distinguish a reachable service from an error.
  */
 async function showOrchestrationStatus() {
   const result = await fetchStories();
+  statusElement.dataset.status = result.ok ? "reachable" : "error";
   statusElement.textContent = result.ok
     ? "FastAPI backend: reachable"
     : `FastAPI backend: error (${result.status})`;
