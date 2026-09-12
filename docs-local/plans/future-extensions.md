@@ -209,7 +209,12 @@ and evaluation evidence uses the existing Vertex AI test budget.
 
 ## Item F — Live progress indication during session creation (Web UI)
 
-**Status: proposed (owner request, 2026-09-16, while waiting on a real
+**Status: IMPLEMENTED (session 45, 2026-09-16) as D20** — option (a)
+chosen (server stage marker + read-endpoint polling); see
+`docs-local/local-decisions.md` D20 and Runbook 13 §Item F. Design notes
+below kept for the record; the design decision they asked for was made.
+
+**Original status: proposed (owner request, 2026-09-16, while waiting on a real
 flow-1 `POST /sessions` — currently a bare "reviewing story-XX…" spinner
 for up to 5 minutes).**
 
@@ -329,3 +334,58 @@ Local deterministic tests only; one live gate session for evidence.
 - Mechanism choice (1 vs 2 above); whether `reopened` also needs to appear
   in `TurnResponse`/meta surfaces; backward compatibility of stored
   TurnRecords (no migration expected — dispositions are per-turn data).
+
+## Item G — Post-delegation facilitator summary turn (flow-2 design change)
+
+**Status: proposed (owner request, 2026-09-17, session 45 live testing of
+story-15).**
+
+### Motivation
+
+A delegated dialogue turn is ONE facilitator invocation: the facilitator
+writes its reply and decides the delegation in the same call, then the
+re-review and re-synthesis run after it (data-flow.md §2). The reply
+therefore always reads as if the re-review were still pending ("I will
+re-run the engineering review…") even though the fresh synthesis (with
+everything resolved) already exists when the PO reads it. The PO gets no
+conversational record of what the re-review found — the outcome surfaces
+only in the next turn's meta line or in the finalized report. Observed
+live: turn 4 ended with "open issues: 0, synthesis v3, outcome continue"
+while the reply text promised a re-review that had already completed.
+
+### Scope (sketch, owner's shape)
+
+- Extend flow 2 so a delegated turn becomes:
+  **facilitator → reviewer(s) → synthesis → facilitator (second call) →
+  back to the PO**. The second facilitator call reads the fresh synthesis
+  and produces the turn's final reply (updated open-issues list,
+  resolutions, and a summary of what the re-review changed).
+- The first (pre-delegation) reply is still produced (it carries the
+  delegation decision and rationale) but must be **hidden from the PO in
+  the default chat view**; important findings from it must be repeated by
+  the second call after reviewers + synthesis finish. Presentation
+  options to decide: (a) show only the final reply, keep the first in the
+  report appendix / expandable detail; (b) show both with the first
+  visually demoted as "delegation rationale".
+- Touches: data-flow.md §2, api-contract (TurnResponse may need both
+  replies or only the final one), agents.md facilitator session
+  semantics (two ADK turns per dialogue turn — invocation ids,
+  corrective re-prompt budget), the adapter mirror/output schema, and
+  the webui chat rendering. Cost: one extra facilitator model call per
+  delegated turn.
+
+### Exit criteria
+
+- A live delegated turn where the PO's visible reply reports the
+  re-review outcome (what was resolved, what remains), and the
+  pre-delegation reply is either hidden or clearly marked as rationale.
+- Deterministic tests for the two-call sequencing, idempotent replay of
+  both calls, and gate precedence evaluated on the second call's output.
+
+### Design notes / decisions needed
+
+- Gate precedence: evaluate on the SECOND call's delegation output (the
+  fresh synthesis is then already known to the facilitator) — this also
+  avoids the current "synthesis beats finalize" extra turn.
+- Which reply is persisted in the TurnRecord as `facilitator_reply`
+  (probably the final one, with the first kept as a separate field).

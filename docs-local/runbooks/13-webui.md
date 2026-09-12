@@ -522,3 +522,163 @@ real D19 implementation gaps before passing.
 Verification: agent-kit **104**, facilitator-adapter **3+1s**,
 orchestration **96+11s**, stack recomposed (`make agents-compose-up`)
 twice; other suites unchanged from session 43 baseline.
+
+## Item F + webui debt fixes (session 45, 2026-09-16) — D20
+
+Owner decision D20 (chat, this session): Item F via option (a) —
+server-persisted `processing_stage` marker + polling of the existing
+read endpoints; the three §D19 webui debt items fixed in the same pass.
+Design detail in `docs-local/local-decisions.md` D20.
+
+### What was implemented
+
+- **Contract** (review-schemas 0.6.0 → 0.7.0): `ProcessingStage` literal +
+  `SessionSummary.processing_stage` (inherited by `SessionDetail`);
+  `docs/design/schemas.md` (API section + durable-records note: the column
+  is live view state, not part of `SessionRecord`) and
+  `docs/design/api-contract.md` (progress paragraph under GET /sessions,
+  incl. flow-1 discovery via the story-filtered list). Migration
+  `0003_processing_stage.sql` (nullable, check-constrained column).
+- **Orchestration**: `records_store.set_processing_stage` /
+  `get_processing_stage`; `list_sessions` returns (record, stage) pairs.
+  Flow 1 publishes reviewing → synthesizing → facilitator (extracted
+  `_initial_pipeline`; wrapper clears the stage on any failure). Flow 2
+  publishes facilitator → delegating → synthesizing → finalizing (before
+  each step; the finalize-retry endpoint too); `run_turn`'s finally clears
+  the stage under the lease — the marker never outlives the lease holder.
+  `GET /sessions` list + `GET /sessions/{id}` detail expose the stage.
+- **Webui** (`static/progress.js` new): `stageText` labels + a
+  `pollProcessingStage` loop (first read immediate, stops itself when the
+  stage clears). `messages.js` gains an ephemeral `.message-progress`
+  placeholder bubble (never persisted, never in history replay).
+  `chat.js`: every in-flight turn shows the placeholder updated by
+  polling, removed and replaced by the real reply; opening a session
+  clears stale status banners; a passive read-only mode renders the
+  placeholder when the server reports a processing session (e.g. creation
+  still running); mid-turn reload resumes by re-issuing the persisted
+  body with the persisted idempotency key (canonical replay). `api.js`:
+  `pending:turn:{id}:body` persisted next to the key; `getPendingTurn` /
+  `clearPendingTurn`; `fetchSessions`. `app.js`: the creation spinner
+  polls the story-filtered session list and opens the session view early
+  (passive mode) once the processing session appears.
+
+### Debt items — status
+
+1. Optimistic bubble after a failed turn: **fixed** (removed; message
+   restored to the composer for editing).
+2. Stale error banner across session switch: **fixed** (openSession
+   clears the status line; leave flow tested).
+3. Refresh mid-turn: **fixed** (pending body + key replay on boot;
+   composer locked while resuming).
+
+### Verification (deterministic tier)
+
+- review-schemas **171** (+1 stage field), orchestration **100 +11s**
+  (+4: flow-1 stage progression + clear, failed-creation clear, turn
+  stage progression, finalize-stage visibility during flow 3),
+  agent-kit **104**, mcp-report **36**, webui **pytest 11 + vitest 54**
+  (+10: pending-body persistence/clear, getPendingTurn/clearPendingTurn,
+  fetchSessions, SESSION_LOCKED same-key retry, failed-turn bubble
+  restore, stale-banner clear, pending resume, live stage placeholders,
+  passive-view completion + leave-stops-poll).
+- Live gate (browser walkthrough with visible stage placeholders) folds
+  into the increment-4 exit walkthrough — pending.
+
+### Gotchas / notes
+
+- The stage is advisory; if a process crashes mid-flow the marker can go
+  stale (non-null at rest). The UI only shows it while its own POST is
+  outstanding or a passive read observes it, and the lease-scoped finally
+  clears it on every normal failure path. A crashed holder's stale marker
+  disappears at the latest when the takeover/finalize path completes.
+- Pre-D20 pending keys (key without body) cannot be re-issued; chat clears
+  them on next open (no canonical replay possible — the turn outcome, if
+  any, is in history replay).
+- jsdom test gotcha: `vi.clearAllMocks()` does not reset
+  `mockReturnValue` implementations — leaked the resume test's
+  `getPendingTurn` into the placeholder test (deadlock via openSession's
+  awaited resume). beforeEach now uses `vi.resetAllMocks()`.
+
+### Independent review (session 45) + fixes
+
+Read-only subagent review of the full diff: verdict **Needs fixes** —
+1 Important + 4 minors; all fixed in-session:
+
+1. **Important — passive-mode `inFlight` leak**: `openSession`'s passive
+   branch set `inFlight = true` but nothing reset it (the `onDone`
+   re-open re-entered with the flag still set) — the composer stayed
+   permanently disabled after any passive view (exactly the flow-1
+   progress headline). Fix: `openSession` resets the flag at open and
+   `onDone` clears + re-syncs before the history re-render; two new
+   tests (passive → done → composer enabled; leave stops the poll).
+2. SESSION_LOCKED resume gap: the api client now retries 409
+   SESSION_LOCKED with the SAME key (contract: retryable), waiting for
+   the envelope's `retry_after_seconds` — the common reload case
+   (original request still holding the lease) converges to the canonical
+   replay instead of surfacing an error and dropping the pending body.
+   New test; the non-retryable-409 truth table dropped its
+   SESSION_LOCKED row (behavior changed intentionally).
+3. Passive poll not stopped on "choose another story" — the leave
+   handler now stops it (tested).
+4. Minor style (records_store stray blank line) + defensive removal of a
+   stale `${scope}:body` when a caller passes no pendingBody.
+
+Post-fix verification: webui **pytest 11 + vitest 54**; orchestration /
+review-schemas / agent-kit / mcp-report re-run green (counts below).
+
+### Live-testing findings (owner browser session, story-15) + fixes
+
+First live exercise of the D20 progress UI surfaced two client bugs,
+both fixed in-session:
+
+1. **Leading-null poll race (Item F)**: the placeholder stayed at the
+   generic "processing…" text for a whole delegated turn. Root cause:
+   `pollProcessingStage`'s immediate first read fires before the server
+   writes its first stage (lease → claim → input assembly precede it);
+   the null observation was treated as "flow finished" and the loop
+   stopped itself. Fix: a null stage only ends the loop after a stage
+   was observed (or after a bounded run of 3 never-stage nulls — covers
+   a flow finishing between the arming read and the first poll). New
+   `tests/frontend/progress.test.js` (3 tests) — deterministic tests
+   missed the race because staged mocks always answered instantly.
+2. **Stale report links**: opening an active session did not clear
+   `#report-links`, so links rendered by a previously completed session
+   (the boot resumed story-09's completed view) survived the switch and
+   pointed at expired (15-min TTL) URLs. Fix: `openSession` always
+   re-renders the container (empty unless completed). Test added.
+
+**Gotcha — fake-gcs memory backend**: `docker compose up --build`
+recreates containers; fake-gcs runs `-backend memory` with no volume, so
+**every stack rebuild wipes all stored artifacts** — report downloads of
+previously completed sessions 404 afterwards (their signed URLs point at
+vanished objects). Expected for the local substitute; noted so a 404
+after a rebuild is not misread as a report-server defect. The compose
+Postgres is volume-backed and survives rebuilds — which is also why new
+migrations must be applied to it manually (0003 was applied in-container
+mirroring run-migrations.sh: transaction + schema_migrations insert);
+`agents-compose-up` does not run migrations.
+
+Verification after the fixes: webui **pytest 11 + vitest 59**.
+
+**Follow-up (same live session)**: turn-3 "facilitator only" stage was
+*correct* (invoke=none — no delegation that turn); turn-4 showed the full
+facilitator → delegating → synthesizing sequence. The reappearing stale
+report link was the browser serving a heuristically cached pre-fix
+`chat.js` (StaticFiles sent no Cache-Control). Fix: webui static
+responses now carry `Cache-Control: no-cache` (middleware; ETag
+revalidation still avoids re-downloads) — webui **pytest 12**, vitest 59.
+
+### Live D20 verification (owner browser, story-15, same session)
+
+Turn-by-turn: turn 1 opening (creation progress verified earlier);
+turn 2 delegated (pre-fix JS, stages not shown); turn 3 facilitator-only
+("facilitator is drafting…" correctly the sole stage — invoke=none);
+turn 4 delegated — full sequence **facilitator → reviewers re-checking →
+synthesis merging** shown after the leading-null fix. Report-links bugs
+fixed (stale links cleared; no-cache static headers). Remaining live
+checks fold into increment 4: park, mid-turn refresh resume, finalize
+stage, regenerate links. UX gap found (first facilitator reply precedes
+the re-review it requests; outcome surfaces only in the next turn or the
+report) → recorded as future-extensions **Item G** (flow-2 two-call
+design change; owner's shape: facilitator → reviewers → synthesis →
+facilitator → PO, first reply hidden, second repeats key findings).

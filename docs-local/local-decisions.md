@@ -831,3 +831,38 @@ descriptor-validator rejection carries the inline JSON shape (flows
 into the corrective re-prompt). Gate verdict: **PASS** on story-05 —
 F-1 minted with a same-turn descriptor, Issues section present, all
 Resolutions/Remaining-open rows titled, no bare ids.
+
+## D20 — Live processing-stage progress (session 45, 2026-09-16)
+
+Owner decision (chat): implement future-extensions **Item F** with
+**option (a) — server-persisted stage marker + read-endpoint polling**
+(chosen over SSE as too heavy and client-side timers as dishonest).
+The webui debt items (Runbook 13 §D19) are fixed in the same pass.
+
+1. **Contract**: `sessions` gains an ephemeral nullable `processing_stage`
+   column (migration 0003; values `reviewing`, `synthesizing`,
+   `facilitator`, `delegating`, `finalizing`), deliberately **not** part
+   of `SessionRecord` (live view state, not durable truth). Exposed on
+   `SessionSummary`/`SessionDetail` (review-schemas 0.7.0) so a client
+   may poll `GET /sessions` / `GET /sessions/{id}` while its synchronous
+   POST is outstanding. Advisory only; docs updated in
+   `docs/design/schemas.md` + `api-contract.md` (atomic docs commit +
+   frozen cherry-pick due).
+2. **Orchestration**: flows 1/2/3 publish their current pipeline position
+   (set before each long step) and clear it on completion and on failure
+   (finally under the lease for turns; try/except wrapper for flow 1).
+3. **Webui**: stage placeholders are ephemeral chat bubbles
+   (`.message-progress`, never persisted, never in history replay),
+   updated by polling the session detail while the POST is outstanding
+   and replaced by the real reply on completion. Flow-1 discovery: the
+   picker polls the session list for the story's *processing* session
+   (one-active-per-story makes it unambiguous; a stale active session
+   has a null stage → no fake progress) and opens the session view early
+   in a read-only passive mode.
+4. **Debt fixes**: (1) a failed turn removes the optimistic PO bubble and
+   restores the text to the composer; (2) opening a session clears any
+   stale status banner; (3) the turn body is persisted next to the
+   idempotency key (`pending:turn:{id}:body`) and a mid-turn reload
+   re-issues the same logical request (same key → canonical replay
+   server-side); legacy key-only pending keys are cleared (no body to
+   re-issue).
