@@ -102,6 +102,19 @@ retryable deadline/upstream failure — the session creation is idempotent by
 content fetched server-side via artifact MCP, payloads never carried in history alone).
 Session listing supports `limit` (default 50, max 100) and an opaque `cursor`, ordered
 by `updated_at` descending.
+
+**Processing-stage progress**: while a session's flow-1/flow-2/flow-3 request is
+executing server-side, every summary/detail read carries a non-null
+`processing_stage` (`reviewing` → `synthesizing` → `facilitator` for flow 1;
+`facilitator` → `delegating` → `synthesizing` → `finalizing` for flow 2/3 — see
+[schemas.md](schemas.md)). A synchronous `POST /sessions` or `POST /turns` caller may
+poll these reads while its POST is outstanding to show honest stage-level progress;
+the stage is advisory (derived from the server's own position in the pipeline) and is
+`null` when no request is in flight. During flow 1 the client does not know its
+session id yet — it may find the processing session via `GET /sessions` filtered by
+`story_id` (at most one active session per story, and only the processing one carries
+a non-null stage).
+
 `404` unknown session. Parked/completed sessions are read-only — a `POST` turn against
 them returns `409` with code `SESSION_READ_ONLY`; the client may instead create a **new
 session on the same story**.
