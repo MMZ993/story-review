@@ -29,6 +29,16 @@ Per-agent specifications. Each agent is a separate Agent Engine deployment.
   output, never from parsing reply prose. Validation failure triggers a corrective LLM
   re-prompt (bounded, distinct from transport retries — see observability.md) and is
   recorded as an observability event. The opening turn always emits `invoke` = none.
+- **Post-delegation summary turn (Item G / D21)**: when the turn's delegation ran
+  reviewers or re-synthesis, orchestration invokes the facilitator a **second time**
+  within the same turn, with the fresh synthesis deterministically appended to the
+  session context. The second output is the turn's authoritative one (reply,
+  `DelegationDecision`, resolutions); the first (pre-delegation) reply is persisted as
+  `delegation_rationale_reply` and is **not shown to the PO**. The facilitator prompt
+  instructs the model accordingly: the pre-delegation reply is invisible to the user,
+  so the final reply must repeat any important findings from it alongside the re-review
+  summary (what was resolved, what remains). The second call cannot request a new
+  delegation for the same turn — any delegation it emits executes on the next PO turn.
 - **PO acceptance** is an explicit client action (UI button / API field `po_accepted`),
   recorded by orchestration — never produced by the LLM. It bypasses the facilitator and
   delegated work and enters final report generation immediately.
@@ -49,9 +59,11 @@ below is a summary; the Pydantic validators reject invalid combinations such as
 
 Loop exit condition: all flagged issues resolved, or the PO explicitly accepts. The
 facilitator's `readiness = ready` is a **proposal only**. Orchestration finalizes a normal
-dialogue turn only when `open_issues` is empty, `invoke` = none, and no synthesis was
-produced during that turn. A new synthesis must be evaluated by the facilitator on the
-next turn. Explicit PO acceptance finalizes before invoking the facilitator. Turn 10
+dialogue turn only when the turn's **final** typed facilitator output has `open_issues`
+empty and `invoke` = none; on delegated turns that is the second (post-delegation
+summary) call's output, which has already evaluated the fresh synthesis — a turn that
+produced a synthesis can therefore finalize in the same turn.
+Explicit PO acceptance finalizes before invoking the facilitator. Turn 10
 parks the session instead of evaluating readiness.
 
 ## Business Perspective Reviewer (execution layer)
@@ -103,7 +115,10 @@ parks the session instead of evaluating readiness.
   timeout: before reinvoking, orchestration checks the ADK session for events tagged
   with this invocation ID — if present, the run completed remotely, so orchestration
   extracts the structured output from those events instead of invoking again; if
-  absent, it re-invokes (this may repeat model cost, never state). Either way exactly
+  absent, it re-invokes (this may repeat model cost, never state). A delegated turn makes
+two such invocations (pre-delegation and post-delegation summary), each with its own
+invocation ID and its own reconciliation and bounded corrective re-prompt budget
+(Item G / D21). Either way exactly
   one `TurnRecord` per turn number exists, so a retry can never duplicate dialogue
   events.
 - **Reviewers and Synthesis**: always a **fresh single-turn run** — no session state

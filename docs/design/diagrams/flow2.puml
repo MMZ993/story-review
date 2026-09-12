@@ -23,7 +23,7 @@ T -> A: read artifact by supplied session-lineage reference
 A --> T: artifact payload
 end
 T --> F: reply + DelegationDecision
-F -> C: persist turn + typed facilitator output
+F -> C: persist pre-delegation typed output (delegation rationale; reply not shown to PO)
 alt invoke = both reviewers
 par parallel fan-out (asyncio.gather)
 F -> B: invoke (story + prev + extra_context)
@@ -58,12 +58,14 @@ F -> A: save synthesis artifact (idempotent)
 F -> C: persist synthesis run (audit)
 F -> C: append synthesis to session context (deterministic)
 end
+opt synthesis produced this turn (delegation or reuse_previous)
+F -> T: invoke facilitator again (fresh synthesis in session context)
+T --> F: final reply + updated typed output (post-delegation summary turn)
+F -> C: persist final facilitator reply + typed facilitator output
+end
 alt facilitator turn 10 reached
 F -> C: session -> parked + outcome = park
-else synthesis produced this turn
-F -> C: persist outcome = continue
-note over F: facilitator evaluates new synthesis next turn
-else open_issues empty AND invoke = none
+else final typed output: open_issues empty AND invoke = none
 F -> C: persist outcome = finalize
 else unresolved issues remain
 F -> C: persist outcome = continue
@@ -73,10 +75,10 @@ alt outcome = finalize
 note over F: continue to flow 3; no response yet
 else outcome = park
 F -> C: release turn lock
-F --> PO: reply + latest synthesis + park outcome (single response)
+F --> PO: final reply + latest synthesis + park outcome (single response)
 else outcome = continue
 F -> C: release turn lock
-F --> PO: reply + latest/updated synthesis + continue outcome (single response)
+F --> PO: final reply + latest/updated synthesis + continue outcome (single response)
 end
 end
 @enduml
