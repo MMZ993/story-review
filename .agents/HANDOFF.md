@@ -8,19 +8,15 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (session 44 — **D19 live gate PASS on story-05**
-after two in-session root-cause fixes: serving-safe mirror lacked
-`new_issues` (Vertex structured output could never emit an IssueDraft —
-byte-identical corrective replies were the signal); issue catalog now
-unions **all synthesis versions** of the session, latest wins (docs
-updated + frozen cherry-pick). Facilitator prompt `new_issues` example +
-validator rejection carries inline JSON shape. Webui debt observed and
-recorded (Runbook 13 §D19): optimistic bubble persists after failed turn;
-stale error banner survives session switch; refresh mid-turn drops the
-pending message and may lose the idempotency key. D19 done; Phase 7
-increment 4 (exit gate + close) remains. Prior: session 43 — Item E
-(D18) + D19 implemented, D18 live gate PASS; commits 592dd85 / e58bb7a /
-0535b1c + 7c8b9cf, then 6e9684a / 66e10ca / 045a9e4.)
+Last updated: 2026-09-17 (session 45 — **D20: Item F live progress +
+webui debt fixes implemented, live-verified on story-15** (stages shown
+turn 4); three live bugs found and fixed in-session (leading-null poll
+race, stale report links, missing static no-cache); **Item G recorded**
+(owner: delegated turns should be facilitator → reviewers → synthesis →
+facilitator → PO, first reply hidden); review-schemas **171**,
+orchestration **100+11s**, webui **12 + vitest 59**, agent-kit **104**,
+mcp-report **36**. Increment 4 (exit gate + close) remains. Prior:
+session 44 — D19 live gate PASS on story-05; webui debt observed.)
 
 ## Where we are
 
@@ -28,14 +24,14 @@ increment 4 (exit gate + close) remains. Prior: session 43 — Item E
   (sessions 32–38; detail in Runbook 12, decisions D15 + amendments
   1–3). All gates green; live integration suite PASS (3 passed in 367 s).
 - **Phase 7 (Web UI) in progress** — increments 0–3 COMPLETE (sessions
-  40–42, Runbook 13 + D17 amendment 1). **Item E debt DONE (session 43,
-  D18, Runbook 13 §Item E)**. **D19 live gate PASS (session 44,
-  Runbook 13 §D19)**. Remaining: increment 4 (exit gate —
-  example-interaction walkthrough end-to-end + close). Compose Postgres
-  sessions: story-02 + story-09 + **story-05 completed** (session-44
-  D19 gate), story-01/-04/-06 still active (pre-D19 active-session
-  slots) and story-03 active but gate-abandoned (wedged turn-2 under
-  the pre-fix mirror gap).
+  40–42, Runbook 13 + D17 amendment 1). Item E (D18) and D19 done with
+  live gates PASS (sessions 43–44). **Session 45: D20 — Item F live
+  processing-stage progress (option a) + all three webui debt items
+  fixed** (Runbook 13 §Item F; uncommitted). Remaining: increment 4
+  (exit gate — example-interaction walkthrough end-to-end + close;
+  walkthrough should exercise the new stage placeholders). Compose
+  Postgres sessions: story-02 + story-09 + story-05 completed,
+  story-01/-04/-06 active (pre-D19 slots), story-03 gate-abandoned.
 - **Phase 5 COMPLETE and CLOSED** (session 31): all increments green, exit
   gate PASS (session 30), completion review Ready-to-close. Detail: Runbook
   11, D13 + amendments, D14 + amendment 1.
@@ -52,6 +48,37 @@ increment 4 (exit gate + close) remains. Prior: session 43 — Item E
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+Session 45 (2026-09-17, main PC — **D20: Item F live progress + webui
+debt fixes**; local Docker, Cloud SQL STOPPED, no cloud actions):
+- **Owner decision D20**: Item F via option (a) — orchestration
+  persists an advisory nullable `processing_stage` on sessions
+  (migration 0003; NOT part of SessionRecord — live view state),
+  exposed on SessionSummary/SessionDetail (review-schemas 0.6.0 →
+  0.7.0); UI polls GET /sessions(/{id}) while its synchronous POST is
+  outstanding. Docs updated (schemas.md, api-contract.md) — atomic
+  docs commit + frozen cherry-pick **due**.
+- **Orchestration**: stage publication in flows 1/2/3 + finalize retry
+  (`reviewing`/`synthesizing`/`facilitator`/`delegating`/
+  `finalizing`), cleared on completion/failure (lease-scoped finally,
+  flow-1 except wrapper); list returns (record, stage) pairs; detail
+  exposes the stage.
+- **Webui**: new `progress.js` (labels + poll loop); ephemeral
+  `.message-progress` placeholder bubbles replaced by the real reply;
+  picker polls the list to discover the processing session (one-active-
+  per-story) and opens the session view early in a passive read-only
+  mode; **debt fixes**: failed turn removes the optimistic bubble and
+  restores the text; stale banners cleared on open; mid-turn reload
+  re-issues the persisted body with the persisted key (canonical
+  replay); SESSION_LOCKED now retried same-key with
+  retry_after_seconds.
+- **Review**: independent read-only review → 1 Important (passive-mode
+  inFlight leak) + minors, all fixed in-session; focused re-review
+  **Ready to proceed**. jsdom gotcha recorded (clearAllMocks does not
+  reset implementations).
+- Verification: review-schemas **171**, orchestration **100+11s**,
+  webui **11 + 54 vitest**, agent-kit **104**, mcp-report **36**.
+  Live verification of the placeholders folds into increment 4.
+
 Session 44 (2026-09-16, main PC — **D19 live gate**; local Docker stack
 up throughout, no cloud actions, Cloud SQL STOPPED):
 - Goal: D19 live evidence. First attempts failed repeatably (story-03,
@@ -446,15 +473,13 @@ and the git log.
 Baseline (latest green run of every suite — re-verify against these counts
 after changes):
 
-- review-schemas **170** (session 43: +7 D18, +3 D19), ado-wire **7**, dataset **36**, mcp-ingress **7**,
-  mcp-story **67**, mcp-artifact **32**, mcp-report **36** (session 43: +2
-  D19 — issue catalog + annotations), compose contract
-  **20** (re-run green after the compose additions, session 40), agent-kit
-  **104** (session 44: +1 mirror new_issues), agents skeleton **4×4**, business adapter
+- review-schemas **171** (session 45: +1 processing_stage), ado-wire **7**, dataset **36**, mcp-ingress **7**,
+  mcp-story **67**, mcp-artifact **32**, mcp-report **36**, compose contract
+  **20** (session 40; re-run after compose changes), agent-kit **104**, agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **96+11s** (session 44: +1
-  catalog union);
-  **webui 11 + vitest 44** (session 43: +2 leave-session); live gates: business/engineering/synthesis
+  facilitator adapter **3+1s**, orchestration **100+11s** (session 45:
+  +4 stage tests);
+  **webui 11 + vitest 54** (session 45: +10 D20/debt); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
   webui browser gates PASS: increment 0 reachability, increment 1 picker +
@@ -501,17 +526,20 @@ after changes):
 
 1. **Phase 7 increment 4 (exit gate + close)**: owner-driven
    example-interaction walkthrough end-to-end from the browser (fresh
-   session — pre-D19 sessions story-01/-04/-06 and the gate-abandoned
-   story-03 hold active slots and may be un-finalizable by design; check
-   `GET /api/v1/sessions` for free stories first): story pick → dialogue
+   session on a free story — check `GET /api/v1/sessions` first; the
+   walkthrough should exercise the new stage placeholders during
+   creation and a delegated turn — story-15 already covers creation +
+   delegated stages; remaining: park, mid-turn refresh resume, finalize
+   stage + fresh report links, regenerate links): story pick → dialogue
    arc → park or accept → report download; idempotency replay mid-flow;
-   **live park verification** (deferred from increment 3); address or
-   explicitly record the three webui debt items (Runbook 13 §D19). Then
-   all regression suites, independent read-only review of the phase
-   diff, Phase 7 COMPLETE in development-plan.md, Runbook 13 completion
+   **live park verification** (deferred from increment 3). Then all
+   regression suites, independent read-only review of the phase diff,
+   Phase 7 COMPLETE in development-plan.md, Runbook 13 completion
    review.
-2. Owner push `main` + `docs/initial-frozen` after these commits
-   (identifier check re-ran clean post-commit).
+2. **Item G** (future-extensions): plan the flow-2 two-call facilitator
+   design change before/with Phase 8 planning.
+3. Owner push `main` + `docs/initial-frozen` (identifier check re-ran
+   clean post-commit, session 45).
 
 ## Important Notes
 
@@ -540,8 +568,10 @@ after changes):
   az fallback.
 - Throwaway-postgres startup race now 8 observations (Runbook 12);
   run-migrations.sh small-retry fix stays due before Phase 8 cloud runs.
-- **Local stack is UP** (since session 40, rebuilt session 43 with the
-  D18 code): orchestration (:8130) + webui (:8120) compose services; orchestration uses the separate
+- **Local stack is UP, carries the D20 code** (webui/orchestration
+  rebuilt session 45; note: rebuilds wipe fake-gcs's memory-backend
+  artifacts — old completed sessions' downloads 404, expected; compose
+  Postgres is volume-backed and needs manual migrations — 0003 applied): orchestration (:8130) + webui (:8120) compose services; orchestration uses the separate
   `orchestration` database in the compose postgres. Compose Postgres
   now holds 5 sessions: story-02 + story-09 **completed** (increment-3
   gate, Item E gate), story-01/-04/-06 still **active** (they hold those
