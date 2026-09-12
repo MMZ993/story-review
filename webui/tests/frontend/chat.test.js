@@ -469,6 +469,46 @@ describe("webui debt fixes + live progress (Item F)", () => {
 });
 
 describe("passive processing view (another client / creation in flight)", () => {
+  it("renders the pending PO bubble passively while its own logical request holds the lease", async () => {
+    const { setStagePollInterval } = await import("../../static/progress.js");
+    setStagePollInterval(10);
+    getPendingTurn.mockReturnValue({ message: "mid-flight message", poAccepted: false });
+    fetchSession.mockResolvedValue(
+      ok({ ...sessionDetail([turn()]), processing_stage: "synthesizing" }),
+    );
+    postTurn.mockResolvedValue(
+      ok({
+        session_id: "s-1",
+        turn_number: 3,
+        outcome: "continue",
+        state: "active",
+        facilitator_reply: "resumed reply",
+        issues: ["limit"],
+      }),
+    );
+
+    await openSession("s-1");
+
+    // passive: the server already runs this logical request — no re-issue
+    // while the lease is held, but the sent message stays visible
+    expect(postTurn).not.toHaveBeenCalled();
+    expect(document.querySelector("#turn-input").disabled).toBe(true);
+    const bubbles = [...document.querySelectorAll("#messages .message-user")];
+    expect(bubbles.at(-1).textContent).toBe("mid-flight message");
+    expect(document.querySelector(".message-progress")?.textContent).toContain(
+      "synthesis agent is merging",
+    );
+
+    // stage clears -> the pending request is replayed with its stored key
+    fetchSession.mockResolvedValue(ok(sessionDetail([turn()])));
+    await vi.waitFor(() =>
+      expect([...document.querySelectorAll("#messages li")].at(-1).textContent).toContain(
+        "open issues: 1",
+      ),
+    );
+    expect(document.querySelector(".message-progress")).toBeNull();
+    expect(document.querySelector("#turn-input").disabled).toBe(false);
+  });
   it("clears the placeholder and re-enables the composer when the stage clears", async () => {
     const { setStagePollInterval } = await import("../../static/progress.js");
     setStagePollInterval(10);

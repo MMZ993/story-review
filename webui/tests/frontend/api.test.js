@@ -574,4 +574,39 @@ describe("SESSION_LOCKED replay retry", () => {
     expect(sleep).toHaveBeenCalledWith(30000);
     expect(storage.getItem("pending:turn:s-1")).toBeNull();
   });
+
+  it("keeps the pending key and body when the locked-retry budget is exhausted", async () => {
+    // The logical request may still be executing server-side (e.g. a
+    // delegated turn under its lease after a mid-turn reload): the key and
+    // body must survive for a later resume/replay instead of being cleared
+    // as if the request were definitively rejected.
+    const storage = memoryStorage();
+    const sleep = vi.fn(async () => {});
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse(409, {
+        error: {
+          code: "SESSION_LOCKED",
+          message: "lease held",
+          retry_after_seconds: 1,
+        },
+      }),
+    );
+
+    const result = await postTurn("s-1", { message: "hi" }, {
+      fetchImpl,
+      storage,
+      sleep,
+      attempts: 2,
+      backoffMs: 5,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(result.ok).toBe(false);
+    expect(result.error.code).toBe("SESSION_LOCKED");
+    expect(storage.getItem("pending:turn:s-1")).not.toBeNull();
+    expect(getPendingTurn("s-1", { storage })).toEqual({
+      message: "hi",
+      poAccepted: false,
+    });
+  });
 });
