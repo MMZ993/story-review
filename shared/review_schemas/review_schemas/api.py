@@ -225,6 +225,16 @@ class SessionDetail(SessionSummary):
         return self
 
 
+class AbandonSessionResponse(StrictModel):
+    """`POST /sessions/{id}/abandon` — explicit park-now of an active/
+    finalizing session (client-side escape for a session stuck without an
+    exit; see api-contract.md). The transition also parks the story run,
+    releasing the story for a new session."""
+
+    session_id: SessionId
+    state: Literal["parked"]
+
+
 class ReportResponse(StrictModel):
     session_id: SessionId
     report: list[ReportDownload] = Field(min_length=1, max_length=2)

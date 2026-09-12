@@ -20,6 +20,7 @@ import review_schemas
 #: order (base, errors, domain, api, records, mcp). `ArtifactRecord` is not
 #: here on purpose: it stays internal to the persistence layer.
 EXPECTED_EXPORTS = [
+    "AbandonSessionResponse",
     # base
     "AgentRunId", "ArtifactId", "ArtifactType", "CorrelationId", "Format",
     "HttpsUrl", "IdempotencyKey", "LeaseToken", "Perspective", "RecordState",
@@ -92,7 +93,7 @@ class TestPackageInstall:
                     (
                         "import review_schemas as r\n"
                         "from importlib.metadata import version\n"
-                        "assert version('review-schemas') == '0.8.0'\n"
+                        "assert version('review-schemas') == '0.9.0'\n"
                         f"assert list(r.__all__) == {EXPECTED_EXPORTS!r}\n"
                         "import pathlib\n"
                         "assert 'site-packages' in pathlib.Path(r.__file__).parts\n"

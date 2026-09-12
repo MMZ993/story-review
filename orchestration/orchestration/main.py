@@ -18,7 +18,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from review_schemas.api import HealthDependency, HealthResponse
 
-from . import db, finalize_api, sessions_api, stories, turns_api
+from . import abandon_api, db, finalize_api, sessions_api, stories, turns_api
 from .agent_clients import AgentSet, default_agent_set
 from .api_errors import ApiError, make_error
 from .config import Settings
@@ -107,6 +107,7 @@ def create_app(
     app.include_router(sessions_api.router)
     app.include_router(turns_api.router)
     app.include_router(finalize_api.router)
+    app.include_router(abandon_api.router)
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:

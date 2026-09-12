@@ -312,7 +312,7 @@ async def update_session(
                 *args,
             )
             if state in ("parked", "completed"):
-                await _retire_story_run(executor, session_id, state)
+                await _retire_story_run(borrowed, session_id, state)
         return
     await executor.execute(
         f"update sessions set {', '.join(assignments)} "

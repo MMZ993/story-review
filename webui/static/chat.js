@@ -13,6 +13,7 @@
  */
 
 import {
+  abandonSession,
   clearPendingTurn,
   fetchReport,
   fetchSession,
@@ -108,14 +109,23 @@ function actionButton(id, label) {
  * session id client-side; the session itself stays untouched server-side
  * and resumable by creating a new browser session or via the API):
  * - parked: "start a new session on this story" (host decides the routing);
- * - finalizing: retry POST /finalize (503 render failures stay retryable);
+ * - finalizing: retry POST /finalize (503 render failures stay retryable)
+ *   plus the abandon escape (D22: a stuck retryable finalization is the
+ *   target case);
  * - completed: regenerate the signed report URLs (GET /report).
+ * - active and finalizing: "abandon session" — explicit park-now (D22),
+ *   guarded by a confirm dialog; the session and its history stay
+ *   readable, the story is released.
  */
 function renderStateControls() {
   const actions = document.querySelector("#session-actions");
   actions.replaceChildren();
 
-  if (sessionState === "parked") {
+  if (sessionState === "active") {
+    const abandon = actionButton("abandon-session", "abandon session");
+    abandon.addEventListener("click", runAbandon);
+    actions.append(abandon);
+  } else if (sessionState === "parked") {
     setStatus("session parked — read-only");
     const restart = actionButton("restart-story", "start a new session on this story");
     restart.addEventListener("click", () => onRestartStory?.(storyId));
@@ -125,6 +135,9 @@ function renderStateControls() {
     const retry = actionButton("retry-finalize", "retry finalize");
     retry.addEventListener("click", runFinalizeRetry);
     actions.append(retry);
+    const abandon = actionButton("abandon-session", "abandon session");
+    abandon.addEventListener("click", runAbandon);
+    actions.append(abandon);
   } else if (sessionState === "completed") {
     setStatus("session completed — read-only");
     const regenerate = actionButton("regenerate-report", "regenerate report links");
@@ -146,6 +159,31 @@ function renderStateControls() {
     onLeaveSession?.();
   });
   actions.append(leave);
+}
+
+/** POST /abandon (D22): explicit park-now — confirm, then park the
+ * session and switch to the parked (read-only) view; the story is
+ * released for a new session. */
+async function runAbandon() {
+  if (inFlight) return;
+  const question =
+    "Abandon this session? It parks immediately (no report) and cannot be " +
+    "resumed — the story is released for a new session; the history stays readable.";
+  if (!globalThis.confirm?.(question)) return;
+  setStatus("abandoning…");
+  const result = await abandonSession(sessionId);
+  if (result.ok) {
+    sessionState = "parked";
+    setStatus(null);
+    renderStateControls();
+    refreshHeader();
+  } else {
+    const lockedHint =
+      result.status === 409 && result.error?.code === "SESSION_LOCKED"
+        ? " (another request holds the session lease — wait for it to finish or expire, then abandon)"
+        : "";
+    setStatus(`${describeError(result)}${lockedHint}`);
+  }
 }
 
 /** POST /finalize retry: completes a finalizing session with report links. */
