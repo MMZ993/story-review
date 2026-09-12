@@ -75,6 +75,9 @@ AgentRunId = Annotated[
         max_length=41,
     ),
 ]
+# A bare UUID v4 supplied by the client via the X-User-Id header; it groups a
+# user's sessions/story runs and is not a prefixed resource id.
+UserId = UUID4
 Text = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=20_000),
@@ -133,6 +136,7 @@ RecordState = Literal["pending", "running", "succeeded", "failed"]
 | `artifact_id` | `art-{uuid}` | artifact MCP server, at `save_artifact` | immutable artifact identity |
 | `version` | integer ≥ 1 | artifact MCP server, monotonically per (`story_run_id`, `type`) | ordering within a run |
 | `idempotency_key` | UUID (client-supplied) | client | deduplicates retried writes |
+| `user_id` | UUID v4 (client-supplied via `X-User-Id`) | client, once per client install | groups the user's sessions and story runs; ownership key for reads/writes (not authentication) |
 
 Lineage rules:
 
@@ -149,6 +153,10 @@ Lineage rules:
   never reads prior-run artifacts; session restore continues the original run.
 - A **new session on the same story** (after park/complete) creates a **new** story run;
   the old run and session remain immutable and restorable.
+- **User scoping**: sessions and story runs belong to the user whose `X-User-Id`
+  created them; listing, reads, and writes are scoped to that user, and the
+  one-active-run-per-story rule applies per user. Artifacts need no separate rule —
+  their lineage is the story run, which is already user-owned.
 
 ## Errors
 
@@ -937,6 +945,7 @@ of `SessionRecord` — it is live view state, not durable truth.
 class StoryRunRecord(StrictModel):
     story_run_id: RunId
     story_id: StoryId
+    user_id: UserId
     state: SessionState
     created_at: UtcDatetime
     updated_at: UtcDatetime
@@ -946,6 +955,7 @@ class SessionRecord(StrictModel):
     session_id: SessionId
     story_run_id: RunId
     story_id: StoryId
+    user_id: UserId
     state: SessionState
     requested_formats: list[Format] = Field(min_length=1, max_length=2)
     facilitator_turn_count: Annotated[int, Field(ge=0, le=10)] = 0
@@ -1068,7 +1078,7 @@ class AgentRunRecord(StrictModel):
 Database constraints:
 
 - one run and one session per `story_run_id`;
-- at most one non-`completed`/non-`parked` run per `story_id`;
+- at most one non-`completed`/non-`parked` run per (`user_id`, `story_id`);
 - idempotency keys unique per route (`IDEMPOTENCY_KEY_REUSED` on body mismatch);
 - turn unique on `(session_id, turn_number)`;
 - one lease row per `session_id`, and only its `lease_token` holder may renew/release it;
