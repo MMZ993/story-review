@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-21 (Phase 8 planning session — decisions D24 settled, plan + Runbook 14 written, no code/cloud actions, Cloud SQL STOPPED). Prior: pre-Phase-8 Web UI presentation pass — GitHub-dark
+Last updated: 2026-09-21 (Phase 8 planning + user-scoping docs change — session closed clean, owner pushed main + docs/initial-frozen). Prior: pre-Phase-8 Web UI presentation pass — GitHub-dark
 responsive styling and requested attribution footer; deterministic Web UI
 suite green; no compose rebuild or cloud action). Prior: post-Phase-7 UI/UX
 follow-up — picker/session layout, paragraph previews, comment-story fix;
@@ -56,10 +56,22 @@ multi-user scoping** (user_id on sessions/story runs, migration 0005,
 make target); Item D **facilitator-first**; AE pruning per D5 after the
 versioning proof.
 - **Plan written**: `docs-local/plans/phase-8-gcp-deployment.md`
-(increments 0–7); Runbook 14 opened; D24 recorded in local-decisions;
-development-plan Phase 8 + this HANDOFF updated. Increment 1 adds user
-scoping before any deployment; increment 3 has one open design point
-(facilitator AE session backend) to raise with the owner.
+  (increments 0–7); Runbook 14 opened; D24 recorded in local-decisions;
+  development-plan Phase 8 + this HANDOFF updated. Increment 1 adds user
+  scoping before any deployment.
+- **User-scoping docs change applied**: `X-User-Id` (UUID v4) convention +
+  per-user scoping in `api-contract.md`, `UserId` type + `user_id` on
+  StoryRun/Session records + per-(`user_id`,`story_id`) constraint in
+  `schemas.md`, unauthenticated-demo stance in `deployment.md` — commit
+  `8ad3570` on main, cherry-picked clean to `docs/initial-frozen` as
+  `06deff0` (via temp worktree).
+- **D24 amendment 1**: deployed facilitator ADK session store = Cloud SQL
+  PostgreSQL `DatabaseSessionService` (IAM login); local runs keep the
+  local/compose Postgres. Increment-3 open point closed.
+- **Commits** (owner pushed both branches): `8ad3570` (docs, atomic) +
+  `9c315c1` (docs-local bundle: plan, D24 + amendment, Runbook 14,
+  development-plan, HANDOFF). Identifier check clean. No code, compose,
+  or cloud actions; Cloud SQL STOPPED throughout; local stack still up.
 
 Pre-Phase-8 Web UI presentation pass (2026-09-12, main PC; no compose or
 cloud actions, Cloud SQL remains STOPPED):
@@ -691,11 +703,16 @@ after changes):
 
 ## Next Steps
 
-1. Owner reviews session 50's commits (code + docs-local), identifier
-   check after the last commit, then owner push `main` +
-   `docs/initial-frozen` (D22 frozen cherry-pick `63349f8` already on the
-   branch — verify it covers `dab82c4`).
-2. **Phase 8** (plan written this session — `docs-local/plans/phase-8-gcp-deployment.md`, decisions D24; Runbook 14 opened): start at increment 0 (run-migrations.sh argv-credential + startup-race fixes), then increment 1 (anonymous cookie-user scoping — docs change + migration 0005 + orchestration + webui). Folded into the phase: Item D facilitator-first observability, webui Cloud Run deploy under the owner's Cloudflare `mmz.sh` subdomain, the CR→AE live-leg gate, and the versioning/rollback proof; deferred minors list above shrinks accordingly.
+1. ~~Owner reviews session 50's commits~~ done — pushed (main +
+   `docs/initial-frozen`, D22 cherry-pick `63349f8` and this session's
+   `8ad3570`/`06deff0` included).
+2. **Phase 8 increment 0** (next session): run-migrations.sh argv-credential
+   + startup-race fixes (test-first where practical), then **increment 1**:
+   user scoping per the new docs — review-schemas bump, migration
+   `0005_user_scoping.sql`, orchestration scoping (header validation,
+   per-user claims/lists/404 semantics), webui cookie manager + header
+   forwarding; deterministic multi-user tests. Detailed increments 2–7 in
+   `docs-local/plans/phase-8-gcp-deployment.md`.
 3. Optional housekeeping: `make agents-compose-down` when the local stack
    is no longer needed (compose Postgres is volume-backed — state
    survives).
