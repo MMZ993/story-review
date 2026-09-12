@@ -701,6 +701,7 @@ class SessionSummary(StrictModel):
     story_id: StoryId
     state: SessionState
     requested_formats: list[Format] = Field(min_length=1, max_length=2)
+    processing_stage: ProcessingStage | None = None
     created_at: UtcDatetime
     updated_at: UtcDatetime
 
@@ -772,6 +773,18 @@ class TurnResponse(StrictModel):
 class ListSessionsResponse(StrictModel):
     sessions: list[SessionSummary] = Field(default_factory=list, max_length=100)
     next_cursor: ShortText | None = None
+
+
+ProcessingStage = Literal["reviewing", "synthesizing", "facilitator", "delegating", "finalizing"]
+
+`SessionSummary.processing_stage` (and therefore `SessionDetail.processing_stage`)
+exposes live pipeline progress for a session whose flow-1/flow-2/flow-3 request is
+currently executing server-side: `reviewing` (flow-1 reviewer fan-out),
+`synthesizing`, `facilitator` (facilitator turn), `delegating` (delegated re-review),
+`finalizing` (report rendering). It is `null` whenever no request for the session is
+in flight. It is advisory only — clients poll `GET /sessions` / `GET /sessions/{id}`
+for it while their synchronous POST is outstanding; no correctness decision may be
+based on it.
 
 
 class SessionDetail(SessionSummary):
@@ -883,6 +896,11 @@ turn number.
 These records sit beside ADK `DatabaseSessionService` tables. Public response models do
 not inherit from them, preventing owner IDs, operation IDs, lease tokens, and canonical
 response JSON from leaking through the API.
+
+The `sessions` table additionally carries an ephemeral `processing_stage` column
+(the advisory stage marker of `SessionSummary`/`SessionDetail`): written and cleared
+by the running flow, `null` for every session at rest, and deliberately **not** part
+of `SessionRecord` — it is live view state, not durable truth.
 
 ```python
 class StoryRunRecord(StrictModel):
