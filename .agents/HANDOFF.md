@@ -8,14 +8,11 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-17 (session 46 — **D21: Item G design decided +
-docs applied** — post-delegation facilitator summary turn in flow 2, all
-open decisions resolved, `docs/design/` updated + committed (`e64c34b`,
-frozen cherry-pick `5e0de47`) + `docs-local` (`a5a195b`); implementation
-follows in a fresh session. Prior: session 45 — **D20: Item F live progress +
-webui debt fixes implemented, live-verified on story-15**; Item G recorded;
-review-schemas **171**, orchestration **100+11s**, webui **12 + vitest 59**,
-agent-kit **104**, mcp-report **36**. Increment 4 (exit gate + close) remains.)
+Last updated: 2026-09-17 (session 47 — **D21/Item G implemented**: review-schemas 0.8.0,
+flow-2 second facilitator call, gate on final output, migration 0004,
+prompt rules; review Ready-to-proceed, minors fixed/recorded. Prior:
+session 46 — D21 docs decided + applied (`e64c34b` / frozen `5e0de47` /
+docs-local `a5a195b`).)
 
 ## Where we are
 
@@ -47,6 +44,30 @@ agent-kit **104**, mcp-report **36**. Increment 4 (exit gate + close) remains.)
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+Session 47 (2026-09-17, main PC — **Item G (D21) implementation**; local
+Docker stack up, no cloud actions, Cloud SQL STOPPED):
+- **review-schemas 0.7.0 → 0.8.0**: `delegation_rationale_reply` on
+  TurnResponse/TurnView/TurnRecord/CanonicalTurnResult (+2 tests, install
+test bumped).
+- **Orchestration flow 2**: when a turn produced a synthesis, a second
+  facilitator invocation runs in-turn (`facilitator_summary_invocation_id`,
+  own reconciliation/budget; fresh synthesis + lineage-fresh evidence;
+  decision state merged prior + first output); second output final and
+gate-authoritative; first reply persisted as rationale; old
+  "synthesis ⇒ continue" gate rule removed (same-turn finalize possible);
+park-at-10 unchanged; one turn count despite two invocations; two
+agent_runs rows (`facilitator-summary:{turn}` label). Migration **0004**
+applied to the compose Postgres. Prompt: summary-turn rules added.
+**Webui unchanged** (renders only final reply — option a).
+- **Review**: read-only subagent **Ready to proceed**; minor fix
+  (dead param) done in-session; recorded risks: two-call worst case vs
+  5-min deadline (watch at live gate), gate-finalized
+  `reuse_previous` edge case (Runbook 13 §Item G).
+- Verification: review-schemas **173**, orchestration **105+11s**,
+  agent-kit **104**, facilitator adapter **3+1s**, webui **12 + vitest
+  59**, compose contract **20**. Commits: `ba9d464` (feat) + `b303525`
+  (runbook/handoff) — amended for the commit references.
+
 Session 46 (2026-09-17, main PC — **Item G design (D21), docs-only**; no
 cloud actions, Cloud SQL STOPPED, no suites run — documentation only):
 - **Blocker check clean**: D20 docs commit + frozen cherry-pick already done,
@@ -499,12 +520,11 @@ and the git log.
 Baseline (latest green run of every suite — re-verify against these counts
 after changes):
 
-- review-schemas **171** (session 45: +1 processing_stage), ado-wire **7**, dataset **36**, mcp-ingress **7**,
+- review-schemas **173** (session 47: +2 delegation_rationale_reply), ado-wire **7**, dataset **36**, mcp-ingress **7**,
   mcp-story **67**, mcp-artifact **32**, mcp-report **36**, compose contract
   **20** (session 40; re-run after compose changes), agent-kit **104**, agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **100+11s** (session 45:
-  +4 stage tests);
+  facilitator adapter **3+1s**, orchestration **105+11s** (session 47: +5 Item G);
   **webui 11 + vitest 54** (session 45: +10 D20/debt); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
@@ -562,18 +582,16 @@ after changes):
    regression suites, independent read-only review of the phase diff,
    Phase 7 COMPLETE in development-plan.md, Runbook 13 completion
    review.
-2. **Item G implementation (D21 — design ready)**: fresh session; requires
-   review-schemas **0.7.0 → 0.8.0** (`delegation_rationale_reply` on
-   TurnResponse/TurnView/TurnRecord/CanonicalTurnResult), orchestration
-   flow-2 two-call sequencing (second invocation id, per-invocation
-   corrective budget/reconciliation, gate on final output, second
-   facilitator stage publication), facilitator prompt rules (pre-delegation
-   reply invisible; repeat important findings; no same-turn delegation
-   chaining), webui chat rendering (final reply only; history replay from
-   `facilitator_reply`), migration if TurnRecord storage needs the new
-column; live gate on a delegated turn (watch the 5-min deadline).
+2. **Item G live gate (D21 — deterministic tier done session 47)**: on a
+delegated turn of the increment-4 walkthrough (or before it): rebuild
+orchestration image (stack still runs pre-0004 code — rebuild also wipes
+fake-gcs artifacts, expected), verify a delegated turn shows only the
+summary reply to the PO while `delegation_rationale_reply` persists in
+the turn record / SessionDetail; watch the 5-min deadline over two
+facilitator calls (per-attempt clamping holds; failure → same-key retry
+reconciles per invocation id).
 3. Owner push `main` + `docs/initial-frozen` (identifier check re-ran
-   clean post-commit, session 45).
+clean post-commit, session 45; re-run after the Item G commit).
 
 ## Important Notes
 

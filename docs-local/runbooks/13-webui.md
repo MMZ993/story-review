@@ -682,3 +682,83 @@ the re-review it requests; outcome surfaces only in the next turn or the
 report) → recorded as future-extensions **Item G** (flow-2 two-call
 design change; owner's shape: facilitator → reviewers → synthesis →
 facilitator → PO, first reply hidden, second repeats key findings).
+
+## Item G implementation — post-delegation summary turn (2026-09-17, session 47)
+
+Docs (D21) were applied session 46; this session implemented them. No
+cloud actions; Cloud SQL STOPPED; local compose stack up throughout
+(orchestration :8130, webui :8120).
+
+### What was implemented
+
+- **review-schemas 0.7.0 → 0.8.0**: `delegation_rationale_reply: Text |
+  None` on `TurnResponse`, `TurnView`, `CanonicalTurnResult` (api.py) and
+  `TurnRecord` (records.py); package-install test bumped with the version.
+- **Migration 0004** (`0004_turn_delegation_rationale.sql`): nullable
+  `turns.delegation_rationale_reply` — applied to the compose Postgres
+  (in-container run-migrations.sh, mirroring 0003).
+- **Orchestration flow 2** (`turns_flow.py`, `turn_execution.py`,
+  `flows.py`, `records_store.py`, `sessions_api.py`):
+  - when a turn produced a synthesis (delegation ran reviewers or
+    `reuse_previous`), the facilitator is invoked a **second time** in the
+    same turn (`_invoke_summary_facilitator`): distinct invocation id
+    `facilitator_summary_invocation_id` (uuid5 salt
+    `facilitator-summary:{turn}`) → own reconciliation result + corrective
+    budget; fresh synthesis report passed from `maybe_synthesize` (new
+    `SynthesisOutcome(reference, report, produced)`); evidence references
+    re-listed from the run lineage **after** the re-review saves;
+    decision state = prior turns **merged with the first output**
+    (latest-wins resolutions via `latest_resolutions`, open list from the
+    pre-delegation delegation).
+  - the second output is final/gate-authoritative: reply, delegation,
+    stamped resolutions, `new_issues`; the first reply persists as
+    `delegation_rationale_reply` (TurnRecord, TurnResponse, canonical
+    idempotent replay, SessionDetail TurnView). Any delegation the summary
+    call emits is stored but never executed this turn (next PO turn).
+  - **gate**: `evaluate_gate` drops the old
+    `synthesis_produced ⇒ continue` rule — a delegated turn finalizes
+    same-turn when the final output has empty `open_issues` + `invoke=none`;
+    park-at-10 precedence unchanged (the summary call still runs, then
+    parks). One facilitator-turn count per turn despite two invocations
+    (opening-turn flow unchanged).
+  - audit: two `agent_runs` rows per delegated turn
+    (`facilitator:{turn}` + `facilitator-summary:{turn}` run-id labels;
+    `record_run` gained a `run_label` override).
+- **Prompt** (`prompts/facilitator.md`): new "Post-delegation summary
+  turn" section — pre-delegation reply invisible to the PO (repeat
+  important findings), output authoritative, no same-turn delegation
+  chaining.
+- **Webui: intentionally unchanged** — it renders only
+  `facilitator_reply`, which is now always the final (summary) reply;
+  option (a) needs no client change.
+
+### Verification (deterministic tier)
+
+review-schemas **173** (+2), orchestration **105+11s** (+5: same-turn
+finalize, merged decision state, no-chaining, detail exposure, delegated
+replay), agent-kit **104**, facilitator adapter **3+1s**, webui **12 +
+vitest 59**, compose contract **20**.
+
+### Independent review (session 47)
+
+Read-only subagent review: **Ready to proceed**, no Critical/Important.
+Minors: (1) dead `story` parameter on `_invoke_summary_facilitator` —
+**fixed in-session** (re-ran orchestration 105+11s); (2) worst-case
+two-call attempt budget (2×120 s × 2 attempts) can exceed the 300 s
+end-to-end deadline — design-conformant (deadline retained per D21) but
+delegated turns are likelier to hit DeadlineExceeded; per-attempt
+clamping holds; recovery = same-key retry + per-invocation
+reconciliation — **watch at the live gate**; (3) the gate could finalize
+away a summary-call `reuse_previous=true` contradiction (empty
+open_issues + invoke=none) — literal-gate-conformant, prompt steers
+against it; accepted edge case recorded here. Coverage gaps noted: no
+deterministic test for a crash between the two invocations (ids are
+deterministic functions of the key, so takeover replays both stored
+results); no test for minor 3.
+
+### Remaining (live tier)
+
+Live gate on a delegated turn (fresh session; watch the 5-min deadline
+over two facilitator calls + reviewers + synthesis) folds into the
+increment-4 walkthrough or runs before it; orchestration + webui images
+must be rebuilt first (compose stack still carries pre-0004 code).
