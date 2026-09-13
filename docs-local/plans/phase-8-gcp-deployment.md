@@ -147,7 +147,7 @@ all four agents go via AE this increment — they are deployed anyway):
    (stream died, result unknown), orchestration reads the facilitator's
    ADK session events from the Cloud SQL `facilitator` DB (over
    `:query`, like smoke's `list_sessions`) and matches a recorded reply
-   by `FacilitatorRequest.invocation_id` before re-invoking — true
+   by the rendered turn marker (D25 amendment 1) before re-invoking — true
    at-most-once facilitator execution. Reviewer/synthesis calls are
    single-shot at-least-once retries (a duplicate only wastes cost;
    no conversation state). Orchestration-side TurnRecord dedup
