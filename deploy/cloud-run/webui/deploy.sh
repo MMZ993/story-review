@@ -46,7 +46,7 @@ fi
 # gcloud run surface flags: --project/--region apply to every call below.
 GC() { gcloud run --project "$PROJECT_ID" --region "$REGION" "$@"; }
 
-ORCH_URL="$($GC services describe orchestration --format 'value(status.url)')"
+ORCH_URL="$(GC services describe orchestration --format 'value(status.url)')"
 SA_WEBUI="sa-webui@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "building $IMAGE (context: repository root)"
@@ -54,13 +54,13 @@ docker build -t "$IMAGE" -f webui/Dockerfile .
 docker push "$IMAGE"
 
 echo "granting sa-webui run.invoker on orchestration (idempotent)"
-$GC services add-iam-policy-binding orchestration \
+GC services add-iam-policy-binding orchestration \
     --member "serviceAccount:$SA_WEBUI" \
     --role roles/run.invoker \
     --quiet >/dev/null
 
 echo "deploying Cloud Run service webui ($TAG)"
-$GC deploy webui \
+GC deploy webui \
     --image "$IMAGE" \
     --service-account "$SA_WEBUI" \
     --timeout 600 \
@@ -70,7 +70,7 @@ $GC deploy webui \
 "ORCHESTRATION_BASE_URL=${ORCH_URL},\
 ORCHESTRATION_ID_TOKEN_AUTH=1"
 
-URL="$($GC services describe webui --format 'value(status.url)')"
+URL="$(GC services describe webui --format 'value(status.url)')"
 cat <<EOM
 
 deployed: $URL (image $TAG)
