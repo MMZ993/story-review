@@ -316,7 +316,7 @@ class SessionSeam:
         self.existing.append(session)
         return session
 
-    async def list_events(self, resource: str, session_id: str) -> list[dict]:
+    async def list_events(self, resource: str, user_id: str, session_id: str) -> list[dict]:
         self.event_reads.append(session_id)
         return self.events_by_session.get(session_id, [])
 
@@ -691,53 +691,58 @@ async def test_facilitator_deadline_exceeded_propagates():
         await client.invoke(request, deadline=_time.monotonic() - 1)
 
 
-class TestRealListSessionsRoute:
-    async def test_lists_without_query_params(self, monkeypatch):
-        """Live-verified at the inc-4 gate: ?userId= is a 400 — the route
-        takes no query parameters and filtering is client-side."""
+class TestRuntimeSessionRoutes:
+    """Live-verified at the inc-4 gate: session state lives behind the
+    agent-runtime :query methods (create_session / list_sessions /
+    get_session), NOT the control-plane /sessions REST routes (whose
+    numeric sessions the runtime cannot see — SessionNotFoundError)."""
+
+    async def test_list_uses_runtime_query_server_filtered(self, monkeypatch):
         from orchestration import ae_client as mod
 
         seen = {}
 
-        async def fake_ae_get(url, timeout):
-            seen["url"] = url
-            return 200, {
-                "sessions": [
-                    {"name": "s1", "userId": "want"},
-                    {"name": "s2", "userId": "other"},
-                ]
-            }
+        async def fake_query(resource, class_method, inputs, timeout_s=10.0):
+            seen.update(resource=resource, class_method=class_method, inputs=inputs)
+            return {"sessions": [{"id": "s1", "userId": "want"}]}
 
-        monkeypatch.setattr(mod, "_ae_get", fake_ae_get)
+        monkeypatch.setattr(mod, "_runtime_query", fake_query)
         sessions = await mod._real_list_sessions(
             "projects/p/locations/l/reasoningEngines/e1", "want"
         )
-        assert seen["url"].endswith("/sessions")
-        assert "?" not in seen["url"]
-        assert sessions == [{"name": "s1", "userId": "want"}]
+        assert seen["class_method"] == "list_sessions"
+        assert seen["inputs"] == {"user_id": "want"}
+        assert sessions == [{"id": "s1", "userId": "want"}]
+
+    async def test_create_uses_runtime_create_session(self, monkeypatch):
+        from orchestration import ae_client as mod
+
+        seen = {}
+
+        async def fake_query(resource, class_method, inputs, timeout_s=10.0):
+            seen.update(class_method=class_method, inputs=inputs)
+            return {"id": "uuid-1", "userId": "want"}
+
+        monkeypatch.setattr(mod, "_runtime_query", fake_query)
+        session = await mod._real_create_session("engines/e1", "want")
+        assert seen["class_method"] == "create_session"
+        assert seen["inputs"] == {"user_id": "want"}
+        assert session["id"] == "uuid-1"
+
+    async def test_events_via_get_session_with_recent_events(self, monkeypatch):
+        from orchestration import ae_client as mod
+
+        seen = {}
+
+        async def fake_query(resource, class_method, inputs, timeout_s=10.0):
+            seen.update(class_method=class_method, inputs=inputs)
+            return {"id": "s1", "events": [{"author": "user", "content": {}}]}
+
+        monkeypatch.setattr(mod, "_runtime_query", fake_query)
+        events = await mod._real_list_events("engines/e1", "want", "s1")
+        assert seen["class_method"] == "get_session"
+        assert seen["inputs"]["session_id"] == "s1"
+        assert seen["inputs"]["config"]["num_recent_events"] > 0
+        assert len(events) == 1
 
 
-class TestCreateSessionUnwrap:
-    def test_unwraps_operation_response(self):
-        """Live-verified at the inc-4 gate: createSession returns an
-        operation; the Session (and its id) lives under `response`."""
-        from orchestration.ae_client import _session_from_create_response
-
-        operation = {
-            "name": "projects/p/locations/l/reasoningEngines/e/operations/123",
-            "done": True,
-            "response": {
-                "name": "projects/p/locations/l/reasoningEngines/e/sessions/456",
-                "userId": "sess-1",
-            },
-        }
-        session = _session_from_create_response(operation)
-        assert session["id"] == "456"
-
-    def test_plain_session_body_passthrough(self):
-        from orchestration.ae_client import _session_from_create_response
-
-        session = _session_from_create_response(
-            {"name": "projects/p/locations/l/reasoningEngines/e/sessions/789"}
-        )
-        assert session["id"] == "789"

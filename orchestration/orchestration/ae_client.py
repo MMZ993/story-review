@@ -214,80 +214,67 @@ def _error_from_google(response: httpx.Response) -> dict:
     }
 
 
-async def _ae_get(url: str, timeout_s: float) -> tuple[int, dict]:
-    """One bearer-authenticated GET (session list / event list)."""
-    token = await asyncio.to_thread(_bearer_token)
-    async with httpx.AsyncClient(timeout=timeout_s) as client:
-        response = await client.get(
-            url, headers={"Authorization": f"Bearer {token}"}
-        )
-    try:
-        body = response.json()
-    except ValueError:
-        body = {}
-    return response.status_code, body
-
-
 ListSessions = Callable[[str, str], Awaitable[list[dict]]]
 CreateSession = Callable[[str, str], Awaitable[dict]]
-ListEvents = Callable[[str, str], Awaitable[list[dict]]]
+ListEvents = Callable[[str, str, str], Awaitable[list[dict]]]
+
+
+async def _runtime_query(
+    resource: str, class_method: str, inputs: dict, timeout_s: float = 10.0
+) -> dict:
+    """One `:query` round trip against a runtime agent method
+    (create_session / list_sessions / get_session — the ADK template's
+    session surface; verified live at the increment-4 gate: the
+    control-plane `/sessions` REST routes keep a SEPARATE session store
+    that the agent runtime cannot see, so numeric control-plane sessions
+    fail streamQuery with SessionNotFoundError)."""
+    token = await asyncio.to_thread(_bearer_token)
+    async with httpx.AsyncClient(timeout=timeout_s) as client:
+        response = await client.post(
+            _endpoint(resource, ":query"),
+            json={"classMethod": class_method, "input": inputs},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    if response.status_code != 200:
+        raise AgentTransportError(
+            f"AE {class_method} HTTP {response.status_code}: {response.text[:200]}"
+        )
+    return response.json()
 
 
 async def _real_list_sessions(resource: str, user_id: str) -> list[dict]:
-    """The AE sessions of one review session (user_id mapping, D25).
-
-    The AE list route takes **no** query parameters — `?userId=` is a
-    400 INVALID_ARGUMENT (verified live at the increment-4 gate) — so
-    the full list is fetched and filtered client-side on userId.
-    """
-    status, body = await _ae_get(_endpoint(resource, "/sessions"), 10.0)
-    if status != 200:
-        return []
-    sessions = body.get("sessions") or body.get("reasoningEnginesSessions") or []
+    """The AE sessions of one review session (user_id mapping, D25) —
+    server-side filtered by the runtime's list_sessions(user_id=…)."""
+    body = await _runtime_query(resource, "list_sessions", {"user_id": user_id})
+    sessions = body.get("sessions") or []
     return [s for s in sessions if s.get("userId", user_id) == user_id]
 
 
-def _session_from_create_response(body: dict) -> dict:
-    """Unwrap the createSession REST response into a session dict.
-
-    The route returns a long-running *operation* (already `done` on
-    success) — the Session lives under ``response``; reading ``name`` at
-    the top level yields the OPERATION id, which streamQuery then rejects
-    with SessionNotFoundError (observed live at the inc-4 gate).
-    """
-    inner = body.get("response")
-    if isinstance(inner, dict):
-        body = inner
+async def _real_create_session(resource: str, user_id: str) -> dict:
+    """Create the AE session for one review session via the runtime's
+    create_session agent method (returns the serialized Session with a
+    runtime-generated UUID id)."""
+    body = await _runtime_query(resource, "create_session", {"user_id": user_id})
     body.setdefault("id", body.get("name", "").rsplit("/", 1)[-1])
     return body
 
 
-async def _real_create_session(resource: str, user_id: str) -> dict:
-    """Create the AE session for one review session."""
-    token = await asyncio.to_thread(_bearer_token)
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.post(
-            _endpoint(resource, "/sessions"),
-            json={"userId": user_id},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-    if response.status_code not in (200, 201):
-        raise AgentTransportError(f"AE createSession HTTP {response.status_code}")
-    body = response.json()
-    return _session_from_create_response(body)
-
-
-async def _real_list_events(resource: str, session_id: str) -> list[dict]:
-    """The event history of one AE session (reconciliation reads)."""
-    status, body = await _ae_get(
-        _endpoint(resource, f"/sessions/{session_id}/events"), 10.0
+async def _real_list_events(
+    resource: str, user_id: str, session_id: str
+) -> list[dict]:
+    """The event history of one AE session (reconciliation reads) via the
+    runtime's get_session agent method; events ride the serialized
+    Session when requested via config.num_recent_events."""
+    body = await _runtime_query(
+        resource,
+        "get_session",
+        {
+            "user_id": user_id,
+            "session_id": session_id,
+            "config": {"num_recent_events": 50},
+        },
     )
-    if status != 200:
-        return []
-    return [
-        e for e in (body.get("events") or body.get("sessionEvents") or [])
-        if isinstance(e, dict)
-    ]
+    return [e for e in (body.get("events") or []) if isinstance(e, dict)]
 
 
 def _fingerprint(message: str) -> str:
@@ -450,7 +437,9 @@ class AeFacilitatorClient(_HttpAgentClient):
         any read failure just lets the retry policy proceed)."""
         try:
             session = await self._resolve_session(request.session_id)
-            events = await self._list_events(self._resource, session)
+            events = await self._list_events(
+                self._resource, request.session_id, session
+            )
             reply = recovered_turn_reply(events, request.turn_number)
             if reply is None:
                 return None
