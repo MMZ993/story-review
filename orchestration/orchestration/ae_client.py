@@ -234,10 +234,13 @@ ListEvents = Callable[[str, str], Awaitable[list[dict]]]
 
 
 async def _real_list_sessions(resource: str, user_id: str) -> list[dict]:
-    """The AE sessions of one review session (user_id mapping, D25)."""
-    status, body = await _ae_get(
-        _endpoint(resource, f"/sessions?userId={user_id}"), 10.0
-    )
+    """The AE sessions of one review session (user_id mapping, D25).
+
+    The AE list route takes **no** query parameters — `?userId=` is a
+    400 INVALID_ARGUMENT (verified live at the increment-4 gate) — so
+    the full list is fetched and filtered client-side on userId.
+    """
+    status, body = await _ae_get(_endpoint(resource, "/sessions"), 10.0)
     if status != 200:
         return []
     sessions = body.get("sessions") or body.get("reasoningEnginesSessions") or []
