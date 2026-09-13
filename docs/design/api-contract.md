@@ -104,7 +104,13 @@ authoritative shapes in [schemas.md](schemas.md)):
 ```
 
 Errors: `404` unknown story; `409` the user already has an active session for this
-story (client should restore it instead) or `IDEMPOTENCY_KEY_REUSED` (same key, different body); `503`
+story (client should restore it instead) or `IDEMPOTENCY_KEY_REUSED` (same key,
+different body, or a retry of a key whose previous attempt failed terminally —
+see `422`); `422` terminal (non-retryable) agent failure, e.g. the opening
+facilitator turn exhausted its corrective re-prompts against the strict output
+schema — the half-created session is **parked** and its story released, so the
+client starts over with a **new** idempotency key (retrying the failed key is
+rejected `409 IDEMPOTENCY_KEY_REUSED`); `503`
 retryable deadline/upstream failure — the session creation is idempotent by
 `Idempotency-Key`, so the client retries the same request.
 
