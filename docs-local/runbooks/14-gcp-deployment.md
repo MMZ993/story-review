@@ -549,3 +549,69 @@ fail-loud), the rest deferred below.
   toolsets — latency on reconciliation reads, revisit at Item D.
 - Control-plane `/sessions` numeric sessions from pre-fix iterations
   were deleted; if any remain they expire on their own (1 y TTL).
+
+## Increment 5 — webui Cloud Run + public domain (2026-09-13, deploy COMPLETE — walkthrough OPEN, one defect to fix)
+
+Environment change first: **all work moved to the dev server** (previously
+"deterministic work only"). gcloud + az CLIs installed and authed (ADC
+valid; az logged in — personal account has **no Azure subscription**, so
+`az account show` always nags "az login"; expected, only `az devops` used).
+Gitignored env files copied from the main PC over NFS; **terraform state
+copied to the dev server** (`infra/terraform.tfstate*` + `.terraform/`,
+local backend) — terraform now runs here; main PC copy untouched.
+
+Local part (test-first; committed `1d66551` + `f0a1e97`/`6310eb1` deploy.sh
+fixes):
+- `webui/webui/id_tokens.py` (mirrors orchestration's, single-audience):
+  metadata-minted ID token for the proxy hop; `ORCHESTRATION_ID_TOKEN_AUTH`
+  config flag; `/api` proxy attaches `Authorization`; mint failure → the
+  existing retryable 503 envelope. Direct unit tests (`test_id_tokens.py`,
+  `_fetch`/`_now` seams).
+- `sr_user` cookie gains `secure` only over HTTPS (public deploy); plain-HTTP
+  compose unchanged (+2 vitest).
+- `deploy/cloud-run/webui/deploy.sh`: build/push, idempotent
+  `run.invoker` for sa-webui on orchestration (**recorded deviation**: the
+  orchestration CR service is gcloud-deployed, not terraform — the binding
+  cannot live in IaC), deploy public/unauthenticated.
+- Terraform: `sa-webui` in the runtime SA list. Plan (Runbook-10/14
+  `-var mcp_*` gotcha re-applied, images pulled via the **v2 REST API** —
+  v1 describe shows no image): **2 add, 3 computed refresh, 0 destroy**.
+- Review: read-only subagent **Ready-to-proceed** (6 minors; 2 fixed
+  in-session — dirty-check untracked files, id_tokens unit tests; rest
+  inherited/cosmetic).
+- Verification: webui **pytest 22 (+4) + vitest 89 (+2)**.
+
+Cloud part (owner-approved):
+- `terraform apply` — sa-webui created. `bash deploy/cloud-run/webui/deploy.sh`
+  — image `20260913-2026-2f6a36f`, service
+  `https://webui-$P-sa.run.app` placeholder form, invoker binding added.
+- First `/api` call 403 → **IAM propagation delay** (~1 min); then
+  `GET /api/v1/stories` from the public URL returned live data — full chain
+  public webui → ID-token proxy → orchestration → MCP story → Cloud SQL OK.
+- Domain: `mmz.sh` verified in Google Search Console (TXT via Cloudflare,
+  owner-run — verification and the routing CNAME are **two separate DNS
+  steps**); `gcloud beta run domain-mappings create` for
+  `story-review.mmz.sh` (beta component install needed); CNAME
+  `story-review → ghs.googlehosted.com` (owner had a typo
+  `googlehoted`, caught via DoH — NXDOMAIN = record missing, wrong data =
+  check contents); cert challenge retried only on Google's schedule
+  (~15–60 min poll; HTTP 302→Google frontend proves routing before TLS).
+  `https://story-review.mmz.sh` live: `/health` ok, stories load (first
+  load slow = min-instances 0 cold start).
+- Dev-server gotchas: docker push 401 until `gcloud auth configure-docker
+  $REGION-docker.pkg.dev`; deploy.sh gcloud wrapper must pass
+  `--project/--region` **per subcommand** (not global, not on the group).
+
+Walkthrough (OPEN):
+- story-02 session created and active (owner browser, turn 1/10).
+- **Defect found on story-01**: facilitator opening-turn output failed
+  strict-schema validation after corrective re-prompts → 422
+  `VALIDATION_ERROR` after ~50 s (`flows._agent_failure` maps it 422).
+  Consequences: (a) api-contract's `POST /sessions` error table
+  (404/409/503) does not define a late 422 — doc/impl gap; (b) the session
+  row persists **active with no turns** → empty chat, story blocked (409)
+  until abandoned (D22 recover). Transient model behavior (story-02 and
+  the inc-4 gate stories passed), but the failure path needs a fix:
+  park/rollback the session on flow-1 agent failure + api-contract
+  alignment. **Owner decision: fix at the start of the next session.**
+- Two-user cookie-scoping proof not yet done (second browser).

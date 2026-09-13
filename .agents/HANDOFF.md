@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-13 (Phase 8 increment 4 COMPLETE — orchestration on Cloud Run, CR→AE gate PASS). Prior: increment 4 local part COMPLETE (AE clients, `4d5cd59`); increment 3 (all four AE deploys smoked, `ee63a04`).
+Last updated: 2026-09-13 (Phase 8 increment 5 deploy COMPLETE, walkthrough OPEN — flow-1 422 defect to fix first thing; environment moved to the dev server). Prior: increment 4 cloud part COMPLETE (CR→AE gate PASS).
 
 ## Where we are
 
@@ -41,6 +41,23 @@ Last updated: 2026-09-13 (Phase 8 increment 4 COMPLETE — orchestration on Clou
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Phase 8 increment 5, deploy part COMPLETE + environment move (2026-09-13,
+dev server — now the PRIMARY machine; see WORKING_ENVIRONMENT.md):
+- **Environment**: gcloud/az authed (ADC valid; az = no-subscription personal
+  account, `az devops` works); env files + **terraform state** copied from
+  the main PC — terraform runs here now.
+- **Webui deployed publicly**: `https://story-review.mmz.sh` (Cloud Run
+  `webui`, sa-webui, unauthenticated; `/api` proxy carries an ID token —
+  `webui/webui/id_tokens.py`, `ORCHESTRATION_ID_TOKEN_AUTH`; orchestration
+  stays IAM-gated; invoker binding lives in deploy.sh — recorded deviation).
+  `sr_user` cookie `secure` behind TLS. Domain: `mmz.sh` Search-Console
+  verification (TXT) + `domain-mappings` CNAME `ghs.googlehosted.com`;
+  cert issued after Google's retry cycle. Full chain verified live.
+- Commits `1d66551` (feat) + `f0a1e97`/`6310eb1` (deploy.sh fixes) —
+  **owner pushes main**. Runbook 14 §Increment 5 = full evidence.
+- Verification: webui pytest **22 (+4)** + vitest **89 (+2)**; review
+  Ready-to-proceed (minors fixed/recorded).
 
 Phase 8 increment 4 cloud part COMPLETE (2026-09-13, main PC; cloud
 actions owner-approved "lets do 1,2,3,4", gate later delegated):
@@ -801,7 +818,7 @@ after changes):
   mcp-story **67**, mcp-artifact **32**, mcp-report **36**, compose contract
   **20** (session 40; re-run after compose changes), agent-kit **125** (inc 4 cloud: +3 auth/audience; prior 122), agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **191+12s** (inc 4 cloud: +31; prior 160+12s); **webui 14 + vitest 87** (Phase 8 inc 1: +11); live gates: business/engineering/synthesis
+  facilitator adapter **3+1s**, orchestration **191+12s** (inc 4 cloud: +31; prior 160+12s); **webui 22 + vitest 89** (inc 5: +4 pytest, +2 vitest); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
   webui browser gates PASS: increment 0 reachability, increment 1 picker +
@@ -847,16 +864,16 @@ after changes):
 
 ## Next Steps
 
-1. Owner reviews/pushes session-50-era commits if not yet done
-   (`81baefd` + `984953c` on main; no frozen cherry-pick due — no `docs/`
-   changes).
-2. ~~Phase 8 increment 3~~ **DONE this session** — see Previous Session
-   Summary; owner pushes the two new commits.
-3. ~~Phase 8 increment 4 — cloud part~~ **DONE this session** (Runbook 14 inc 4; gate PASS). Next:
-   increment 5 per plan — `deploy/cloud-run/webui/deploy.sh`, Cloudflare
-   subdomain (settle route empirically), `sr_user` cookie `secure`
-   behind TLS, browser walkthrough over the public domain (two users).
-4. Later increments 5–7 per `docs-local/plans/phase-8-gcp-deployment.md`;
+1. **FIX FIRST (owner decision this session)**: flow-1 agent schema failure
+   (422 VALIDATION_ERROR on `POST /sessions`) leaves an active empty session
+   that blocks the story until abandoned — park/rollback the session on that
+   failure path (test-first) + align `docs/design/api-contract.md`'s
+   `POST /sessions` error table (atomic docs commit + frozen cherry-pick).
+   Evidence + shape: Runbook 14 §Increment 5 walkthrough.
+2. Finish the increment-5 walkthrough: two-user cookie-scoping proof
+   (normal + incognito window), story-01 abandoned + retried after the fix.
+3. Owner pushes `1d66551` + `f0a1e97`/`6310eb1` on main.
+4. Later increments 6–7 per `docs-local/plans/phase-8-gcp-deployment.md`;
    D5 prune (owner-run) also covers the 15 broken/superseded facilitator
    engines listed in Runbook 14 inc 3.
 5. Housekeeping when local stack no longer needed: `make
@@ -887,8 +904,11 @@ Pre-existing items folded into the plan: run-migrations argv/retry minors
   superseded good facilitators (incl. N-1) + 15 broken facilitator
   engines** — all awaiting the D5 owner-run prune at increment 7. Plus
   the new Cloud Run `orchestration` service (min-instances 0).
-- **Machine split**: main PC has ADC/Vertex (all live gates, cloud); dev
-  server has no ADC (deterministic work only).
+- **Machine split (updated)**: **dev server is now the primary** — ADC,
+  terraform state, env files all present; cloud actions run from here.
+  Main PC accessible read-only over NFS
+  (`/mnt/admin-storage/projects/capstone_project`) — never run git or
+  terraform against that path. Its az/ADC state is untouched.
 - **Cost**: trial credits near-zero used of zł1,114, expire 2026-12-05;
   Phase 6 Vertex spend = integration-test calls only. ADO org: free plan,
   its free-trial Azure subscription must stay unused.
