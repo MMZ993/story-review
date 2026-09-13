@@ -24,6 +24,8 @@ from urllib.parse import urlsplit
 from google.adk.agents import LlmAgent
 from google.adk.sessions import BaseSessionService
 
+import httpx
+
 from agent_kit.config import AgentConfig
 from agent_kit.prompts import LoadedPrompt, load_prompt
 
@@ -222,10 +224,13 @@ def register_cloudsql_iam_session_service() -> None:
     )
 
 
-class _IdTokenAuth:
-    """httpx.Auth-style header injection of a refreshing audience-scoped
+class _IdTokenAuth(httpx.Auth):
+    """httpx.Auth-style bearer injection of a refreshing audience-scoped
     ID token minted from the attached service account's metadata-server
-    credentials. Only usable on GCP runtimes (Agent Engine, Cloud Run)."""
+    credentials. Only usable on GCP runtimes (Agent Engine, Cloud Run).
+    Subclasses httpx.Auth on purpose: httpx validates `auth=` by
+    isinstance and raises TypeError for duck-typed objects (observed
+    live on Agent Engine)."""
 
     def __init__(self, audience: str):
         self._audience = audience

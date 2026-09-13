@@ -227,3 +227,15 @@ class TestPerCallCloudSqlSessionService:
         assert out == []
         assert captured["user_id"] == "u"
         assert "app_name" not in captured
+
+
+class TestIdTokenAuthHttpxContract:
+    def test_is_an_httpx_auth_instance(self):
+        """httpx validates `auth=` by isinstance (TypeError otherwise —
+        observed live on Agent Engine at the inc-4 gate); the duck-typed
+        auth_flow alone is not enough."""
+        import httpx
+
+        from agent_kit.ae_runtime import _IdTokenAuth
+
+        assert isinstance(_IdTokenAuth("https://aud"), httpx.Auth)
