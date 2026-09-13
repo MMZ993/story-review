@@ -1,0 +1,5 @@
+# Staged runtime deps of the extra packages (their pip-registry deps;
+# google-adk itself ships with the Agent Engine image).
+pyyaml>=6.0
+fastapi>=0.115
+pydantic>=2.13

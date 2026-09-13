@@ -451,6 +451,10 @@ db-status: ## Show Cloud SQL instance state (read-only)
 	gcloud sql instances describe $(PROJECT_ID)-sessions \
 		--format='value(state,settings.activationPolicy)'
 
+agents-deploy-facilitator agents-deploy-business-reviewer agents-deploy-engineering-reviewer agents-deploy-synthesis: ## Phase 8 inc 3: deploy one agent to Agent Engine (tier-2, new versioned resource)
+	$(guard-project)
+	deploy/agents/$(patsubst agents-deploy-%,%,$@)/deploy.sh
+
 facilitator-adapter-test: ## Phase 5: facilitator adapter deterministic tests (no LLM)
 	cd deploy/compose/adapters/facilitator && \
 	PROMPTS_DIR=$$PWD/../../../../prompts \

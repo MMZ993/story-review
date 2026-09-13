@@ -73,6 +73,41 @@ def test_dsn_to_pg_env_rejects_query_parameters():
         _parse_dsn("postgres://u:p@h:5432/db?sslmode=require")
 
 
+@pytest.mark.skipif(shutil.which("psql") is not None, reason="local psql present; docker fallback not exercised")
+def test_docker_fallback_forwards_pgsslmode(tmp_path):
+    """The throwaway-container fallback must forward PGSSLMODE alongside
+    the other PG* variables: Cloud SQL IAM database authentication requires
+    TLS, so the Phase-8 cloud run fails without it. A fake `docker` on PATH
+    records its environment; no database is contacted."""
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    recorded = tmp_path / "docker-calls.txt"
+    (fake_bin / "docker").write_text(
+        "#!/usr/bin/env bash\n"
+        f"printf '%s\\n' \"$PGSSLMODE\" >> '{recorded}'\n"
+        "exit 0\n"
+    )
+    (fake_bin / "docker").chmod(
+        (fake_bin / "docker").stat().st_mode | stat.S_IEXEC
+    )
+    # python3 must stay reachable for dsn_to_pg_env; psql must NOT be.
+    proc = subprocess.run(
+        ["bash", str(SCRIPT)],
+        env={
+            "PATH": f"{fake_bin}:{os.environ['PATH']}",
+            "DATABASE_URL": "postgres://u:p@127.0.0.1:5432/orchestration",
+            "PGSSLMODE": "require",
+        },
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "psql not found; using throwaway" in proc.stderr
+    # bootstrap contact + applied-list select + one call per migration file:
+    # the fake docker exits 0 without recording rows, so all five "apply"
+    assert recorded.read_text().splitlines() == ["require"] * 7
+
+
 @pytest.mark.skipif(shutil.which("psql") is None, reason="no local psql client")
 async def test_migrations_apply_via_env_without_dsn_in_argv(tmp_path):
     """A psql wrapper that fails on any DSN-like argument and requires the

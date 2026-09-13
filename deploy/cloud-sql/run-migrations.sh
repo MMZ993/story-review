@@ -96,10 +96,14 @@ run_migrations() {
         # relying on this fallback. The PG* environment (never argv) carries
         # the connection parameters into the container.
         echo "psql not found; using throwaway postgres:16 container (host network)" >&2
+        # The PG* environment (never argv) carries the connection
+        # parameters into the container — including PGSSLMODE: Cloud SQL IAM
+        # database authentication requires TLS, so it is forwarded even
+        # though it never appears in the DSN.
         run_sql() {
             local env_args=()
             local var
-            for var in PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE; do
+            for var in PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE PGSSLMODE; do
                 [ -n "${!var:-}" ] && env_args+=("-e" "$var")
             done
             docker run --rm -i --network host "${env_args[@]}" \
