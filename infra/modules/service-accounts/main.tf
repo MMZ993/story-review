@@ -66,6 +66,22 @@ resource "google_service_account_iam_member" "deployer_actas" {
 # --- Orchestration runtime grants ---
 
 # Invokes the Agent Engine agent deployments.
+# The four agent runtime SAs run their Agent Engine containers with their
+# own identity and call Vertex for every model request — they need the
+# same role (Phase 8 increment 3: deployed containers 403'd without it).
+resource "google_project_iam_member" "agent_aiplatform_users" {
+  for_each = toset([
+    "sa-facilitator",
+    "sa-business-reviewer",
+    "sa-engineering-reviewer",
+    "sa-synthesis",
+  ])
+
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.runtime[each.key].email}"
+}
+
 resource "google_project_iam_member" "orchestration_aiplatform_user" {
   project = var.project_id
   role    = "roles/aiplatform.user"

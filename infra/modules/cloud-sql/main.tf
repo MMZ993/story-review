@@ -65,3 +65,18 @@ resource "google_project_iam_member" "instance_users" {
   role    = "roles/cloudsql.instanceUser"
   member  = "serviceAccount:${each.value}"
 }
+
+# Connector path (Cloud SQL proxy / Python Connector / Cloud Run volume):
+# fetching the ephemeral client certificate requires
+# cloudsql.instances.connect, which instanceUser alone does not include
+# (Runbook 06 gotcha, hit again at Phase 8 increment 2 — proxy 403
+# NOT_AUTHORIZED). All four IAM-login SAs reach the instance through a
+# connector, never a raw public-IP socket (authorized networks stay empty
+# by design).
+resource "google_project_iam_member" "connector_clients" {
+  for_each = toset(var.iam_login_sa_emails)
+
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${each.value}"
+}
