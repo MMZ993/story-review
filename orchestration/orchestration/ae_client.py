@@ -268,16 +268,11 @@ async def _real_list_events(
     resource: str, user_id: str, session_id: str
 ) -> list[dict]:
     """The event history of one AE session (reconciliation reads) via the
-    runtime's get_session agent method; events ride the serialized
-    Session when requested via config.num_recent_events."""
+    runtime's get_session agent method. No config filter: the config dict
+    input returns an empty event list (verified live) and the default
+    full history is what reconciliation wants (≤10 turns per session)."""
     body = await _runtime_query(
-        resource,
-        "get_session",
-        {
-            "user_id": user_id,
-            "session_id": session_id,
-            "config": {"num_recent_events": 50},
-        },
+        resource, "get_session", {"user_id": user_id, "session_id": session_id}
     )
     return [e for e in (body.get("events") or []) if isinstance(e, dict)]
 
