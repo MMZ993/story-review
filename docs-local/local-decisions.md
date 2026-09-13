@@ -992,3 +992,23 @@ enforcement point moves to the increment-4 invocation contract
 (orchestration → AE): write paths are either not delegated at all
 (read-only toolset) or validated at the orchestration boundary. Decision
 with the owner due when increment 4 fixes the invocation contract shape.
+
+## D25 — Increment 4: all-agent AE invocation + session-store reconciliation (2026-09-14)
+
+Owner decisions (chat, increment-4 planning):
+
+1. **All four agents** are invoked via Agent Engine from the deployed
+   orchestration (not facilitator-first) — all engines are deployed anyway.
+   Env-selected pointers (`ORCH_AGENT_MODE=http|ae`) keep the local/compose
+   HTTP-adapter path as the deterministic tier.
+2. **Reconciliation = option B**: on a doubtful facilitator retry, the
+   orchestration reads the facilitator's ADK session events (Cloud SQL
+   `facilitator` DB, over `:query`) and matches a prior reply by
+   `invocation_id` before re-invoking — at-most-once facilitator execution.
+   Reviewer/synthesis invocations stay at-least-once (duplicates only cost
+   money, no conversation-state corruption). Orchestration-side TurnRecord
+   dedup is the fast path before any AE read-back.
+3. Increment-4 breakdown recorded in
+   `docs-local/plans/phase-8-gcp-deployment.md` §4 (includes the
+   facilitator clean-tree redeploy and the Runbook 06 gotchas 3–4 gate
+   checklist).
