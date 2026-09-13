@@ -979,3 +979,16 @@ local adapter already uses via the compose Postgres. Agent Engine's managed
 session option is not adopted; local runs keep using the local Postgres
 substitute. Closes the increment-3 open design point in
 `docs-local/plans/phase-8-gcp-deployment.md`.
+
+### D24 amendment 2 — AE-side lineage guard deferred (2026-09-13)
+
+Recorded deferral (Phase 8 increment 3, per plan): on Agent Engine the
+facilitator's story/artifact MCP toolsets are wired **read-only via
+`tool_filter`** (fetch tools only; no artifact-save tool exposed), but the
+contextvar-bound lineage guard (per-invocation artifact-write authorization
+used by the local adapter) has **no Agent Engine equivalent** — AE invokes
+the agent without a request-scoped context the guard can bind to. The
+enforcement point moves to the increment-4 invocation contract
+(orchestration → AE): write paths are either not delegated at all
+(read-only toolset) or validated at the orchestration boundary. Decision
+with the owner due when increment 4 fixes the invocation contract shape.
