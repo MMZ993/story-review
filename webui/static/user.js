@@ -46,6 +46,15 @@ function cookieSource() {
 }
 
 /**
+ * The `secure` cookie attribute when the origin is HTTPS — set on the
+ * public TLS deploy (Cloudflare → Cloud Run), omitted on the plain-HTTP
+ * local compose origin where it would make the cookie unwritable.
+ */
+function secureAttribute() {
+  return globalThis.location?.protocol === "https:" ? "; secure" : "";
+}
+
+/**
  * The user id for this client: the valid persisted one, or a freshly
  * minted UUID v4. Every call rewrites the cookie, sliding the 90-day
  * expiry forward (api-contract: "long-lived, refreshed on visit"). An
@@ -57,7 +66,7 @@ export function ensureUserId(jar = cookieSource()) {
   // No-op outside a DOM (e.g. node-run unit tests): the id is still
   // returned, just not persisted across those calls.
   if (globalThis.document) {
-    globalThis.document.cookie = `${COOKIE_NAME}=${userId}; max-age=${MAX_AGE_SECONDS}; path=/; samesite=lax`;
+    globalThis.document.cookie = `${COOKIE_NAME}=${userId}; max-age=${MAX_AGE_SECONDS}; path=/; samesite=lax${secureAttribute()}`;
   }
   return userId;
 }

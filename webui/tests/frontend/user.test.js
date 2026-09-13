@@ -88,6 +88,39 @@ describe("ensureUserId", () => {
     expect(spy).toHaveBeenCalled(); // expiry slid forward
     spy.mockRestore();
   });
+
+  it("marks the cookie secure when the origin is HTTPS (public TLS deploy)", () => {
+    // document.cookie hides attributes; assert on the written value.
+    const spy = vi.spyOn(document, "cookie", "set");
+    const originalLocation = globalThis.location;
+    globalThis.location = dom.window.location;
+    try {
+      ensureUserId();
+    } finally {
+      globalThis.location = originalLocation;
+    }
+    const written = spy.mock.calls.map((c) => c[0]).join("\n");
+    expect(written).toContain("secure");
+    spy.mockRestore();
+  });
+
+  it("omits secure over plain HTTP (local compose origin)", () => {
+    const httpDom = new JSDOM("", { url: "http://webui.local/" });
+    const original = globalThis.document;
+    const originalLocation = globalThis.location;
+    globalThis.document = httpDom.window.document;
+    globalThis.location = httpDom.window.location;
+    try {
+      const spy = vi.spyOn(httpDom.window.document, "cookie", "set");
+      ensureUserId();
+      const written = spy.mock.calls.map((c) => c[0]).join("\n");
+      expect(written).not.toContain("secure");
+      spy.mockRestore();
+    } finally {
+      globalThis.document = original;
+      globalThis.location = originalLocation;
+    }
+  });
 });
 
 describe("api client X-User-Id", () => {

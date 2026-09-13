@@ -176,3 +176,47 @@ def test_static_responses_are_never_heuristically_cached(client):
         response = client.get(path)
         assert response.status_code == 200, path
         assert response.headers["cache-control"] == "no-cache", path
+
+
+def test_config_reads_id_token_auth_flag():
+    # Phase 8 increment 5: the deployed tier authenticates the proxy hop
+    # to the IAM-gated orchestration service; local/compose keep it off.
+    from webui.config import Settings
+
+    base = {"ORCHESTRATION_BASE_URL": "https://orchestration"}
+    assert Settings.from_env(env=base).orchestration_id_token_auth is False
+    for value in ("1", "true", "True"):
+        settings = Settings.from_env(env={**base, "ORCHESTRATION_ID_TOKEN_AUTH": value})
+        assert settings.orchestration_id_token_auth is True
+
+
+def test_proxy_attaches_minted_id_token_when_auth_enabled(upstream_auth):
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["authorization"] = request.headers.get("authorization")
+        return httpx.Response(200)
+
+    upstream_auth["handler"] = handler
+    upstream_auth["client"].get("/api/v1/stories")
+    assert captured["authorization"] == "Bearer minted-token-for-test"
+
+
+def test_proxy_omits_authorization_when_auth_disabled(client, upstream):
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["authorization"] = request.headers.get("authorization")
+        return httpx.Response(200)
+
+    upstream["handler"] = handler
+    client.get("/api/v1/stories")
+    assert captured["authorization"] is None
+
+
+def test_proxy_reports_mint_failure_as_retryable_503(upstream_auth):
+    upstream_auth["fail_mint"] = True
+    response = upstream_auth["client"].get("/api/v1/stories")
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "ORCHESTRATION_UNREACHABLE"
+    assert response.json()["error"]["retryable"] is True
