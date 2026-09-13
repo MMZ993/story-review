@@ -689,3 +689,29 @@ async def test_facilitator_deadline_exceeded_propagates():
     )
     with pytest.raises(DeadlineExceeded):
         await client.invoke(request, deadline=_time.monotonic() - 1)
+
+
+class TestRealListSessionsRoute:
+    async def test_lists_without_query_params(self, monkeypatch):
+        """Live-verified at the inc-4 gate: ?userId= is a 400 — the route
+        takes no query parameters and filtering is client-side."""
+        from orchestration import ae_client as mod
+
+        seen = {}
+
+        async def fake_ae_get(url, timeout):
+            seen["url"] = url
+            return 200, {
+                "sessions": [
+                    {"name": "s1", "userId": "want"},
+                    {"name": "s2", "userId": "other"},
+                ]
+            }
+
+        monkeypatch.setattr(mod, "_ae_get", fake_ae_get)
+        sessions = await mod._real_list_sessions(
+            "projects/p/locations/l/reasoningEngines/e1", "want"
+        )
+        assert seen["url"].endswith("/sessions")
+        assert "?" not in seen["url"]
+        assert sessions == [{"name": "s1", "userId": "want"}]
