@@ -160,9 +160,11 @@ async def open_cloudsql_pool(uri: str) -> CloudSqlPool:
     user = await asyncio.to_thread(resolve_iam_user, creds)
     connector = await create_async_connector(enable_iam_auth=True)
 
-    async def _connect(**kwargs) -> asyncpg.Connection:
-        # asyncpg's Pool internally passes its own kwargs (e.g. loop=) to
-        # the connect callable — accept and ignore them.
+    async def _connect(*args, **kwargs) -> asyncpg.Connection:
+        # asyncpg's Pool calls the connect callable with its own arguments
+        # (the dsn positionally, plus loop/connection_class kwargs) — none
+        # of them apply: every connection parameter comes from the
+        # connector + the resolved IAM user.
         return await connector.connect_async(
             connection_name, "asyncpg", db=database, user=user
         )

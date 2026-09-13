@@ -141,7 +141,7 @@ class TestOpenCloudsqlPool:
         assert connector.connects == []
         # Real asyncpg pools call the connect callable with their own
         # kwargs (loop=) — the callable must tolerate them.
-        conn = await pool.connect(loop=None)
+        conn = await pool.connect(None, loop=None, connection_class=None, record_class=None)
         assert conn is not None
         assert connector.connects == [
             {
@@ -195,7 +195,7 @@ class TestOpenCloudsqlPool:
         )
         monkeypatch.setenv("CLOUDSQL_IAM_USER", "env-user@proj")
         pool = await cloudsql_db.open_cloudsql_pool("cloudsql-iam:///p:r:i/db")
-        await pool.connect(loop=None)
+        await pool.connect(None, loop=None, connection_class=None, record_class=None)
         assert connector.connects[0]["user"] == "env-user@proj"
 
 
