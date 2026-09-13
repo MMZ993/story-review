@@ -22,10 +22,18 @@ _MANDATORY = (
     "ORCH_ARTIFACT_URL",
     "ORCH_REPORT_URL",
     "ORCH_BUCKET",
-    "ORCH_BUSINESS_URL",
-    "ORCH_ENGINEERING_URL",
-    "ORCH_SYNTHESIS_URL",
-    "ORCH_FACILITATOR_URL",
+)
+
+#: AE-mode pointer variables replacing the four adapter URLs (D25).
+_AE_MANDATORY = _MANDATORY + (
+    "ORCH_AE_BUSINESS_RESOURCE",
+    "ORCH_AE_ENGINEERING_RESOURCE",
+    "ORCH_AE_SYNTHESIS_RESOURCE",
+    "ORCH_AE_FACILITATOR_RESOURCE",
+    "ORCH_AE_BUSINESS_VERSION",
+    "ORCH_AE_ENGINEERING_VERSION",
+    "ORCH_AE_SYNTHESIS_VERSION",
+    "ORCH_AE_FACILITATOR_VERSION",
 )
 
 
@@ -63,6 +71,21 @@ class Settings:
     #: are rewritten to this HTTPS URL and signed with the throwaway local
     #: key (signed_urls.py). None = real GCS / Phase 8.
     gcs_public_url: str | None = None
+    #: Agent invocation mode (Phase 8 increment 4, D25): "http" = the
+    #: local-adapter endpoints (compose/deterministic tier); "ae" = the
+    #: deployed Agent Engine resources over the raw streamQuery REST
+    #: surface (live tier, ae_client.py).
+    agent_mode: str = "http"
+    #: AE-mode pointers: full engine resource names plus deploy labels
+    #: (the label is the audit agent_version in AE mode; D25 amendment).
+    ae_business_resource: str | None = None
+    ae_engineering_resource: str | None = None
+    ae_synthesis_resource: str | None = None
+    ae_facilitator_resource: str | None = None
+    ae_business_version: str | None = None
+    ae_engineering_version: str | None = None
+    ae_synthesis_version: str | None = None
+    ae_facilitator_version: str | None = None
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "Settings":
@@ -71,11 +94,39 @@ class Settings:
         Raises ValueError naming the first missing mandatory variable.
         """
         source = dict(os.environ) if env is None else env
+        mode = source.get("ORCH_AGENT_MODE", "http").strip() or "http"
+        if mode not in ("http", "ae"):
+            raise ValueError(f"invalid ORCH_AGENT_MODE: {mode}")
+        mandatory = _MANDATORY
+        if mode == "ae":
+            mandatory = _AE_MANDATORY
         values: dict[str, str] = {}
-        for name in _MANDATORY:
+        for name in mandatory:
             values[name] = source.get(name, "").strip()
             if not values[name]:
                 raise ValueError(f"missing mandatory environment variable: {name}")
+        http_urls = {
+            "ORCH_BUSINESS_URL": source.get("ORCH_BUSINESS_URL", "").strip(),
+            "ORCH_ENGINEERING_URL": source.get("ORCH_ENGINEERING_URL", "").strip(),
+            "ORCH_SYNTHESIS_URL": source.get("ORCH_SYNTHESIS_URL", "").strip(),
+            "ORCH_FACILITATOR_URL": source.get("ORCH_FACILITATOR_URL", "").strip(),
+        }
+        if mode == "http":
+            for name, value in http_urls.items():
+                if not value:
+                    raise ValueError(f"missing mandatory environment variable: {name}")
+        values.update(http_urls)
+        ae = {}
+        for prefix in (
+            "ORCH_AE_BUSINESS", "ORCH_AE_ENGINEERING",
+            "ORCH_AE_SYNTHESIS", "ORCH_AE_FACILITATOR",
+        ):
+            for suffix in ("RESOURCE", "VERSION"):
+                ae[f"{prefix}_{suffix}"] = source.get(f"{prefix}_{suffix}", "").strip()
+        if mode == "ae":
+            for name, value in ae.items():
+                if not value:
+                    raise ValueError(f"missing mandatory environment variable: {name}")
         return cls(
             db_dsn=values["ORCH_DB_DSN"],
             story_url=values["ORCH_STORY_URL"],
@@ -87,6 +138,15 @@ class Settings:
             synthesis_url=values["ORCH_SYNTHESIS_URL"],
             facilitator_url=values["ORCH_FACILITATOR_URL"],
             gcs_public_url=source.get("ORCH_GCS_PUBLIC_URL", "").strip() or None,
+            agent_mode=mode,
+            ae_business_resource=ae["ORCH_AE_BUSINESS_RESOURCE"] or None,
+            ae_engineering_resource=ae["ORCH_AE_ENGINEERING_RESOURCE"] or None,
+            ae_synthesis_resource=ae["ORCH_AE_SYNTHESIS_RESOURCE"] or None,
+            ae_facilitator_resource=ae["ORCH_AE_FACILITATOR_RESOURCE"] or None,
+            ae_business_version=ae["ORCH_AE_BUSINESS_VERSION"] or None,
+            ae_engineering_version=ae["ORCH_AE_ENGINEERING_VERSION"] or None,
+            ae_synthesis_version=ae["ORCH_AE_SYNTHESIS_VERSION"] or None,
+            ae_facilitator_version=ae["ORCH_AE_FACILITATOR_VERSION"] or None,
             signed_url_ttl_seconds=int(
                 source.get("ORCH_SIGNED_URL_TTL_SECONDS", "900")
             ),

@@ -439,7 +439,13 @@ class HttpFacilitatorClient(_HttpAgentClient):
 
 
 def default_agent_set(settings: Settings) -> AgentSet:
-    """Real HTTP clients for all four adapters (live tier, main PC only)."""
+    """The live agent clients for the configured mode (D25): http = the
+    local-adapter endpoints; ae = the deployed Agent Engine resources
+    (ae_client.py, live tier main-PC/Cloud-Run only)."""
+    if settings.agent_mode == "ae":
+        from .ae_client import ae_agent_set
+
+        return ae_agent_set(settings)
     return AgentSet(
         business=HttpReviewerClient(settings.business_url, settings),
         engineering=HttpReviewerClient(settings.engineering_url, settings),
