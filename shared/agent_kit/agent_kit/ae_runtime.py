@@ -249,11 +249,15 @@ class _IdTokenAuth(httpx.Auth):
                 "(metadata-server credentials); local runs use the compose "
                 "stack instead"
             )
-        return google.auth.compute_engine.IDTokenCredentials(
+        credentials = google.auth.compute_engine.IDTokenCredentials(
             request=google.auth.transport.requests.Request(),
             target_audience=self._audience,
             service_account_email=account,
         )
+        # Mint now: IDTokenCredentials.token is None until refreshed
+        # (observed live as "Bearer None" → 401 at the inc-4 gate).
+        credentials.refresh(google.auth.transport.requests.Request())
+        return credentials
 
     def auth_flow(self, request):
         """httpx.Auth protocol: attach the bearer token, refreshing when

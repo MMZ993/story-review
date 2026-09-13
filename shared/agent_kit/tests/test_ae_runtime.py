@@ -254,3 +254,38 @@ class TestFacilitatorToolsetAudience:
         assert _audience_for("https://svc.example.run.app") == (
             "https://svc.example.run.app"
         )
+
+
+class TestIdTokenAuthInitialRefresh:
+    def test_mint_refreshes_before_first_use(self, monkeypatch):
+        """_mint must return credentials with a live token — the header is
+        built from .token immediately (observed live as "Bearer None"
+        → 401 at the inc-4 gate)."""
+        import google.auth
+        import google.auth.compute_engine
+
+        from agent_kit.ae_runtime import _IdTokenAuth
+
+        minted = {}
+
+        class FakeBase:
+            service_account_email = "sa@proj.iam.gserviceaccount.com"
+
+        class FakeIDTokenCredentials:
+            def __init__(self, request, target_audience, service_account_email):
+                minted["audience"] = target_audience
+                minted["account"] = service_account_email
+                self.token = None
+
+            def refresh(self, request):
+                self.token = "tok"
+
+        monkeypatch.setattr(google.auth, "default", lambda: (FakeBase(), None))
+        monkeypatch.setattr(
+            google.auth.compute_engine, "IDTokenCredentials", FakeIDTokenCredentials
+        )
+        auth = _IdTokenAuth("https://svc")
+        creds = auth._mint()
+        assert creds.token == "tok"
+        assert minted["audience"] == "https://svc"
+        assert minted["account"] == "sa@proj.iam.gserviceaccount.com"
