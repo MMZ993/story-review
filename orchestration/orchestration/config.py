@@ -71,6 +71,10 @@ class Settings:
     #: are rewritten to this HTTPS URL and signed with the throwaway local
     #: key (signed_urls.py). None = real GCS / Phase 8.
     gcs_public_url: str | None = None
+    #: MCP ingress auth (Phase 8 increment 4): when set, MCP calls carry
+    #: audience-scoped ID-token bearer headers (deployed Cloud Run tier;
+    #: connectivity-identity.md). Local/compose tiers keep it off.
+    mcp_id_token_auth: bool = False
     #: Agent invocation mode (Phase 8 increment 4, D25): "http" = the
     #: local-adapter endpoints (compose/deterministic tier); "ae" = the
     #: deployed Agent Engine resources over the raw streamQuery REST
@@ -128,6 +132,8 @@ class Settings:
                 if not value:
                     raise ValueError(f"missing mandatory environment variable: {name}")
         return cls(
+            mcp_id_token_auth=source.get("ORCH_MCP_ID_TOKEN_AUTH", "").strip()
+            in {"1", "true", "True"},
             db_dsn=values["ORCH_DB_DSN"],
             story_url=values["ORCH_STORY_URL"],
             artifact_url=values["ORCH_ARTIFACT_URL"],

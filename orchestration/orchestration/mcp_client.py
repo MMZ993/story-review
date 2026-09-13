@@ -117,12 +117,13 @@ def parse_call_result(result: CallToolResult) -> dict:
 
 
 async def _streamable_http_call(
-    url: str, tool: str | None, arguments: dict, timeout_s: float
+    url: str, tool: str | None, arguments: dict, timeout_s: float,
+    headers: dict[str, str] | None = None,
 ) -> dict:
     """One real MCP round trip over streamable HTTP, wall-clock bounded."""
 
     async def run() -> dict:
-        async with streamable_http_client(url) as (read, write):
+        async with streamable_http_client(url, headers=headers) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 if tool is None:
@@ -144,12 +145,22 @@ class McpClient:
         session_call: SessionCall = _streamable_http_call,
         sleeper: Callable[[float], Awaitable[None]] = asyncio.sleep,
         rng: Callable[[], float] = random.random,
+        auth_headers: Callable[[], dict[str, str]] | None = None,
     ):
         self._url = url
         self._settings = settings
         self._session_call = session_call
         self._sleep = sleeper
         self._rng = rng
+        self._auth_headers = auth_headers
+
+    def _call_kwargs(self) -> dict:
+        """Headers kwarg only when MCP ingress auth is wired (keeps the
+        4-argument SessionCall seam contract for local/unauthenticated
+        transports and their test fakes)."""
+        if self._auth_headers is None:
+            return {}
+        return {"headers": self._auth_headers()}
 
     async def call(
         self, tool: str, arguments: dict, *, deadline: float | None = None
@@ -187,7 +198,9 @@ class McpClient:
     async def _attempt(self, tool: str, arguments: dict, timeout_s: float) -> dict:
         """One transport attempt, unwrapping tool errors from TaskGroups."""
         try:
-            return await self._session_call(self._url, tool, arguments, timeout_s)
+            return await self._session_call(
+                self._url, tool, arguments, timeout_s, **self._call_kwargs()
+            )
         except* McpCallFailure as group:
             raise _first_leaf(group) from None
 
@@ -196,7 +209,9 @@ class McpClient:
         if timeout_s is None:
             timeout_s = float(self._settings.health_probe_timeout_seconds)
         try:
-            await self._session_call(self._url, None, {}, timeout_s)
+            await self._session_call(
+                self._url, None, {}, timeout_s, **self._call_kwargs()
+            )
             return True
         except Exception:
             return False

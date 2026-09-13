@@ -71,6 +71,7 @@ gcloud run deploy orchestration \
     --no-allow-unauthenticated \
     --set-env-vars \
 "ORCH_AGENT_MODE=ae,\
+ORCH_MCP_ID_TOKEN_AUTH=1,\
 ORCH_DB_DSN=cloudsql-iam:///${INSTANCE_CONN}/orchestration,\
 ORCH_STORY_URL=${STORY_URL},\
 ORCH_ARTIFACT_URL=${ARTIFACT_URL},\
