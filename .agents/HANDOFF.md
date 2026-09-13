@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-13 (Phase 8 increment 5 deploy COMPLETE, walkthrough OPEN — flow-1 422 defect to fix first thing; environment moved to the dev server). Prior: increment 4 cloud part COMPLETE (CR→AE gate PASS).
+Last updated: 2026-09-14 (autonomous session: flow-1 422 defect FIXED locally — park + story release on terminal agent failure, docs aligned, NOT yet deployed to CR; Cloud SQL paused at wrap-up). Prior: increment 5 deploy COMPLETE, walkthrough OPEN.
 
 ## Where we are
 
@@ -41,6 +41,30 @@ Last updated: 2026-09-13 (Phase 8 increment 5 deploy COMPLETE, walkthrough OPEN 
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Flow-1 422 defect fix, autonomous session (2026-09-14, dev server; no
+cloud actions, no user questions per owner instruction):
+- **Fix** (`fix: 6ad0c2c`): a non-retryable `ApiError` in flow 1 after the
+  session row exists now **parks the session + story run and releases the
+  idempotency claim atomically** (`flows._park_failed_session`;`idempotency.release`
+  gained a `conn` param) — the story is immediately reusable with a fresh
+  key. Retryable failures keep takeover semantics (session active, claim
+  in_progress). Same-key retry of a terminally-failed attempt — including
+  the crash window (stale in_progress claim + parked session) — is rejected
+  `409 IDEMPOTENCY_KEY_REUSED` with the claim row released, no agent
+  re-invocation. Park is best-effort (a park failure must not mask the
+  client-visible terminal error; D22 abandon stays the recovery).
+- **Docs** (`docs: 15c64f1`, cherry-picked to frozen as `2d921c2`):
+  api-contract `POST /sessions` error table now defines the late `422`
+  (terminal agent failure → parked session, released story, new key
+  required) and the 409 same-key-retry nuance.
+- **Review**: read-only subagent — 1 Important (guard leaked a fresh claim
+  row) fixed + crash-window test added + best-effort park + style nit;
+  re-verified green.
+- **Verification**: orchestration **195+12s** (baseline 191+12s, +4 tests).
+  Runbook 14 §Increment 5 walkthrough — defect fixed (full evidence).
+  `WORKING_ENVIRONMENT.md` (gitignored) updated: terraform state IS here
+  now; main-PC copy stale.
 
 Phase 8 increment 5, deploy part COMPLETE + environment move (2026-09-13,
 dev server — now the PRIMARY machine; see WORKING_ENVIRONMENT.md):
@@ -864,15 +888,12 @@ after changes):
 
 ## Next Steps
 
-1. **FIX FIRST (owner decision this session)**: flow-1 agent schema failure
-   (422 VALIDATION_ERROR on `POST /sessions`) leaves an active empty session
-   that blocks the story until abandoned — park/rollback the session on that
-   failure path (test-first) + align `docs/design/api-contract.md`'s
-   `POST /sessions` error table (atomic docs commit + frozen cherry-pick).
-   Evidence + shape: Runbook 14 §Increment 5 walkthrough.
-2. Finish the increment-5 walkthrough: two-user cookie-scoping proof
-   (normal + incognito window), story-01 abandoned + retried after the fix.
-3. Owner pushes `1d66551` + `f0a1e97`/`6310eb1` on main.
+1. **Deploy the fix**: `bash deploy/cloud-run/orchestration/deploy.sh`
+   (tier-2 — owner approves/runs or explicitly delegates; commit `6ad0c2c`
+   must be in the image). Then verify `/health`.
+2. Resume the increment-5 walkthrough: story-01 abandoned + retried after
+   the fix; two-user cookie-scoping proof (normal + incognito window).
+3. Owner pushes main (`…6ad0c2c`) + `docs/initial-frozen` (`2d921c2`).
 4. Later increments 6–7 per `docs-local/plans/phase-8-gcp-deployment.md`;
    D5 prune (owner-run) also covers the 15 broken/superseded facilitator
    engines listed in Runbook 14 inc 3.
@@ -896,10 +917,10 @@ Pre-existing items folded into the plan: run-migrations argv/retry minors
   unset `$ADO_ORG` makes it a false match) is a mandatory pre-publication
   gate and must run after the last commit of the session performing it.
   History rewrites end at publication.
-- **Cloud SQL is RUNNING** (`ALWAYS`) — increment 4 is done; unless the
-  next session comes soon, run `make db-pause` (increment 5 does not
-  need the DB until its walkthrough). Standing rule: `make db-resume`
-  before any phase needing it. **Billable Agent Engine resources now: 3
+- **Cloud SQL was RUNNING during this session, PAUSED at wrap-up**
+  (owner instruction; `make db-pause` — increment-5 continuation needs
+  `make db-resume` first: the deployed orchestration reads Cloud SQL).
+  Standing rule: `make db-resume` before any phase needing it. **Billable Agent Engine resources now: 3
   current reviewers + current facilitator (`facilitator-dc95165`) + 3
   superseded good facilitators (incl. N-1) + 15 broken facilitator
   engines** — all awaiting the D5 owner-run prune at increment 7. Plus
