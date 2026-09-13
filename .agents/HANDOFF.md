@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-21 (Phase 8 increments 0+1 — run-migrations.sh deploy fixes + anonymous per-user scoping, implemented, reviewed Ready-to-proceed, live gate PASS; commits `81baefd` + `984953c` on main, owner push due). Prior: Phase 8 planning + user-scoping docs change — session closed clean, owner pushed main + docs/initial-frozen.
+Last updated: 2026-09-13 (Phase 8 increment 3 COMPLETE — all four Agent Engine deploys smoked PASS, facilitator sessions verified persisting in Cloud SQL `facilitator` DB, review findings fixed; working tree committed `feat:` + `chore:` — owner push due). Prior: increments 0–2 (commits `81baefd` + `984953c`, increment 2 evidence in Runbook 14).
 
 ## Where we are
 
@@ -42,8 +42,50 @@ Last updated: 2026-09-21 (Phase 8 increments 0+1 — run-migrations.sh deploy fi
 
 ## Previous Session Summary
 
-Phase 8 increments 0+1 (2026-09-21, main PC; local compose only, no cloud
-actions, Cloud SQL STOPPED):
+Phase 8 increment 3 COMPLETE (2026-09-13, main PC; cloud actions with
+owner approval — "finish increment 3"):
+- **All four AE agents SMOKE PASS** (real Vertex, strict-schema
+  outputs): business `207561407045042176`, engineering
+  `8786074272255705088`, synthesis `669180368850518016`, facilitator
+  `5457914147628908544` (`-dirty`; N-1 good facilitator `7344922391497146368`).
+- **Facilitator root causes** (four deploy iterations, Runbook 14 inc 3
+  session 2): leftover `_ENGINES` NameError; **connector 1.22 sync
+  `connect` inside a running loop deadlocks it — async drivers must use
+  `connect_async`**; IAM asyncpg needs an explicit `user` and AE compute
+  creds report `service_account_email == "default"` (metadata-server
+  resolution, off-loop); per-call connector must be `close_async()`d.
+  Raw `:query` REST surfaces error bodies the SDK hides.
+- **Persistence proven**: ADK tables in Cloud SQL `facilitator` DB
+  (owner sa-facilitator), `list_sessions` over `:query` returned smoke
+  sessions created by a *previous* engine; smoke now deletes its
+  sessions (finally) and the two evidence rows were cleaned.
+- **Review**: read-only subagent **Needs fixes** → all 4 Importants
+  fixed (deploy-failure masking in common.sh, connector leak, dirty-tree
+  version labels guarded with `-dirty` opt-in, module-level extraction +
+  6 new tests) + 4 minors fixed (smoke session cleanup, dead code,
+  to_thread metadata fetch, admin-bootstrap input validation).
+- **Verification**: agent-kit **117**; final redeploy + facilitator
+  smoke PASS. D24 amendment 2 (AE lineage-guard deferral) recorded.
+- **Session-2 admin note**: postgres role `<owner-email>` created in the
+  `facilitator` DB for the local IAM-connect repro — optional owner-run
+  `drop role` cleanup (Runbook 14).
+- **Committed**: `ee63a04` `feat:` (ae_runtime fixes + tests, deploy
+  scripts, smoke cleanup, admin-bootstrap validation, terraform IAM,
+  run-migrations PGSSLMODE, Makefile) + `a16a896` `chore:` (Runbook 14,
+  D24 am 2, HANDOFF); identifier check clean. Owner pushes main.
+
+Phase 8 increment 2 complete + increment 3 session 1 (2026-09-12, main
+PC; cloud actions with owner approval in chat):
+- **Increment 2 (Cloud SQL live) — GATES PASS** (detail Runbook 14 inc 2;
+  summary): run-migrations.sh docker fallback forwards `PGSSLMODE`
+  (test-first; orchestration **129+12s**); `admin-bootstrap.py`
+  (connector admin session, D7); databases `orchestration` +
+  `facilitator` created with schema grants; migrations 0001–0005
+  applied over IAM **as sa-orchestration** through the Cloud SQL Auth
+  Proxy; orchestration asyncpg pool smoke against Cloud SQL PASS.
+  Terraform: `roles/cloudsql.client` for the four IAM-login SAs.
+
+Pre-increment-2 summary (increments 0+1, 2026-09-21):
 - **Increment 0**: run-migrations.sh deploy fixes — DATABASE_URL parsed
 once into libpq PG* env (`dsn_to_pg_env`, percent-decoded, query params
 rejected; docker fallback forwards only set vars) so no credential ever
@@ -687,13 +729,13 @@ and the git log.
 Baseline (latest green run of every suite — re-verify against these counts
 after changes):
 
-- review-schemas **177** (Phase 8 inc 1: +1 user_id), ado-wire **7**, dataset **36**, mcp-ingress **7**,
+- review-schemas **177**, ado-wire **7**, dataset **36**, mcp-ingress **7**,
   mcp-story **67**, mcp-artifact **32**, mcp-report **36**, compose contract
-  **20** (session 40; re-run after compose changes), agent-kit **104**, agents skeleton **4×4**, business adapter
+  **20** (session 40; re-run after compose changes), agent-kit **117** (inc 3
+  session 2: +6 per-call service/user-resolution tests), agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **128+12s** (Phase 8 inc 0+1:
-  +10 user scoping/migrations tests, 1 skipped without local psql);
-  **webui 14 + vitest 87** (Phase 8 inc 1: +11); live gates: business/engineering/synthesis
+  facilitator adapter **3+1s**, orchestration **129+12s** (inc 2: +1
+  PGSSLMODE-forwarding test); **webui 14 + vitest 87** (Phase 8 inc 1: +11); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
   webui browser gates PASS: increment 0 reachability, increment 1 picker +
@@ -739,16 +781,26 @@ after changes):
 
 ## Next Steps
 
-1. ~~Owner reviews session 50's commits~~ done — pushed (main +
-   `docs/initial-frozen`, D22 cherry-pick `63349f8` and this session's
-   `8ad3570`/`06deff0` included).
-2. **Phase 8 increment 2** (next session): Cloud SQL live + migrations
-0001–0005 over IAM (tier-2, owner approval). Increments 0+1 committed
-(`81baefd` + `984953c`, owner push due; no frozen cherry-pick).
-Detailed increments 2–7 in `docs-local/plans/phase-8-gcp-deployment.md`.
-3. Optional housekeeping: `make agents-compose-down` when the local stack
-   is no longer needed (compose Postgres is volume-backed — state
-   survives).
+1. Owner reviews/pushes session-50-era commits if not yet done
+   (`81baefd` + `984953c` on main; no frozen cherry-pick due — no `docs/`
+   changes).
+2. ~~Phase 8 increment 3~~ **DONE this session** — see Previous Session
+   Summary; owner pushes the two new commits.
+3. **Phase 8 increment 4**: orchestration AE client (`:streamQuery?alt=sse`
+   behind the Phase-5 adapter contract, env-selected agent resource
+   pointers) + orchestration Cloud Run deploy + the live CR→AE gate.
+   Re-deploy/smoke the facilitator from a clean tree (label without
+   `-dirty`) as part of the gate.
+4. Later increments 5–7 per `docs-local/plans/phase-8-gcp-deployment.md`;
+   D5 prune (owner-run) also covers the 15 broken/superseded facilitator
+   engines listed in Runbook 14 inc 3.
+5. Housekeeping when local stack no longer needed: `make
+   agents-compose-down`; local `cloudsql-proxy` container can be removed
+   (`docker rm -f cloudsql-proxy`) once no more migration runs are due.
+
+Pre-existing items folded into the plan: run-migrations argv/retry minors
+(fixed inc 0), Item D observability (increment 6), CR→AE test gap
+(increment 4).
 
 ## Important Notes
 
@@ -762,10 +814,13 @@ Detailed increments 2–7 in `docs-local/plans/phase-8-gcp-deployment.md`.
   unset `$ADO_ORG` makes it a false match) is a mandatory pre-publication
   gate and must run after the last commit of the session performing it.
   History rewrites end at publication.
-- **Cloud SQL is PAUSED** (STOPPED/NEVER): `make db-resume` before any phase
-  needing it; remind to `db-pause` at wrap-up. Phase 6 needs it not — the
-  compose Postgres substitute carries all orchestration state via the same
-  migration files.
+- **Cloud SQL is RUNNING** (`ALWAYS`) — left up for increment 4 (CR→AE
+  gate needs the session store). If the gap is long, `make db-pause` and
+  re-resume next session. Standing rule: `make db-resume` before any
+  phase needing it; remind to `db-pause` at wrap-up. Six billable Agent
+  Engine resources are live (four current good incl. the `-dirty`
+  facilitator + N-1 facilitator) plus 15 broken facilitator engines
+  awaiting the D5 owner-run prune.
 - **Machine split**: main PC has ADC/Vertex (all live gates, cloud); dev
   server has no ADC (deterministic work only).
 - **Cost**: trial credits near-zero used of zł1,114, expire 2026-12-05;
