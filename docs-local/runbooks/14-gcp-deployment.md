@@ -425,3 +425,127 @@ before the ownership check). Findings and dispositions:
   generic retry message; (d) migration-name string interpolation in the
   tracking insert (repo-controlled filenames). (c)+(d) recorded as
   deferred minors.
+
+## Increment 4 — orchestration Cloud Run + live CR→AE gate (2026-09-13, COMPLETE — gate PASS)
+
+Owner approved steps 1–4 in chat ("lets do 1,2,3,4"; gate delegated to
+the agent mid-run: "maybe You can do whole tests"). Cloud SQL RUNNING
+throughout. All identifiers below in shell-variable/placeholder form.
+
+### What was implemented (local, test-first)
+
+- **Cloud SQL IAM record pool** (`orchestration/cloudsql_db.py` +
+  `db.py` dispatch + `tests/test_cloudsql_db.py`): `ORCH_DB_DSN`
+  accepts `cloudsql-iam:///<conn-name>/<database>` — an asyncpg pool
+  (public `create_pool(connect=…)` seam, asyncpg ≥0.30) over a Cloud
+  SQL async connector (`enable_iam_auth=True`, IAM user resolved once
+  at startup off-loop, `CLOUDSQL_IAM_USER` env override); idle
+  recycling 1800 s < 1 h IAM token; `CloudSqlPool` wrapper closes the
+  connector with the pool (asyncpg Pool `__slots__` forbid patching
+  `close`). `cloud-sql-python-connector[asyncpg]==1.22.0` pinned.
+- **MCP ingress auth** (`id_tokens.py` + `mcp_client.py` + config):
+  `ORCH_MCP_ID_TOKEN_AUTH=1` attaches audience-scoped ID-token bearer
+  headers (metadata-server mint, cached to expiry − 60 s) — required by
+  both the Cloud Run ingress IAM check and the mcp_ingress middleware.
+- **Deploy script** `deploy/cloud-run/orchestration/deploy.sh` +
+  `.env.example` (AE pointers in a gitignored `.env`): AR image build +
+  push with a dirty-tree guard, `gcloud run deploy` as sa-orchestration,
+  AE mode, `--add-cloudsql-instances`, `--timeout 600` (> 300 s turn
+  deadline), 0–2 instances, `--no-allow-unauthenticated`.
+
+### Live root causes found and fixed at the gate (each with a test)
+
+1. asyncpg `Pool` calls the `connect` callable with the dsn
+   **positionally** plus `loop`/`connection_class` kwargs — signature
+   must be `(*args, **kwargs)`. Two deploy iterations.
+2. mcp 2.1.1 `streamable_http_client()` has **no `headers` parameter**
+   (TypeError, seen only as empty probes) — headers ride an injected
+   caller-owned `httpx.AsyncClient(http_client=…)`, closed in `finally`.
+3. **MCP ID-token audience = the service ROOT**, not the `…/mcp` route
+   (same class of bug fixed on both sides: orchestration
+   `main.py` and agent-kit `_audience_for`).
+4. `_bearer_token` was `async def` under `asyncio.to_thread` — header
+   contained a coroutine repr → 401 from the AE endpoint.
+5. **Agent Engine session state lives behind the agent-runtime `:query`
+   methods** (`create_session` / `list_sessions` / `get_session`), NOT
+   the control-plane `/sessions` REST routes: numeric control-plane
+   sessions are invisible to streamQuery (SessionNotFoundError).
+   Proven live: an SDK/runtime-created session (UUID id) works, a
+   control-plane one (numeric id) does not — same engine, same calls.
+   `ae_client` session helpers rewritten onto `:query`.
+6. `:query` wraps method returns under `"output"`.
+7. agent-kit `_IdTokenAuth` must **subclass `httpx.Auth`** (isinstance
+   validation — TypeError otherwise) and **refresh at mint**
+   (`IDTokenCredentials.token` is None until refreshed → "Bearer None").
+8. `get_session` with a `config` dict input returns zero events; without
+   it the full event history comes back (what option-B reconciliation
+   wants).
+9. Facilitator `get_session`/`:query` eagerly opens the MCP toolsets —
+   the toolset auth bugs above surfaced there first.
+
+### Deploys (this increment)
+
+- Facilitator clean-tree redeploys, all SMOKE PASS:
+  `facilitator-a7257a3` (engine `<fac-eng-1>`), then after the
+  httpx.Auth + audience + mint fixes `facilitator-3b61a75`
+  (`<fac-eng-2>`) and `facilitator-dc95165` (`<fac-eng-3>`, current
+  pointer). Earlier engines retained per D5 (prune list grows by 3).
+- Cloud Run service `orchestration` created (region europe-west4,
+  min-instances 0): ~18 revisions across the fix iterations; final
+  revision healthy. Service URL contains the project number — use
+  `$SERVICE_URL` in any pasted evidence.
+
+### Gate evidence (final, all PASS)
+
+- `GET /health` (authenticated): `{"status":"ok"}` — database
+  (Cloud SQL IAM connector pool) + story/artifact/report (ID-token MCP
+  calls) all reachable from Cloud Run.
+- User scoping: no `X-User-Id` → 422 VALIDATION_ERROR; cross-user
+  session detail → 404 while the owner reads 200.
+- **Flow-1 create (all four agents via AE)**: 201 in 55–72 s on
+  story-02/-03/-04/-05/-06/-07 (multiple runs across the fix
+  iterations), schema-valid `CreateSessionResponse` with a real
+  facilitator opening turn; ~4–6 Vertex model calls each.
+- Failure-path evidence (owner-driven, pre-fix): flow-1 503 leaves the
+  session active (same-key retry semantics); the stuck session was
+  parked live via `POST /sessions/{id}/abandon` → 200 parked (D22 live
+  on the deployed service).
+- **Persistence + reconciliation read-back**: exactly ONE AE session per
+  review session (userId = review session id, app `facilitator_ae`) in
+  the Cloud SQL-backed runtime store; `get_session` returns the turn's
+  user + facilitator events. Session-route assumption from D25
+  **amended**: runtime `:query` methods, not control-plane REST.
+- Read paths: session detail (turn count 1), scoped list, stories (45).
+- Cleanup: control-plane probe sessions + sdk-diag runtime session
+  deleted; gate review sessions + their AE sessions retained as
+  evidence (per-user, harmless).
+
+### Review (read-only subagent)
+
+Round 1 (pool + deploy.sh): 1 Critical (`pool.close` reassignment —
+asyncpg `__slots__`; fixed with the `CloudSqlPool` wrapper before any
+deploy) + Importants (blocking `google.auth.default()` per connection
+→ startup resolution; missing dirty-tree guard) — fixed in-session.
+Round 2 (full `4d5cd59..HEAD`): **Ready to proceed**, 9 minors; 3 fixed
+(connector close try/finally, pool-build-failure leak, empty IAM user
+fail-loud), the rest deferred below.
+
+### Verification
+
+- orchestration **191+12s** (baseline 160+12s; +31 across the session);
+  agent-kit **125** (baseline 122; +3 auth/audience tests); docker
+  image builds; identifier check run before the wrap-up commit.
+
+### Deferred minors (this increment)
+
+- `_resolve_session` (`:query` create/list, 10 s, single-shot) is not
+  inside the facilitator attempt loop — covered by the orchestrator-level
+  retryable 503 (observed working live); acceptable.
+- `_IdTokenAuth.auth_flow` refreshes only when already expired (no
+  margin) vs `id_tokens`' 60 s margin.
+- `id_token_httpx_client_factory` silently drops an `auth` argument.
+- `_bearer_token` mints a fresh ADC token per AE round trip (no cache).
+- AdkApp `:query` methods (incl. `get_session`) eagerly open the MCP
+  toolsets — latency on reconciliation reads, revisit at Item D.
+- Control-plane `/sessions` numeric sessions from pre-fix iterations
+  were deleted; if any remain they expire on their own (1 y TTL).
