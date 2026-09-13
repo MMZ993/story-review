@@ -95,19 +95,23 @@ async def release(
     route: str,
     session_id: str,
     key: Any,
+    conn: asyncpg.Connection | None = None,
 ) -> None:
     """Drop a claim row we inserted but then rejected before any side
     effect (e.g. a new key on a read-only session), so a later retry of
-    that key starts clean instead of arriving as IN_PROGRESS."""
-    async with pool.acquire() as conn:
-        await conn.execute(
-            "delete from idempotency_claims "
-            "where route = $1 and session_id = $2 and idempotency_key = $3 "
-            "and state = 'in_progress'",
-            route,
-            session_id,
-            key,
-        )
+    that key starts clean instead of arriving as IN_PROGRESS. `conn` joins
+    an outer transaction (atomic park + release in flow 1)."""
+    statement = (
+        "delete from idempotency_claims "
+        "where route = $1 and session_id = $2 and idempotency_key = $3 "
+        "and state = 'in_progress'"
+    )
+    args = (route, session_id, key)
+    if conn is not None:
+        await conn.execute(statement, *args)
+        return
+    async with pool.acquire() as borrowed:
+        await borrowed.execute(statement, *args)
 
 
 async def complete(
