@@ -615,3 +615,42 @@ Walkthrough (OPEN):
   park/rollback the session on flow-1 agent failure + api-contract
   alignment. **Owner decision: fix at the start of the next session.**
 - Two-user cookie-scoping proof not yet done (second browser).
+
+### Increment 5 walkthrough — flow-1 422 defect FIXED (2026-09-14, dev
+server; autonomous session, no cloud actions, Cloud SQL left RUNNING then
+paused at wrap-up)
+
+Owner decision (previous session): park/rollback the session on the flow-1
+terminal-agent-failure path + align the api-contract error table. Done
+locally, test-first:
+
+- **Behavior**: in `flows.run_create_session`, a non-retryable `ApiError`
+  raised after the session row exists now parks the session (the
+  `records_store.update_session` chokepoint retires the story run in the
+  same transaction — story released for a fresh key) and drops the
+  idempotency claim, atomically (`_park_failed_session`; `idempotency.release`
+  gained a `conn` param). Retryable failures keep the previous takeover
+  semantics (session active, claim in_progress). A same-key retry of a
+terminally-failed attempt (including the crash window: stale in_progress
+  claim + parked session) is rejected `409 IDEMPOTENCY_KEY_REUSED`, with
+  the fresh/stale claim row released — no agent re-invocation.
+- **Docs**: `docs/design/api-contract.md` `POST /sessions` error paragraph
+  now defines the late `422` (terminal agent failure → session parked,
+  story released, retry with a new key) and the 409 same-key-retry nuance.
+- **Review**: read-only subagent — 1 Important (guard path leaked a fresh
+  in_progress claim row) + minors; Important fixed (release in the guard),
+  park made best-effort (a park failure must not mask the client-visible
+  terminal error; stuck session stays D22-recoverable), crash-window test
+  added, style nit fixed.
+- **Verification**: `make orchestration-test` **195 passed + 12 skipped**
+  (baseline 191+12s; +4 tests: park+release with new-key recovery, same-key
+  retry 409, retryable-keeps-active, stale-claim crash window).
+- **NOT deployed**: the CR `orchestration` service still runs the old code
+  (deploys are tier-2, per-run owner approval); redeploy
+  `deploy/cloud-run/orchestration/deploy.sh` before resuming the
+  walkthrough (story-01 retry + two-user cookie proof).
+- **Gotcha (dev server)**: gcloud has **no default project configured** —
+  `make db-pause`/`db-status` fail with "required property [project]";
+  prefix with `CLOUDSDK_CORE_PROJECT=$PROJECT_ID` (after `source
+  infra/envs/home.env`) or run `gcloud config set project` once. Cloud SQL
+  paused at wrap-up (STOPPED/NEVER verified via `make db-status`).
