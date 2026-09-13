@@ -61,11 +61,15 @@ def create_app(
 
     def mcp_client(url: str) -> McpClient:
         """One MCP client; deployed mode attaches audience-scoped
-        ID-token bearer headers (the URL is the audience)."""
+        ID-token bearer headers. The audience is the target service's
+        URL (connectivity-identity.md) — the service root, i.e. the
+        client URL without the /mcp route the servers are mounted on.
+        """
         if resolved.mcp_id_token_auth:
+            audience = url.removesuffix("/mcp")
             return McpClient(
                 url, resolved,
-                auth_headers=lambda: metadata_id_token(url),
+                auth_headers=lambda: metadata_id_token(audience),
             )
         return McpClient(url, resolved)
 
