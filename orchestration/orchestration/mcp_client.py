@@ -55,6 +55,14 @@ def _tool_error_is_retryable(failure: "McpCallFailure") -> bool:
     )
 
 
+def _leaf_description(group: BaseException) -> str:
+    """Readable failure text with the TaskGroup wrappers unwrapped."""
+    current = group
+    while isinstance(current, BaseExceptionGroup):
+        current = current.exceptions[0]
+    return f"{type(current).__name__}: {current}"
+
+
 def _first_leaf(group: BaseExceptionGroup) -> BaseException:
     """Depth-first first leaf exception of a (possibly nested) group."""
     current: BaseException = group
@@ -226,12 +234,13 @@ class McpClient:
                 self._url, None, {}, timeout_s, **self._call_kwargs()
             )
             return True
-        except Exception as exc:
+        except BaseException as exc:
             import logging
 
             logging.getLogger(__name__).warning(
-                "health probe failed for %s: %s: %s",
-                self._url, type(exc).__name__, exc,
+                "health probe failed for %s: %s",
+                self._url,
+                _leaf_description(exc),
             )
             return False
 
