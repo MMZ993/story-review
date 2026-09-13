@@ -66,4 +66,14 @@ def _mint(
         + "&format=full"
     )
     token, expires_in = _fetch(url)
+    if not token.strip():
+        # Observed on Cloud Run: 200 with an empty body. Fail loud (and
+        # observably) instead of sending "Bearer " to the ingress.
+        import logging
+
+        logging.getLogger(__name__).error(
+            "metadata identity endpoint returned an empty token for "
+            "audience %s (url: %s)", audience, url,
+        )
+        raise OSError("metadata identity endpoint returned an empty token")
     return token.strip(), _now() + float(expires_in)
