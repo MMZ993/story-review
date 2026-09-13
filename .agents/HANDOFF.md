@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-13 (Phase 8 increment 3 COMPLETE — all four Agent Engine deploys smoked PASS, facilitator sessions verified persisting in Cloud SQL `facilitator` DB, review findings fixed; working tree committed `feat:` + `chore:` — owner push due). Prior: increments 0–2 (commits `81baefd` + `984953c`, increment 2 evidence in Runbook 14).
+Last updated: 2026-09-14 (Phase 8 increment 4 local part COMPLETE — AE invocation clients behind the Phase-5 seams, reviewed + all findings fixed; cloud deploy + live gate remain). Prior: increment 3 COMPLETE (all four Agent Engine deploys smoked PASS, facilitator Cloud SQL persistence proven, `ee63a04` + `92572b8`).
 
 ## Where we are
 
@@ -41,6 +41,42 @@ Last updated: 2026-09-13 (Phase 8 increment 3 COMPLETE — all four Agent Engine
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Phase 8 increment 4, local part COMPLETE + D25 planning (2026-09-14,
+main PC; no cloud actions, Cloud SQL left RUNNING):
+- **D25 recorded** (owner, chat): all four agents invoked via AE from
+  deployed orchestration (env-selected `ORCH_AGENT_MODE=http|ae`);
+  reconciliation = option B (session-store read-back); breakdown in
+  plan §4. D25 amendment 1: matcher keys on the rendered turn marker
+  (digit-bounded), reviewer/synthesis user_ids are per-invocation.
+- **AE clients** (`orchestration/orchestration/ae_client.py`): raw REST
+  `:streamQuery?alt=sse` over httpx + ADC bearer (no aiplatform SDK —
+  timeout control + no ADK dep); concatenated-JSON event parsing with
+  `data:` tolerance; retryable-envelope retries per the shared policy;
+  exhausted retryable envelopes keep `AgentCallFailure`; invalid final
+  reply → terminal `VALIDATION_ERROR`; `DeadlineExceeded` propagates;
+  facilitator = one AE session per review session (user_id = session id,
+  list-or-create over REST `/sessions`) + option-B reconciliation
+  (read `…/sessions/{id}/events`, reuse last own-turn reply — no second
+  model attempt). AE audit fields: agent_version = engine deploy label
+  from env, prompt_sha256 = sha256(rendered message),
+  corrective_reprompts = 0 (loop is inside the deployed agent).
+- **Mirrored renderers** (`ae_messages.py`, duck-typed): byte-identical
+  to agent_kit renderers, pinned by equivalence tests in the agent-kit
+  suite (`test_ae_message_mirrors.py`).
+- **Config**: `ORCH_AGENT_MODE` + 8 `ORCH_AE_*_RESOURCE/_VERSION` vars
+  (adapter URLs optional in ae mode); `default_agent_set` branches.
+- **Review**: read-only subagent round 1 (1 Critical — facilitator
+  missing the stream transport seam in `ae_agent_set`; 2 Important —
+  retryable envelopes never retried, shared reviewer user_id; + minors)
+  — all fixed; focused re-review confirmed fixes, N1 (envelope
+  swallowing at exhaustion) + test gaps fixed and pinned. Deferred
+  minor: `ae_client.py` ~530 lines exceeds the ~300 guideline (split
+  matcher/parsing if touched again); N4 extra `/sessions` GET on the
+  facilitator recovery path (cosmetic).
+- **Verification**: orchestration **160+12s** (+31), agent-kit **122**
+  (+5); `git diff --check` clean. Committed `4d5cd59` `feat:`; docs-local
+  (D25 + amendment, plan §4) in the wrap-up `chore:` commit.
 
 Phase 8 increment 3 COMPLETE (2026-09-13, main PC; cloud actions with
 owner approval — "finish increment 3"):
@@ -731,11 +767,11 @@ after changes):
 
 - review-schemas **177**, ado-wire **7**, dataset **36**, mcp-ingress **7**,
   mcp-story **67**, mcp-artifact **32**, mcp-report **36**, compose contract
-  **20** (session 40; re-run after compose changes), agent-kit **117** (inc 3
-  session 2: +6 per-call service/user-resolution tests), agents skeleton **4×4**, business adapter
+  **20** (session 40; re-run after compose changes), agent-kit **122** (inc 4:
+  +5 AE-renderer equivalence tests; prior 117 = inc 3 session 2), agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **129+12s** (inc 2: +1
-  PGSSLMODE-forwarding test); **webui 14 + vitest 87** (Phase 8 inc 1: +11); live gates: business/engineering/synthesis
+  facilitator adapter **3+1s**, orchestration **160+12s** (inc 4: +31 AE
+  client/config tests; prior 129+12s = inc 2); **webui 14 + vitest 87** (Phase 8 inc 1: +11); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
   webui browser gates PASS: increment 0 reachability, increment 1 picker +
@@ -786,11 +822,14 @@ after changes):
    changes).
 2. ~~Phase 8 increment 3~~ **DONE this session** — see Previous Session
    Summary; owner pushes the two new commits.
-3. **Phase 8 increment 4**: orchestration AE client (`:streamQuery?alt=sse`
-   behind the Phase-5 adapter contract, env-selected agent resource
-   pointers) + orchestration Cloud Run deploy + the live CR→AE gate.
-   Re-deploy/smoke the facilitator from a clean tree (label without
-   `-dirty`) as part of the gate.
+3. **Phase 8 increment 4 — cloud part**: `deploy/orchestration/` Cloud Run
+   deploy (AE pointers, Cloud SQL connector with the inc-3 async gotchas,
+   GCS/signed-URL config, sa-orchestration); facilitator clean-tree
+   redeploy (drop `-dirty`) + smoke; live CR→AE gate (all four agents,
+   Runbook 06 gotchas 3–4 checklist, sanitized evidence in Runbook 14;
+   verify the REST session-routes assumption — `POST/GET /sessions`,
+   `GET /sessions/{id}/events` — live). AE-mode reviewers leave
+   engine-managed auto sessions per call (hygiene note for the gate).
 4. Later increments 5–7 per `docs-local/plans/phase-8-gcp-deployment.md`;
    D5 prune (owner-run) also covers the 15 broken/superseded facilitator
    engines listed in Runbook 14 inc 3.

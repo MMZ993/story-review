@@ -1012,3 +1012,15 @@ Owner decisions (chat, increment-4 planning):
    `docs-local/plans/phase-8-gcp-deployment.md` §4 (includes the
    facilitator clean-tree redeploy and the Runbook 06 gotchas 3–4 gate
    checklist).
+
+### D25 amendment 1 — reconciliation matcher and reviewer user_ids (2026-09-14)
+
+Recorded at the increment-4 review (doc/code alignment): the option-B
+reconciliation matcher keys on the **rendered turn marker** ("This is
+turn <n>", digit-bounded so turn 1 never matches turn 10), not on
+`invocation_id` — the rendered facilitator message does not embed the
+invocation id, and turn numbers are unique per session with the turn
+lease serializing writers, so the last own-turn user message identifies
+the invocation in doubt. Reviewer/synthesis AE invocations use a
+**per-invocation random user_id** (stateless single-shots must not share
+one growing AE conversation).
