@@ -239,7 +239,12 @@ async def _runtime_query(
         raise AgentTransportError(
             f"AE {class_method} HTTP {response.status_code}: {response.text[:200]}"
         )
-    return response.json()
+    body = response.json()
+    # :query wraps the method's return value under "output" (verified
+    # live at the inc-4 gate).
+    if isinstance(body.get("output"), (dict, list)):
+        return body["output"]
+    return body
 
 
 async def _real_list_sessions(resource: str, user_id: str) -> list[dict]:
