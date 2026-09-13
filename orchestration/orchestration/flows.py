@@ -231,6 +231,21 @@ async def run_create_session(
             updated_at=_now(),
         ),
     )
+    if session_record.state != "active":
+        # same-key retry after a terminally failed attempt: that attempt
+        # parked its session and released the story; a fresh key is required
+        # (retrying a non-retryable error is a client contract violation)
+        await idempotency.release(pool, ROUTE, "", key)
+        raise ApiError(
+            409,
+            make_error(
+                "IDEMPOTENCY_KEY_REUSED",
+                "this key's previous attempt failed terminally and its "
+                "session was parked; retry with a new idempotency key",
+                correlation_id,
+                retryable=False,
+            ),
+        )
 
     try:
         return await _initial_pipeline(
@@ -246,12 +261,38 @@ async def run_create_session(
             deadline=deadline,
             correlation_id=correlation_id,
         )
-    except BaseException:
+    except BaseException as exc:
         # the advisory stage marker must not survive a failed flow
         await records_store.set_processing_stage(
             pool, session_record.session_id, None
         )
+        if isinstance(exc, ApiError) and not exc.error.retryable:
+            # a terminal failure leaves nothing to retry into: park the
+            # session (releasing the story for a fresh key) and drop the
+            # claim so the misbehaving same-key retry is rejected above.
+            # Best-effort: a park failure must not mask the client-visible
+            # terminal error (the stuck session stays recoverable via the
+            # D22 abandon endpoint).
+            try:
+                await _park_failed_session(pool, session_record.session_id, key)
+            except Exception:
+                pass
         raise
+
+
+async def _park_failed_session(
+    pool: asyncpg.Pool, session_id: str, key: uuid.UUID
+) -> None:
+    """Park a flow-1 session after a terminal failure, atomically with the
+    idempotency-claim release (both or neither — a crash between the two
+    leaves a parked session whose stale in_progress claim still routes the
+    same-key retry into the parked-session guard)."""
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await records_store.update_session(
+                pool, session_id, state="parked", conn=conn
+            )
+            await idempotency.release(pool, ROUTE, "", key, conn=conn)
 
 
 async def _initial_pipeline(

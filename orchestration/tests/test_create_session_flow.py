@@ -105,11 +105,14 @@ class FakeSynthesis:
 class FakeFacilitator:
     def __init__(self):
         self.calls: list = []
+        self.call_failure: Exception | None = None
 
     async def invoke(self, request, *, deadline: float):
         from orchestration.agent_clients import FacilitatorResult
 
         self.calls.append(request)
+        if self.call_failure is not None:
+            raise self.call_failure
         return FacilitatorResult(
             output=opening_turn_output(),
             agent_version="0.1.0",
@@ -328,6 +331,123 @@ async def test_unknown_story_404(client):
     response = await post_create(client, KEY_A, create_payload("story-99"))
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "STORY_NOT_FOUND"
+
+
+def _terminal_agent_failure():
+    """A structured non-retryable agent failure (strict-schema 422)."""
+    from orchestration.agent_clients import AgentCallFailure
+    from review_schemas.errors import ErrorBody
+
+    return AgentCallFailure(
+        ErrorBody(
+            code="VALIDATION_ERROR",
+            message="corrective re-prompts exhausted strict schema",
+            correlation_id=uuid.UUID(CORR),
+            retryable=False,
+        )
+    )
+
+
+async def _story_rows(pool, story_id: str = "story-07"):
+    return await pool.fetch(
+        "select s.session_id, s.state as session_state, r.state as run_state "
+        "from sessions s join story_runs r using (story_run_id) "
+        "where s.story_id = $1",
+        story_id,
+    )
+
+
+async def test_terminal_agent_failure_parks_session_and_releases_story(
+    client, pool, agents
+):
+    agents.facilitator.call_failure = _terminal_agent_failure()
+    failed = await post_create(client, KEY_A, create_payload())
+    assert failed.status_code == 422, failed.text
+    error = failed.json()["error"]
+    assert error["code"] == "VALIDATION_ERROR"
+    assert error["retryable"] is False
+
+    rows = await _story_rows(pool)
+    assert len(rows) == 1
+    assert rows[0]["session_state"] == "parked"
+    assert rows[0]["run_state"] == "parked"
+    claim = await pool.fetchrow(
+        "select state from idempotency_claims where idempotency_key = $1",
+        uuid.UUID(KEY_A),
+    )
+    assert claim is None  # released: a fresh key starts clean
+
+    agents.facilitator.call_failure = None  # transient model behavior passed
+    retried = await post_create(client, KEY_B, create_payload())
+    assert retried.status_code == 201, retried.text
+
+
+async def test_same_key_retry_after_terminal_failure_is_rejected(
+    client, pool, agents
+):
+    agents.facilitator.call_failure = _terminal_agent_failure()
+    failed = await post_create(client, KEY_A, create_payload())
+    assert failed.status_code == 422
+
+    agents.facilitator.call_failure = None
+    retry = await post_create(client, KEY_A, create_payload())
+    assert retry.status_code == 409
+    assert retry.json()["error"]["code"] == "IDEMPOTENCY_KEY_REUSED"
+    # no agent re-invocation on the rejected replay
+    assert len(agents.facilitator.calls) == 1
+    # the rejecting guard released its fresh claim row
+    claim = await pool.fetchrow(
+        "select state from idempotency_claims where idempotency_key = $1",
+        uuid.UUID(KEY_A),
+    )
+    assert claim is None
+
+
+async def test_stale_in_progress_claim_with_parked_session_still_rejected(
+    client, pool, agents
+):
+    """Crash window between park-commit and claim-release: a stale
+    in_progress claim routes the same-key retry through takeover, where
+    the parked-session guard must still reject it (and drop the row)."""
+    agents.facilitator.call_failure = _terminal_agent_failure()
+    failed = await post_create(client, KEY_A, create_payload())
+    assert failed.status_code == 422
+    # simulate the crash: restore an in_progress claim for the same key
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "insert into idempotency_claims (route, session_id, idempotency_key, "
+            "request_fingerprint, state, created_at, updated_at) values "
+            "($1, '', $2, $3, 'in_progress', now(), now())",
+            "POST /api/v1/sessions",
+            uuid.UUID(KEY_A),
+            hashlib.sha256(
+                json.dumps(
+                    {**create_payload(), "user_id": str(USER_HEADERS["X-User-Id"])},
+                    sort_keys=True,
+                ).encode()
+            ).hexdigest(),
+        )
+    agents.facilitator.call_failure = None
+    retry = await post_create(client, KEY_A, create_payload())
+    assert retry.status_code == 409
+    assert retry.json()["error"]["code"] == "IDEMPOTENCY_KEY_REUSED"
+    assert len(agents.facilitator.calls) == 1
+
+
+async def test_retryable_failure_keeps_session_active_for_takeover(
+    client, pool, agents
+):
+    agents.business.transport_failures_left = 5  # retry policy exhausts -> 503
+    failed = await post_create(client, KEY_A, create_payload())
+    assert failed.status_code == 503
+    rows = await _story_rows(pool)
+    assert len(rows) == 1
+    assert rows[0]["session_state"] == "active"
+    claim = await pool.fetchrow(
+        "select state from idempotency_claims where idempotency_key = $1",
+        uuid.UUID(KEY_A),
+    )
+    assert claim["state"] == "in_progress"
 
 
 async def test_missing_idempotency_key_422(client):
