@@ -77,8 +77,13 @@ from .config import Settings
 _TURN_MARKER = "This is turn "
 
 
-async def _bearer_token() -> str:
-    """ADC access token (Cloud Run runtime SA or local user creds)."""
+def _bearer_token() -> str:
+    """ADC access token (Cloud Run runtime SA or local user creds).
+
+    Sync on purpose: the credential refresh blocks, so callers run it in
+    `asyncio.to_thread` (an async def here would hand them an unawaited
+    coroutine — observed live as HTTP 401 from the AE endpoint).
+    """
     import google.auth
     import google.auth.transport.requests
 
