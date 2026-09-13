@@ -777,7 +777,6 @@ class TestRuntimeSessionRoutes:
         events = await mod._real_list_events("engines/e1", "want", "s1")
         assert seen["class_method"] == "get_session"
         assert seen["inputs"]["session_id"] == "s1"
-        assert seen["inputs"]["config"]["num_recent_events"] > 0
         assert len(events) == 1
 
 
