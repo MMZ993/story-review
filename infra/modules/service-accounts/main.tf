@@ -21,6 +21,7 @@ locals {
     "sa-story-mcp",
     "sa-artifact-mcp",
     "sa-report-mcp",
+    "sa-webui",
   ]
 }
 

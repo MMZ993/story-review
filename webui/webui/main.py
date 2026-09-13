@@ -6,7 +6,9 @@ path-routing model carries to the GCP deployment, where an HTTPS load
 balancer routes ``/api`` instead). The proxy is a pure pass-through: no
 business logic, no persistence, no header mutation beyond the client-hop
 headers the API contract defines (Idempotency-Key, X-Correlation-Id,
-X-User-Id — the anonymous per-user scoping key, D24-3).
+X-User-Id — the anonymous per-user scoping key, D24-3) plus the proxy-hop
+ID token when the deployed tier gates orchestration behind Cloud Run IAM
+(ORCHESTRATION_ID_TOKEN_AUTH).
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .config import Settings
+from . import id_tokens
 
 _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 _FORWARDED_METHODS = ["GET", "POST"]
@@ -89,6 +92,25 @@ def create_app(
             for name, value in request.headers.items()
             if name.lower() in _FORWARDED_HEADERS
         }
+        if resolved.orchestration_id_token_auth:
+            # IAM-gated orchestration (deployed tier): attach the
+            # audience-scoped ID token. A mint failure is an environment
+            # problem surfaced like unreachability — retryable 503.
+            try:
+                headers.update(id_tokens.metadata_id_token(resolved.orchestration_base_url))
+            except OSError:
+                correlation_id = request.headers.get("X-Correlation-Id", str(uuid.uuid4()))
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "error": {
+                            "code": "ORCHESTRATION_UNREACHABLE",
+                            "message": "orchestration service is not reachable",
+                            "correlation_id": correlation_id,
+                            "retryable": True,
+                        }
+                    },
+                )
         body = await request.body()
         try:
             upstream = await client.request(
