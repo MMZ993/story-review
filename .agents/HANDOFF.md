@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-14 (Phase 8 increment 4 local part COMPLETE — AE invocation clients behind the Phase-5 seams, reviewed + all findings fixed; cloud deploy + live gate remain). Prior: increment 3 COMPLETE (all four Agent Engine deploys smoked PASS, facilitator Cloud SQL persistence proven, `ee63a04` + `92572b8`).
+Last updated: 2026-09-13 (Phase 8 increment 4 COMPLETE — orchestration on Cloud Run, CR→AE gate PASS). Prior: increment 4 local part COMPLETE (AE clients, `4d5cd59`); increment 3 (all four AE deploys smoked, `ee63a04`).
 
 ## Where we are
 
@@ -41,6 +41,38 @@ Last updated: 2026-09-14 (Phase 8 increment 4 local part COMPLETE — AE invocat
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Phase 8 increment 4 cloud part COMPLETE (2026-09-13, main PC; cloud
+actions owner-approved "lets do 1,2,3,4", gate later delegated):
+- **Orchestration on Cloud Run**: `cloudsql-iam:///` DSN → Cloud SQL
+  IAM connector-backed asyncpg pool (`cloudsql_db.py`); MCP calls carry
+  audience-scoped ID tokens (`id_tokens.py`, `ORCH_MCP_ID_TOKEN_AUTH`);
+  `deploy/cloud-run/orchestration/deploy.sh` (+ gitignored `.env`
+  AE pointers) — service `orchestration`, sa-orchestration,
+  no-unauthenticated, timeout 600, 0–2 instances.
+- **CR→AE gate PASS**: `/health` fully ok (database + all three MCP
+  services from CR); flow-1 creates 201 in 55–72 s on six stories —
+  all four agents invoked via `:streamQuery?alt=sse`; one AE session
+  per review session in the Cloud SQL runtime store with the turn's
+  events readable back (option-B reconciliation surface proven);
+  user-scoping 422/404 evidence; D22 abandon proven live on CR.
+- **Nine live root causes found+fixed at the gate** (each test-pinned;
+  see Runbook 14 inc 4): asyncpg connect-callback args; mcp 2.1.1
+  no-headers transport; MCP audience = service root (both sides);
+  async `to_thread` token helper; **AE sessions live behind the runtime
+  `:query` methods, NOT the control-plane `/sessions` REST routes
+  (D25 session-route assumption amended)**; `:query` `output` envelope;
+  `_IdTokenAuth` must subclass httpx.Auth + refresh at mint;
+  `get_session` config-input returns zero events.
+- **Facilitator redeploys** (clean labels, all SMOKE PASS):
+  `facilitator-a7257a3` → `3b61a75` → `dc95165` (current pointer,
+  engine `<fac-eng-3>`); 3 more retained engines for the D5 prune.
+- **Review**: round 1 Critical (pool.close `__slots__` crash — caught
+  pre-deploy) + round 2 Ready-to-proceed (9 minors; 3 fixed, rest
+  deferred in the runbook).
+- **Verification**: orchestration **191+12s** (+31), agent-kit **125**
+  (+3); identifier check clean. ~18 commits (2 feat + fixes); owner
+  pushes main.
 
 Phase 8 increment 4, local part COMPLETE + D25 planning (2026-09-14,
 main PC; no cloud actions, Cloud SQL left RUNNING):
@@ -767,11 +799,9 @@ after changes):
 
 - review-schemas **177**, ado-wire **7**, dataset **36**, mcp-ingress **7**,
   mcp-story **67**, mcp-artifact **32**, mcp-report **36**, compose contract
-  **20** (session 40; re-run after compose changes), agent-kit **122** (inc 4:
-  +5 AE-renderer equivalence tests; prior 117 = inc 3 session 2), agents skeleton **4×4**, business adapter
+  **20** (session 40; re-run after compose changes), agent-kit **125** (inc 4 cloud: +3 auth/audience; prior 122), agents skeleton **4×4**, business adapter
   **6+2s**, engineering adapter **7+1s**, synthesis adapter **7+2s**,
-  facilitator adapter **3+1s**, orchestration **160+12s** (inc 4: +31 AE
-  client/config tests; prior 129+12s = inc 2); **webui 14 + vitest 87** (Phase 8 inc 1: +11); live gates: business/engineering/synthesis
+  facilitator adapter **3+1s**, orchestration **191+12s** (inc 4 cloud: +31; prior 160+12s); **webui 14 + vitest 87** (Phase 8 inc 1: +11); live gates: business/engineering/synthesis
   adapters + facilitator walkthrough all PASS (Runbook 11);
   orchestration flow-1, flow-2, and finalize live gates PASS (Runbook 12);
   webui browser gates PASS: increment 0 reachability, increment 1 picker +
@@ -822,14 +852,10 @@ after changes):
    changes).
 2. ~~Phase 8 increment 3~~ **DONE this session** — see Previous Session
    Summary; owner pushes the two new commits.
-3. **Phase 8 increment 4 — cloud part**: `deploy/orchestration/` Cloud Run
-   deploy (AE pointers, Cloud SQL connector with the inc-3 async gotchas,
-   GCS/signed-URL config, sa-orchestration); facilitator clean-tree
-   redeploy (drop `-dirty`) + smoke; live CR→AE gate (all four agents,
-   Runbook 06 gotchas 3–4 checklist, sanitized evidence in Runbook 14;
-   verify the REST session-routes assumption — `POST/GET /sessions`,
-   `GET /sessions/{id}/events` — live). AE-mode reviewers leave
-   engine-managed auto sessions per call (hygiene note for the gate).
+3. ~~Phase 8 increment 4 — cloud part~~ **DONE this session** (Runbook 14 inc 4; gate PASS). Next:
+   increment 5 per plan — `deploy/cloud-run/webui/deploy.sh`, Cloudflare
+   subdomain (settle route empirically), `sr_user` cookie `secure`
+   behind TLS, browser walkthrough over the public domain (two users).
 4. Later increments 5–7 per `docs-local/plans/phase-8-gcp-deployment.md`;
    D5 prune (owner-run) also covers the 15 broken/superseded facilitator
    engines listed in Runbook 14 inc 3.
@@ -853,13 +879,14 @@ Pre-existing items folded into the plan: run-migrations argv/retry minors
   unset `$ADO_ORG` makes it a false match) is a mandatory pre-publication
   gate and must run after the last commit of the session performing it.
   History rewrites end at publication.
-- **Cloud SQL is RUNNING** (`ALWAYS`) — left up for increment 4 (CR→AE
-  gate needs the session store). If the gap is long, `make db-pause` and
-  re-resume next session. Standing rule: `make db-resume` before any
-  phase needing it; remind to `db-pause` at wrap-up. Six billable Agent
-  Engine resources are live (four current good incl. the `-dirty`
-  facilitator + N-1 facilitator) plus 15 broken facilitator engines
-  awaiting the D5 owner-run prune.
+- **Cloud SQL is RUNNING** (`ALWAYS`) — increment 4 is done; unless the
+  next session comes soon, run `make db-pause` (increment 5 does not
+  need the DB until its walkthrough). Standing rule: `make db-resume`
+  before any phase needing it. **Billable Agent Engine resources now: 3
+  current reviewers + current facilitator (`facilitator-dc95165`) + 3
+  superseded good facilitators (incl. N-1) + 15 broken facilitator
+  engines** — all awaiting the D5 owner-run prune at increment 7. Plus
+  the new Cloud Run `orchestration` service (min-instances 0).
 - **Machine split**: main PC has ADC/Vertex (all live gates, cloud); dev
   server has no ADC (deterministic work only).
 - **Cost**: trial credits near-zero used of zł1,114, expire 2026-12-05;
