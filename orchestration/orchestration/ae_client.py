@@ -247,6 +247,21 @@ async def _real_list_sessions(resource: str, user_id: str) -> list[dict]:
     return [s for s in sessions if s.get("userId", user_id) == user_id]
 
 
+def _session_from_create_response(body: dict) -> dict:
+    """Unwrap the createSession REST response into a session dict.
+
+    The route returns a long-running *operation* (already `done` on
+    success) — the Session lives under ``response``; reading ``name`` at
+    the top level yields the OPERATION id, which streamQuery then rejects
+    with SessionNotFoundError (observed live at the inc-4 gate).
+    """
+    inner = body.get("response")
+    if isinstance(inner, dict):
+        body = inner
+    body.setdefault("id", body.get("name", "").rsplit("/", 1)[-1])
+    return body
+
+
 async def _real_create_session(resource: str, user_id: str) -> dict:
     """Create the AE session for one review session."""
     token = await asyncio.to_thread(_bearer_token)
@@ -259,8 +274,7 @@ async def _real_create_session(resource: str, user_id: str) -> dict:
     if response.status_code not in (200, 201):
         raise AgentTransportError(f"AE createSession HTTP {response.status_code}")
     body = response.json()
-    body.setdefault("id", body.get("name", "").rsplit("/", 1)[-1])
-    return body
+    return _session_from_create_response(body)
 
 
 async def _real_list_events(resource: str, session_id: str) -> list[dict]:
