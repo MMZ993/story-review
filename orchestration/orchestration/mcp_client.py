@@ -24,6 +24,8 @@ import uuid
 import asyncio
 import random
 import time
+
+import httpx
 from collections.abc import Awaitable, Callable
 from typing import Protocol
 
@@ -120,16 +122,27 @@ async def _streamable_http_call(
     url: str, tool: str | None, arguments: dict, timeout_s: float,
     headers: dict[str, str] | None = None,
 ) -> dict:
-    """One real MCP round trip over streamable HTTP, wall-clock bounded."""
+    """One real MCP round trip over streamable HTTP, wall-clock bounded.
+
+    mcp 2.1.1 has no ``headers`` parameter on ``streamable_http_client``
+    — an authenticated call injects a caller-owned ``httpx.AsyncClient``
+    carrying the bearer headers (closed here, after the session ends).
+    """
 
     async def run() -> dict:
-        async with streamable_http_client(url, headers=headers) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                if tool is None:
-                    return {"ok": True}
-                result: CallToolResult = await session.call_tool(tool, arguments)
-                return parse_call_result(result)
+        client = httpx.AsyncClient(headers=headers) if headers else None
+        try:
+            kwargs = {"http_client": client} if client else {}
+            async with streamable_http_client(url, **kwargs) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    if tool is None:
+                        return {"ok": True}
+                    result: CallToolResult = await session.call_tool(tool, arguments)
+                    return parse_call_result(result)
+        finally:
+            if client is not None:
+                await client.aclose()
 
     return await asyncio.wait_for(run(), timeout=timeout_s)
 

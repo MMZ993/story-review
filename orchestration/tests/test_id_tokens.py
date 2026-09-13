@@ -146,3 +146,82 @@ class TestMcpClientHeaderForwarding:
         )
         assert await client.probe() is True
         assert seen == {"headers": {"Authorization": "Bearer tok"}}
+
+
+class TestStreamableTransportAuthInjection:
+    """Pin the mcp 2.1.1 seam: auth headers ride an injected
+    caller-owned httpx client (streamable_http_client has no headers
+    parameter in 2.1.1)."""
+
+    async def test_headers_travel_via_injected_http_client(self, monkeypatch):
+        import contextlib
+
+        from orchestration import mcp_client as mod
+
+        seen = {}
+
+        @contextlib.asynccontextmanager
+        async def fake_transport(url, **kwargs):
+            seen["url"] = url
+            seen["kwargs"] = kwargs
+
+            yield object(), object()
+
+        monkeypatch.setattr(mod, "streamable_http_client", fake_transport)
+
+        @contextlib.asynccontextmanager
+        async def fake_session(read, write):
+            class S:
+                async def initialize(self):
+                    pass
+
+                async def call_tool(self, tool, args):
+                    seen["tool"] = tool
+                    from mcp.types import CallToolResult
+
+                    return CallToolResult(
+                        content=[], structured_content={"ok": True},
+                        is_error=False,
+                    )
+
+            yield S()
+
+        monkeypatch.setattr(mod, "ClientSession", fake_session)
+        result = await mod._streamable_http_call(
+            "https://svc/mcp",
+            "list_stories",
+            {},
+            timeout_s=5,
+            headers={"Authorization": "Bearer tok"},
+        )
+        assert result == {"ok": True}
+        http_client = seen["kwargs"]["http_client"]
+        assert http_client.headers.get("Authorization") == "Bearer tok"
+        await http_client.aclose()  # caller-owned; closed by the transport
+
+    async def test_no_headers_no_injected_client(self, monkeypatch):
+        import contextlib
+
+        from orchestration import mcp_client as mod
+
+        seen = {}
+
+        @contextlib.asynccontextmanager
+        async def fake_transport(url, **kwargs):
+            seen["kwargs"] = kwargs
+
+            yield object(), object()
+
+        monkeypatch.setattr(mod, "streamable_http_client", fake_transport)
+
+        @contextlib.asynccontextmanager
+        async def fake_session(read, write):
+            class S:
+                async def initialize(self):
+                    pass
+
+            yield S()
+
+        monkeypatch.setattr(mod, "ClientSession", fake_session)
+        await mod._streamable_http_call("https://svc/mcp", None, {}, timeout_s=5)
+        assert "http_client" not in seen["kwargs"]
