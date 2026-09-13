@@ -100,7 +100,12 @@ def resolve_iam_user(creds, env: dict | None = None, metadata_fetch=None) -> str
                     )
 
             user = metadata_fetch().strip()
-    return user.removesuffix(".gserviceaccount.com")
+    user = user.removesuffix(".gserviceaccount.com")
+    if not user:
+        # Fail loud at startup (an empty login only surfaces as a confusing
+        # auth failure at the first connect).
+        raise ValueError("could not resolve the Cloud SQL IAM user")
+    return user
 
 
 def default_credentials():
@@ -137,12 +142,16 @@ class CloudSqlPool:
         return getattr(self._pool, name)
 
     async def close(self) -> None:
-        await self._pool.close()
-        await self._connector.close_async()
+        try:
+            await self._pool.close()
+        finally:
+            await self._connector.close_async()
 
     async def terminate(self) -> None:
-        self._pool.terminate()
-        await self._connector.close_async()
+        try:
+            self._pool.terminate()
+        finally:
+            await self._connector.close_async()
 
 
 async def open_cloudsql_pool(uri: str) -> CloudSqlPool:
@@ -169,10 +178,15 @@ async def open_cloudsql_pool(uri: str) -> CloudSqlPool:
             connection_name, "asyncpg", db=database, user=user
         )
 
-    pool = await asyncpg.create_pool(
-        min_size=1,
-        max_size=8,
-        max_inactive_connection_lifetime=MAX_INACTIVE_CONNECTION_LIFETIME,
-        connect=_connect,
-    )
+    try:
+        pool = await asyncpg.create_pool(
+            min_size=1,
+            max_size=8,
+            max_inactive_connection_lifetime=MAX_INACTIVE_CONNECTION_LIFETIME,
+            connect=_connect,
+        )
+    except BaseException:
+        # Never leak the connector when pool construction fails.
+        await connector.close_async()
+        raise
     return CloudSqlPool(pool, connector)
