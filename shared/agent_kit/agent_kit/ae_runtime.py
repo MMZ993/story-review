@@ -270,6 +270,13 @@ class _IdTokenAuth(httpx.Auth):
         yield request
 
 
+def _audience_for(url: str) -> str:
+    """ID-token audience for an MCP service URL: the service ROOT (the
+    middleware's *_SERVICE_URL) — not the /mcp route the toolset dials
+    (verified live at the inc-4 gate: a /mcp audience is a 401)."""
+    return url.removesuffix("/mcp")
+
+
 def id_token_httpx_client_factory(audience: str):
     """``httpx_client_factory`` for ``StreamableHTTPConnectionParams``:
     a client whose every request carries a fresh audience-scoped ID token
@@ -334,7 +341,9 @@ def build_facilitator_root_agent(
             connection_params=StreamableHTTPConnectionParams(
                 url=story_url,
                 timeout=10.0,
-                httpx_client_factory=id_token_httpx_client_factory(story_url),
+                httpx_client_factory=id_token_httpx_client_factory(
+                    _audience_for(story_url)
+                ),
             ),
             tool_filter=STORY_TOOLS,
         ),
@@ -343,7 +352,7 @@ def build_facilitator_root_agent(
                 url=artifact_url,
                 timeout=10.0,
                 httpx_client_factory=id_token_httpx_client_factory(
-                    artifact_url
+                    _audience_for(artifact_url)
                 ),
             ),
             tool_filter=ARTIFACT_READ_TOOLS,
