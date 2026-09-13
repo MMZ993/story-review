@@ -239,3 +239,18 @@ class TestIdTokenAuthHttpxContract:
         from agent_kit.ae_runtime import _IdTokenAuth
 
         assert isinstance(_IdTokenAuth("https://aud"), httpx.Auth)
+
+
+class TestFacilitatorToolsetAudience:
+    def test_audience_is_service_root_not_mcp_route(self):
+        """Live-verified at the inc-4 gate: the ID-token audience must be
+        the MCP service's root URL (the middleware's STORY_SERVICE_URL) —
+        minting for the full /mcp route gets 401 from the ingress."""
+        from agent_kit.ae_runtime import _audience_for
+
+        assert _audience_for("https://svc.example.run.app/mcp") == (
+            "https://svc.example.run.app"
+        )
+        assert _audience_for("https://svc.example.run.app") == (
+            "https://svc.example.run.app"
+        )
