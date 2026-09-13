@@ -43,8 +43,8 @@ if [ -n "$(git status --porcelain)" ]; then
     fi
 fi
 
-# gcloud run surface flags: --project/--region apply to every call below.
-GC() { gcloud run --project "$PROJECT_ID" --region "$REGION" "$@"; }
+# gcloud run surface: --project/--region are per-subcommand flags.
+GC() { gcloud run "$@" --project "$PROJECT_ID" --region "$REGION"; }
 
 ORCH_URL="$(GC services describe orchestration --format 'value(status.url)')"
 SA_WEBUI="sa-webui@${PROJECT_ID}.iam.gserviceaccount.com"
