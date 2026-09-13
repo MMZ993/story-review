@@ -715,3 +715,29 @@ class TestRealListSessionsRoute:
         assert seen["url"].endswith("/sessions")
         assert "?" not in seen["url"]
         assert sessions == [{"name": "s1", "userId": "want"}]
+
+
+class TestCreateSessionUnwrap:
+    def test_unwraps_operation_response(self):
+        """Live-verified at the inc-4 gate: createSession returns an
+        operation; the Session (and its id) lives under `response`."""
+        from orchestration.ae_client import _session_from_create_response
+
+        operation = {
+            "name": "projects/p/locations/l/reasoningEngines/e/operations/123",
+            "done": True,
+            "response": {
+                "name": "projects/p/locations/l/reasoningEngines/e/sessions/456",
+                "userId": "sess-1",
+            },
+        }
+        session = _session_from_create_response(operation)
+        assert session["id"] == "456"
+
+    def test_plain_session_body_passthrough(self):
+        from orchestration.ae_client import _session_from_create_response
+
+        session = _session_from_create_response(
+            {"name": "projects/p/locations/l/reasoningEngines/e/sessions/789"}
+        )
+        assert session["id"] == "789"
