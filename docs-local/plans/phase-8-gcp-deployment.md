@@ -130,6 +130,44 @@ proof; pause Cloud SQL whenever not actively used.
 
 ### 4. Orchestration AE client + live CR→AE gate (local dev + cloud)
 
+Detailed breakdown (settled with the owner 2026-09-14, recorded as D25;
+all four agents go via AE this increment — they are deployed anyway):
+
+1. **AE client behind the existing seams** (`ReviewerClient`,
+   `SynthesisClient`, `FacilitatorClient` protocols in
+   `agent_clients.py`): wraps SDK `agent_engines.get` + `stream_query`
+   (the pattern proven by `deploy/agents/smoke.py`, invoker role
+   sa-orchestration); strict-schema validation of replies via the shared
+   agent-kit schemas; events' snake_case `function_response` and
+   concatenated-JSON quirks handled (Runbook 06 gotcha 4).
+2. **Env-selected agent pointers**: `ORCH_AGENT_MODE=http|ae` + four
+   engine resource pointers (engine ids + project/region). HTTP mode
+   keeps compose/local tests unchanged; AE mode is live-only.
+3. **Reconciliation (D25, option B)**: on a doubtful facilitator retry
+   (stream died, result unknown), orchestration reads the facilitator's
+   ADK session events from the Cloud SQL `facilitator` DB (over
+   `:query`, like smoke's `list_sessions`) and matches a recorded reply
+   by `FacilitatorRequest.invocation_id` before re-invoking — true
+   at-most-once facilitator execution. Reviewer/synthesis calls are
+   single-shot at-least-once retries (a duplicate only wastes cost;
+   no conversation state). Orchestration-side TurnRecord dedup
+   (option A) is included as the fast path before any AE read-back.
+4. **Deterministic tests**: constructed event streams for the AE client
+   parser + reconciliation matcher (no LLM cost).
+5. **Orchestration Cloud Run deploy**: build/push AR, `gcloud run deploy`
+   with AE pointers, Cloud SQL connector (async gotchas from inc 3:
+   `connect_async`, explicit `user`, per-call `close_async`), `PGSSLMODE`,
+   GCS/signed-URL config; SA sa-orchestration.
+6. **Facilitator clean-tree redeploy** (drop the `-dirty` label), smoke
+   PASS, becomes the pointer target.
+7. **Live gate**: deployed CR invokes all four AE agents (facilitator
+   end-to-end proves Cloud SQL persistence); Runbook 06 gotchas 3–4
+   checklist evidenced (invoker `aiplatform.user` + empty-stream 403
+   symptom, IAM propagation, `:streamQuery?alt=sse`, snake_case events,
+   short-prefix correlation-id log search); sanitized trace evidence in
+   Runbook 14; identifier check before commit. Closes the CR→AE test
+   gap (session 8) as a Phase 8 exit criterion.
+
 - Implement the AE invocation path + env pointers; deterministic tests with
   the same fake-agent seam; reconciliation vs AE.
 - Deploy orchestration to Cloud Run; **live gate**: deployed orchestration
