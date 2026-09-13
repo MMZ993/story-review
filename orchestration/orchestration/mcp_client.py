@@ -213,7 +213,13 @@ class McpClient:
                 self._url, None, {}, timeout_s, **self._call_kwargs()
             )
             return True
-        except Exception:
+        except Exception as exc:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "health probe failed for %s: %s: %s",
+                self._url, type(exc).__name__, exc,
+            )
             return False
 
     def _clamped_timeout(self, deadline_at: float) -> float:
