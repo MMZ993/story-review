@@ -24,6 +24,7 @@ from .api_errors import ApiError, make_error
 from .config import Settings
 from .health import Downstream, dependencies_state
 from .mcp_client import McpClient
+from .id_tokens import metadata_id_token
 from .signed_urls import ReportSigner
 
 
@@ -57,15 +58,20 @@ def create_app(
         title="story-review orchestration", version="0.1.0", lifespan=lifespan
     )
     app.state.settings = resolved
-    app.state.story_client = story_client or McpClient(
-        resolved.story_url, resolved
-    )
-    app.state.artifact_client = artifact_client or McpClient(
-        resolved.artifact_url, resolved
-    )
-    app.state.report_client = report_client or McpClient(
-        resolved.report_url, resolved
-    )
+
+    def mcp_client(url: str) -> McpClient:
+        """One MCP client; deployed mode attaches audience-scoped
+        ID-token bearer headers (the URL is the audience)."""
+        if resolved.mcp_id_token_auth:
+            return McpClient(
+                url, resolved,
+                auth_headers=lambda: metadata_id_token(url),
+            )
+        return McpClient(url, resolved)
+
+    app.state.story_client = story_client or mcp_client(resolved.story_url)
+    app.state.artifact_client = artifact_client or mcp_client(resolved.artifact_url)
+    app.state.report_client = report_client or mcp_client(resolved.report_url)
     app.state.agents = agents or default_agent_set(resolved)
     app.state.signer = signer or ReportSigner.from_settings(resolved)
     app.state.signer.warm_up()
