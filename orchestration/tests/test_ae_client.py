@@ -691,6 +691,41 @@ async def test_facilitator_deadline_exceeded_propagates():
         await client.invoke(request, deadline=_time.monotonic() - 1)
 
 
+class TestRuntimeQueryEnvelope:
+    async def test_unwraps_output_envelope(self, monkeypatch):
+        """Live-verified at the inc-4 gate: :query wraps the method return
+        under `output`."""
+        from orchestration import ae_client as mod
+
+        class FakeResponse:
+            status_code = 200
+            text = "{}"
+            def json(self):
+                return {"output": {"sessions": []}}
+
+        class FakeClient:
+            def __init__(self, timeout=None):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def post(self, url, json=None, headers=None):
+                return FakeResponse()
+
+        monkeypatch.setattr(mod.httpx, "AsyncClient", FakeClient)
+        monkeypatch.setattr(
+            mod, "_bearer_token", lambda: "tok", raising=False
+        )
+        body = await mod._runtime_query(
+            "projects/p/locations/l/reasoningEngines/e1", "list_sessions", {}
+        )
+        assert body == {"sessions": []}
+
+
 class TestRuntimeSessionRoutes:
     """Live-verified at the inc-4 gate: session state lives behind the
     agent-runtime :query methods (create_session / list_sessions /
