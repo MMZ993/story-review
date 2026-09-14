@@ -237,22 +237,19 @@ class _IdTokenAuth(httpx.Auth):
         self._credentials = None
 
     def _mint(self):
-        import google.auth
         import google.auth.compute_engine
         import google.auth.transport.requests
 
-        base, _ = google.auth.default()
-        account = getattr(base, "service_account_email", None)
-        if not account:
-            raise RuntimeError(
-                "audience ID tokens require an attached service account "
-                "(metadata-server credentials); local runs use the compose "
-                "stack instead"
-            )
+        # use_metadata_identity_endpoint=True: the metadata identity
+        # endpoint mints the audience-scoped token directly. The default
+        # (False) path builds an IAM Signer over the resolved account and
+        # mints via signBlob — AE compute credentials report the account
+        # as "default", which IAM rejects with 400 (observed live at the
+        # inc-6 gate: facilitator MCP toolsets failed to load).
         credentials = google.auth.compute_engine.IDTokenCredentials(
             request=google.auth.transport.requests.Request(),
             target_audience=self._audience,
-            service_account_email=account,
+            use_metadata_identity_endpoint=True,
         )
         # Mint now: IDTokenCredentials.token is None until refreshed
         # (observed live as "Bearer None" → 401 at the inc-4 gate).
