@@ -54,6 +54,8 @@ from agent_kit.facilitator_input import (
     render_facilitator_message,
     validate_turn_output,
 )
+from agent_kit.telemetry import TelemetryCallbacks
+from agent_kit.structured_logging import configure_logging
 from review_schemas import FacilitatorTurnOutput
 from review_schemas.base import StoryId
 
@@ -282,10 +284,15 @@ def build_facilitator_runner(
     story_url: str,
     artifact_url: str,
     db_url: str,
+    context_token_limit: int | None = None,
 ) -> Runner:
     """Assemble the session-scoped runner: agent with read-only MCP
     toolsets (story + artifact), DatabaseSessionService on the configured
-    PostgreSQL, auto-created sessions keyed by the request's session id."""
+    PostgreSQL, auto-created sessions keyed by the request's session id.
+
+    The lineage guard runs before telemetry's before-tool callback: a
+    rejection short-circuits the tool call, so no start event may be
+    emitted for a call that then never ends."""
     prompt: LoadedPrompt = load_prompt(slug)
     config: AgentConfig = load_config_fn()
     toolsets = [
@@ -300,11 +307,20 @@ def build_facilitator_runner(
             tool_filter=ARTIFACT_READ_TOOLS,
         ),
     ]
+    telemetry = TelemetryCallbacks(
+        service=slug, context_token_limit=context_token_limit
+    )
     agent: LlmAgent = build_agent_fn(
         prompt,
         config,
         tools=toolsets,
-        before_tool_callback=_guarded_tool_call,
+        before_tool_callback=[
+            _guarded_tool_call,
+            telemetry.before_tool,
+        ],
+        after_tool_callback=telemetry.after_tool,
+        before_model_callback=telemetry.before_model,
+        after_model_callback=telemetry.after_model,
     )
     return Runner(
         agent=agent,
@@ -330,6 +346,7 @@ def create_facilitator_app(
     startup (loud). `runner` injection keeps deterministic tests free of
     ADK/Vertex/Postgres; `result_store` defaults to an in-memory store (the
     binding layer supplies the Postgres-backed one)."""
+    configure_logging(slug)
     app = FastAPI(
         title=f"{slug} local adapter",
         version=agent_version,

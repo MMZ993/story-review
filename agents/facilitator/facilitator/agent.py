@@ -28,14 +28,23 @@ def build_agent(
     *,
     tools: list | None = None,
     before_tool_callback: Callable | None = None,
+    after_tool_callback: Callable | None = None,
+    before_model_callback: Callable | None = None,
+    after_model_callback: Callable | None = None,
 ) -> LlmAgent:
-    """Build the facilitator agent; no I/O, no request is issued."""
+    """Build the facilitator agent; no I/O, no request is issued.
+
+    Callbacks are injected by the adapter core: the lineage tool guard
+    plus the Item D telemetry bundle (content-safe tool/model events)."""
     return LlmAgent(
         name="facilitator",
         model=config.model,
         instruction=prompt.text,
         tools=list(tools) if tools else [],
         before_tool_callback=before_tool_callback,
+        after_tool_callback=after_tool_callback,
+        before_model_callback=before_model_callback,
+        after_model_callback=after_model_callback,
         output_schema=ServingSafeFacilitatorTurnOutput,
         generate_content_config=types.GenerateContentConfig(
             temperature=config.temperature,

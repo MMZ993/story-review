@@ -13,6 +13,8 @@ ID token when the deployed tier gates orchestration behind Cloud Run IAM
 
 from __future__ import annotations
 
+import logging
+import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -26,6 +28,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .config import Settings
 from . import id_tokens
+from .structured_logging import configure_logging
 
 _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 _FORWARDED_METHODS = ["GET", "POST"]
@@ -40,6 +43,7 @@ def create_app(
     """Build the webui app; tests may inject settings and an httpx transport
     (which stands in for the real orchestration endpoint)."""
     resolved = settings or Settings.from_env()
+    configure_logging("webui")
     client = httpx.AsyncClient(
         base_url=resolved.orchestration_base_url,
         transport=transport,
@@ -140,6 +144,31 @@ def create_app(
         )
         if correlation := upstream.headers.get("X-Correlation-Id"):
             response.headers["X-Correlation-Id"] = correlation
+        return response
+
+    request_logger = logging.getLogger("storyreview.request")
+
+    @app.middleware("http")
+    async def request_logging(request: Request, call_next):
+        """Emit one structured event per API/health request
+        (observability.md telemetry): method, path, upstream status,
+        duration, and the correlation id the response carries. Static
+        shell assets are deliberately not logged — this is a public
+        unauthenticated endpoint and API traffic is the signal."""
+        if not (request.url.path.startswith("/api") or request.url.path == "/health"):
+            return await call_next(request)
+        started = time.perf_counter()
+        response = await call_next(request)
+        request_logger.info(
+            "request",
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "status": response.status_code,
+                "duration_ms": round((time.perf_counter() - started) * 1000, 1),
+                "correlation_id": response.headers.get("X-Correlation-Id"),
+            },
+        )
         return response
 
     class NoCacheStaticMiddleware(BaseHTTPMiddleware):
