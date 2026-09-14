@@ -50,7 +50,7 @@ class TestSignBytes:
             "/projects/-/serviceAccounts/sa-x@test.iam:signBlob"
         )
         assert call["payload"] == {
-            "payload": base64.urlsafe_b64encode(b"hello").decode().rstrip("=")
+            "payload": base64.b64encode(b"hello").decode("utf-8")
         }
         assert call["token"] == "bearer-token"
 

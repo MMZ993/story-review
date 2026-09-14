@@ -117,9 +117,8 @@ class IamSignBlobCredentials(Credentials, Signing):
     def sign_bytes(self, message: bytes) -> bytes:
         """One IAM signBlob call; returns the raw signature bytes."""
         url = f"{_IAM_BASE}/projects/-/serviceAccounts/{self._email}:signBlob"
-        body = {
-            "payload": base64.urlsafe_b64encode(message).decode().rstrip("=")
-        }
+        # IAM expects standard base64 with padding; urlsafe-unpadded is a 400
+        body = {"payload": base64.b64encode(message).decode("utf-8")}
         response = self._transport(url, token=self._token_getter(), payload=body)
         signed = json.loads(response.decode())["signedBlob"]
         return base64.b64decode(signed)
