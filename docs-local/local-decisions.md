@@ -1024,3 +1024,25 @@ lease serializing writers, so the last own-turn user message identifies
 the invocation in doubt. Reviewer/synthesis AE invocations use a
 **per-invocation random user_id** (stateless single-shots must not share
 one growing AE conversation).
+
+## D26 — Purge docs/source from git history (2026-09-14, owner decision)
+
+The two capstone source files (`docs/source/evaluation.md`, `topic.md`)
+came from outside the repo and must stay **local only**. Owner decision:
+ignore the directory **and rewrite the full history** to remove the path
+(`git filter-repo --invert-paths --path docs/source`), an explicit
+exception to the standing "no history rewrites" rule.
+
+Executed (dev server, owner approved force push): `.gitignore` entry
+committed first; filter-repo across all branches (271 commits parsed);
+files restored locally (ignored, untracked); remote re-added; `main`,
+`docs/initial-frozen`, `dev-server/session-23` force-pushed. Backup
+bundle `/tmp/capstone-pre-filter.bundle` (temporary; owner holds
+independent copies of the files).
+
+**Consequence (standing)**: every commit hash recorded in HANDOFF,
+runbooks, and local-decisions **before 2026-09-14 is stale** — the git
+log is the authoritative record; recorded hashes should be read as
+historical labels, not resolvable ids. `docs/initial-frozen`'s freeze
+commit label (`d5cb413`) is likewise stale; the branch tip is the
+reference.

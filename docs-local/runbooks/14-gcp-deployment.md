@@ -645,10 +645,22 @@ terminally-failed attempt (including the crash window: stale in_progress
 - **Verification**: `make orchestration-test` **195 passed + 12 skipped**
   (baseline 191+12s; +4 tests: park+release with new-key recovery, same-key
   retry 409, retryable-keeps-active, stale-claim crash window).
-- **NOT deployed**: the CR `orchestration` service still runs the old code
-  (deploys are tier-2, per-run owner approval); redeploy
-  `deploy/cloud-run/orchestration/deploy.sh` before resuming the
-  walkthrough (story-01 retry + two-user cookie proof).
+- **NOT deployed**: ~~the CR `orchestration` service still runs the old code~~
+  **DEPLOYED 2026-09-14** (dev server, owner approval in chat): Cloud SQL
+  resumed first (`db-resume`, ~10 min STOPPED→MAINTENANCE→RUNNABLE), then
+  `deploy/cloud-run/orchestration/deploy.sh`. First attempt FAILED the
+  startup probe — Cloud SQL connector ephemeral-cert fetch cancelled →
+  `TimeoutError` at pool init (instance freshly resumed; transient cold-
+  start race, same image shape as the inc-4 PASS). Retry succeeded (image
+  tag `20260914-…-91d563a`, carries fix `6ad0c2c`; note: that hash is
+  stale after the D26 filter-repo — the log is authoritative).
+  `/health` first read `degraded` (artifact/report unreachable — MCP
+  services scale to zero, cold on first probe; direct `/health` on each
+  returned 200), then fully **ok** (story/artifact/report/database all
+  reachable).
+- **Gotchas**: after `db-resume`, wait for RUNNABLE before deploying
+  (connector timeout otherwise); health-probe failures on scale-to-zero
+  MCP services are expected on the first probe after idle.
 - **Gotcha (dev server)**: gcloud has **no default project configured** —
   `make db-pause`/`db-status` fail with "required property [project]";
   prefix with `CLOUDSDK_CORE_PROJECT=$PROJECT_ID` (after `source
