@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (session: increment 6 slice C COMPLETE — orchestration application events + Cloud Monitoring terraform APPLIED; slices A+B+C still NOT deployed; trace gate OPEN; flow-1-fix live re-test DEFERRED; 75% context compaction DEFERRED — see Runbook 14 inc 6 slice C). Prior: increment 6 slices A+B local (structured logging + facilitator telemetry); flow-1 fix DEPLOYED, /health ok; **D26 full-history purge — all pre-2026-09-14 hashes stale**; Cloud SQL left RUNNING for the walkthrough — pause when done).
+Last updated: 2026-09-16 (session: increment 6 slice C COMPLETE + **DEPLOYED** — orchestration `orchestration-00022-kth` + webui images carry slices A+B+C; structured JSON logs verified in Cloud Logging; header repo link live; trace gate + alert-metric observation OPEN; flow-1-fix live re-test DEFERRED; 75% context compaction DEFERRED — see Runbook 14 inc 6 slice C). Prior: increment 6 slices A+B local (structured logging + facilitator telemetry); flow-1 fix DEPLOYED, /health ok; **D26 full-history purge — all pre-2026-09-14 hashes stale**; Cloud SQL left RUNNING for the walkthrough — pause when done).
 
 ## Where we are
 
@@ -62,8 +62,12 @@ in chat; detail: Runbook 14 §Increment 6 slice C):
   flow-1 park event) fixed in-session.
 - **Verification**: orchestration **202 passed / 12 skipped** (+4);
   terraform fmt/validate clean; MCP services re-verified healthy
-  post-apply. **Nothing deployed** — A+B+C all land in the next
-  orchestration image build.
+  post-apply. **Deployed this session**: orchestration + webui images
+  (commits `ae5d723`/`d579e02`) — public domain health ok,
+  `/api/v1/stories` 200, structured JSON logs live in Cloud Logging for
+  both services, webui header `source repo` link live. Remaining: live
+  trace gate + alert-metric observation (**next session** — drive one
+  real turn from the browser; Cloud SQL left RUNNING for it).
 
 Increment 6 slices A+B (2026-09-15, local, detail Runbook 14 §Increment 6):
 - **Slice A**: structured JSON logging — `structured_logging.py`

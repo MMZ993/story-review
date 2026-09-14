@@ -838,3 +838,28 @@ monitoring APIs added to `required_services`):
 with slices A+B+C, live trace gate (paired tool events, model latency/
 tokens, validation event, gate event, both alert metrics observed), then
 requirements-coverage rows.
+
+### Slice C deploy — orchestration + webui images (2026-09-16, dev server; owner-approved "lets deploy changes")
+
+- Commits first (deploy scripts require a clean tree; tag↔commit map):
+  `ae5d723` feat (app events + monitoring module), `d579e02` chore
+  (runbook/HANDOFF). Gotcha: the **webui** dirty check also counts
+  untracked files — the slice-C `tmp/` helper scripts blocked it; moved
+  to `trash/run-slice-c-*.sh`.
+- `deploy/cloud-run/orchestration/deploy.sh`: image
+  `<orch-image-tag>` (commit `d579e02`), revision
+  `orchestration-00022-kth`. `deploy/cloud-run/webui/deploy.sh`: image
+  `<webui-image-tag>`, custom domain live.
+- **Live verification** (public domain, read-only):
+  `https://story-review.mmz.sh/health` → `{"status":"ok"}`;
+  `/api/v1/stories` → **200** (proxy → orchestration → Cloud SQL +
+  story MCP all reachable); **header `source repo` link live** (the
+  increment-6 drive-by).
+- **Structured logs live**: Cloud Logging read on
+  `resource.type="cloud_run_revision" AND jsonPayload.service=...`
+  returns the slice-A JSON request events for BOTH services (probe
+  requests visible with path/status). The slice-C log-based metrics now
+  have a source; the alert/trace gate (paired tool events, validation
+  event, gate event, alert-metric observation) remains OPEN.
+- Machine clock note: image tags printed `20260914-*` — the dev
+  server's clock drifts; the commit hash in the tag is authoritative.
