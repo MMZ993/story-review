@@ -107,6 +107,7 @@ def make_app(
         engineering_url="http://engineering:8080",
         synthesis_url="http://synthesis:8080",
         facilitator_url="http://facilitator:8080",
+        gcs_public_url="https://gcs.invalid",
     )
     resolved = settings or Settings(**values)
 

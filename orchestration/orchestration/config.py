@@ -71,6 +71,10 @@ class Settings:
     #: are rewritten to this HTTPS URL and signed with the throwaway local
     #: key (signed_urls.py). None = real GCS / Phase 8.
     gcs_public_url: str | None = None
+    #: IAM signing principal for live V4 signed URLs (signed_urls.py):
+    #: the attached service account with TokenCreator on itself; explicit
+    #: config so the deterministic tier needs no metadata server.
+    signer_email: str | None = None
     #: MCP ingress auth (Phase 8 increment 4): when set, MCP calls carry
     #: audience-scoped ID-token bearer headers (deployed Cloud Run tier;
     #: connectivity-identity.md). Local/compose tiers keep it off.
@@ -144,6 +148,7 @@ class Settings:
             synthesis_url=values["ORCH_SYNTHESIS_URL"],
             facilitator_url=values["ORCH_FACILITATOR_URL"],
             gcs_public_url=source.get("ORCH_GCS_PUBLIC_URL", "").strip() or None,
+            signer_email=source.get("ORCH_SIGNER_EMAIL", "").strip() or None,
             agent_mode=mode,
             ae_business_resource=ae["ORCH_AE_BUSINESS_RESOURCE"] or None,
             ae_engineering_resource=ae["ORCH_AE_ENGINEERING_RESOURCE"] or None,
