@@ -361,6 +361,17 @@ async def test_terminal_agent_failure_parks_session_and_releases_story(
     client, pool, agents
 ):
     agents.facilitator.call_failure = _terminal_agent_failure()
+
+    # the flow-1 park must emit the session_parked application event
+    import logging
+
+    from .test_app_events import CaptureHandler
+
+    capture = CaptureHandler()
+    app_logger = logging.getLogger("storyreview.app")
+    app_logger.addHandler(capture)
+    app_logger.setLevel(logging.INFO)
+
     failed = await post_create(client, KEY_A, create_payload())
     assert failed.status_code == 422, failed.text
     error = failed.json()["error"]
@@ -376,6 +387,11 @@ async def test_terminal_agent_failure_parks_session_and_releases_story(
         uuid.UUID(KEY_A),
     )
     assert claim is None  # released: a fresh key starts clean
+
+    app_logger.removeHandler(capture)
+    parked = [r for r in capture.records if r.event == "session_parked"]
+    assert len(parked) == 1
+    assert parked[0].facilitator_turn == 1
 
     agents.facilitator.call_failure = None  # transient model behavior passed
     retried = await post_create(client, KEY_B, create_payload())

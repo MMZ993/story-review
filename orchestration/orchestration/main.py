@@ -20,7 +20,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from review_schemas.api import HealthDependency, HealthResponse
 
-from . import abandon_api, db, finalize_api, sessions_api, stories, turns_api
+from . import abandon_api, app_events, db, finalize_api, sessions_api, stories, turns_api
 from .agent_clients import AgentSet, default_agent_set
 from .api_errors import ApiError, make_error
 from .config import Settings
@@ -124,6 +124,11 @@ def create_app(
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):
+        app_events.log_alert_event(
+            exc.error,
+            correlation_id=getattr(request.state, "correlation_id", None),
+            user_id=request.headers.get("x-user-id"),
+        )
         return JSONResponse(
             status_code=exc.status_code,
             content={"error": exc.error.model_dump(mode="json")},

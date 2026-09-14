@@ -187,6 +187,14 @@ module "mcp_report" {
   }
 }
 
+# ---- Phase 8 increment 6 slice C: Cloud Monitoring ----
+
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  project_id = var.project_id
+}
+
 # Smoke-test impersonation (owner-approved increment 5): the owner's user
 # mints sa-orchestration ID tokens locally to drive the authenticated smoke
 # targets; the middleware allowlists contain only that principal across all
