@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-14 (session: flow-1 fix DEPLOYED to Cloud Run, /health ok; **D26 full-history purge of `docs/source`** — all branches filter-repo'd + force-pushed, all pre-2026-09-14 hashes in runbooks/HANDOFF are now stale labels; Cloud SQL left RUNNING for the walkthrough — pause when done). Prior: flow-1 422 defect fixed locally (park + story release on terminal agent failure).
+Last updated: 2026-09-15 (session: increment 6 observability slices A+B — structured JSON logging orchestration/webui, Item D facilitator telemetry callbacks; slice C = Cloud Monitoring terraform NEXT; flow-1-fix live re-test DEFERRED; 75% context compaction DEFERRED — see Runbook 14 inc 6). Prior: flow-1 fix DEPLOYED to Cloud Run, /health ok; **D26 full-history purge of `docs/source`** — all branches filter-repo'd + force-pushed, all pre-2026-09-14 hashes in runbooks/HANDOFF are now stale labels; Cloud SQL left RUNNING for the walkthrough — pause when done). Prior: flow-1 422 defect fixed locally (park + story release on terminal agent failure).
 
 ## Where we are
 
@@ -41,6 +41,30 @@ Last updated: 2026-09-14 (session: flow-1 fix DEPLOYED to Cloud Run, /health ok;
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Increment 6 (observability) slices A+B COMPLETE locally, 2026-09-15,
+dev server, no cloud actions (detail: Runbook 14 §Increment 6):
+- **Slice A**: structured JSON logging — `structured_logging.py`
+  (JsonFormatter + idempotent configure_logging) in orchestration,
+  webui, and agent-kit (three identical copies, deliberate across
+  deploy units); request-logging middleware in both app factories
+  (method/path/status/duration_ms/correlation_id (+user_id on
+  orchestration; webui logs /api+/health only). Cloud Run stdout →
+  structured Cloud Logging entries once deployed.
+- **Slice B**: Item D facilitator telemetry — `agent_kit/telemetry.py`
+  (context policy warn≥50%/summarize≥75%; paired content-safe
+  before/after tool events; model latency/token events; ADK 2.8.0
+  signatures verified), wired in `build_facilitator_runner`
+  (guard-before-telemetry ordering) + `build_agent` callback params;
+  `create_facilitator_app` configures the JSON handler.
+- **Drive-by**: GitHub `source repo` link on the webui header
+  (https://github.com/MMZ993/story-review), static, live on next deploy.
+- **Deferrals (owner)**: 75% context compaction (mechanism decision —
+  typed summary + session-history replacement; Item D remainder), and
+  the flow-1-fix live re-test (folds into increment-6 live work).
+- **Verification**: orchestration 198+9s, webui pytest 25 + vitest 89,
+  agent-kit 133, agents 4×3-4, `git diff --check` clean. Nothing
+  deployed.
 
 Flow-1 fix deploy + D26 history purge (2026-09-14, dev server; cloud actions owner-approved in chat):
 - **Deploy**: Cloud SQL resumed (`db-resume`, ~10 min to RUNNABLE — first deploy attempt failed the startup probe on a connector TimeoutError; transient cold-start race, retry succeeded). CR `orchestration` now runs the fix (image `20260914-…`, pre-D26 hash label `91d563a`). `/health` fully ok (first probe read degraded on scale-to-zero MCP cold starts — expected).

@@ -666,3 +666,89 @@ terminally-failed attempt (including the crash window: stale in_progress
   prefix with `CLOUDSDK_CORE_PROJECT=$PROJECT_ID` (after `source
   infra/envs/home.env`) or run `gcloud config set project` once. Cloud SQL
   paused at wrap-up (STOPPED/NEVER verified via `make db-status`).
+
+## Increment 6 — observability, slices A+B (2026-09-15, PART — C and trace gate OPEN)
+
+Owner decisions this session: flow-1-fix **live re-test deferred** (was
+tested locally yesterday; re-test folds into the increment-6 live work);
+**75% context compaction deferred** (telemetry-only for now — see
+below); slice C (Cloud Monitoring terraform) next session.
+
+### Slice A — structured JSON logging (orchestration + webui)
+
+- New `orchestration/orchestration/structured_logging.py` and
+  `webui/webui/structured_logging.py` (behaviorally identical copies —
+  the units deploy as independent images; duplication deliberate over a
+  new shared package): `JsonFormatter` (message/severity/service +
+  extra correlation fields; non-JSON values stringed via `default=str`)
+  + idempotent `configure_logging` (single stdout handler on the
+  `storyreview` logger; Cloud Run stdout → Cloud Logging structured
+  entries).
+- Request-logging middleware in both app factories: one event per
+  request with `method, path, status, duration_ms, correlation_id`;
+  orchestration adds `user_id` (the `x-user-id` header when present);
+  webui logs `/api` + `/health` only (static shell unlogged — public
+  endpoint) and takes the correlation id from the response header.
+- Orchestration ordering gotcha: the request-logging middleware is
+  registered **before** the correlation middleware — Starlette runs the
+  last-registered outermost, so correlation sets
+  `request.state.correlation_id` before the log middleware reads it.
+
+### Slice B — Item D facilitator telemetry callbacks
+
+- New `shared/agent_kit/agent_kit/telemetry.py`: `context_level`
+  policy (warn ≥ 50%, summarize ≥ 75% of the context limit) +
+  `TelemetryCallbacks` — paired before/after **tool** events (tool
+  name, status ok/error, duration; never args/results — content-safe)
+  and before/after **model** events (latency, prompt/total tokens,
+  context level/fraction; partial streaming responses skipped).
+  Callback signatures verified against pinned **google-adk 2.8.0**
+  (`Context`/`BaseTool`/`LlmRequest`/`LlmResponse` per Item D's
+  "do not invent signatures" note).
+- Wiring: `build_facilitator_runner` attaches
+  `before_tool_callback=[lineage_guard, telemetry.before_tool]` — the
+  guard must run first (a rejected call short-circuits before telemetry
+  emits a start event with no matching end) — plus after-tool and
+  before/after-model callbacks; `agents/facilitator/agent.py`
+  `build_agent` extended with the three callback params (backward
+  compatible; AE path unaffected). `context_token_limit` is a runner
+  param (default None → no context classification) — deliberately NOT
+  a config.yaml key to avoid four-agent config churn for one consumer.
+- `agent_kit.structured_logging` (third identical copy, rationale as
+  slice A) + `configure_logging(slug)` inside `create_facilitator_app`
+  so the facilitator adapter's events actually reach Cloud Logging.
+- **Deferred (owner)**: the 75% compaction action (typed summary
+  validated before older ADK-session history replacement). Callbacks
+  record `context_level=summarize`; compaction is an open mechanism
+  decision (DatabaseSessionService event replacement). Recorded as the
+  Item D remainder, not a deviation.
+
+### Webui drive-by (owner request)
+
+- GitHub link on the site header: `webui/static/index.html`
+  (`source repo` → https://github.com/MMZ993/story-review, target
+  `_blank` + `noopener`) + `.repo-link` styles in `app.css`. Baked into
+  the image — goes live on the next webui deploy.
+
+### Verification (2026-09-15, dev server, no cloud actions)
+
+- orchestration **198 passed / 9 skipped** (full deterministic tier via
+  a session-local throwaway Postgres; baseline had moved with the
+  flow-1 fix, all green; +3 structured-logging tests)
+- webui **pytest 25** (+3) + **vitest 89** (header link is static
+  markup — no frontend test warranted)
+- agent-kit **133** (+8), all four agent suites 3/3…4/4 green,
+  `git diff --check` clean
+- Nothing deployed: slices A/B ship in the next webui/orchestration
+  image builds (slice-C session folds them in).
+
+### Next (slice C, next session)
+
+- Terraform: log-based metrics over the new structured events, Cloud
+  Monitoring dashboard (per-agent latency/error/token, retry and
+  validation exhaustion, idempotency, lock waits), the two designed
+  alert policies (retry exhaustion, delegation-validation failure) —
+  apply owner-approved per infra rules.
+- Then the live trace gate + requirements-coverage callback row.
+- Deploy the A+B images so the events start flowing before C reads
+  them.
