@@ -1046,3 +1046,28 @@ log is the authoritative record; recorded hashes should be read as
 historical labels, not resolvable ids. `docs/initial-frozen`'s freeze
 commit label (`d5cb413`) is likewise stale; the branch tip is the
 reference.
+
+## D27 — Live signed URLs via IAM signBlob (2026-09-16, owner-approved fix)
+
+`docs/design/mcp-servers.md`'s implicit Phase-8 assumption that
+orchestration's ambient Cloud Run credentials can sign V4 report URLs
+is unimplementable as written: Cloud Run ADC is token-only (no private
+key), so client-side V4 signing raises AttributeError. Resolution
+(implementation deviation recorded here, no design change): the signer
+uses a keyless IAM `signBlob`-backed Signing credential as
+sa-orchestration, which already holds `roles/iam.serviceAccountTokenCreator`
+on itself (infra); `ORCH_SIGNER_EMAIL` is passed explicitly by the
+deploy script (metadata `default` quirk), and startup `warm_up`
+performs one real signBlob call (fail-loud). Local/compose keeps the
+fake-gcs throwaway-key path unchanged.
+
+**D27 amendment 1**: report MD objects are uploaded to GCS as
+`text/markdown; charset=utf-8` (wire `ArtifactReference.content_type`
+literal stays `text/markdown` per schemas.md); the PDF writer
+transliterates the em dash to ` - ` before the lossy latin-1 mapping
+(readable PDFs instead of `?`).
+
+**Open item**: AE-side facilitator MCP toolsets may still fail session
+creation (metadata `default` account in signBlob; traceback seen in
+ReasoningEngine logs) — `tool_call` telemetry and tool use inside AE
+unverified; investigate before relying on facilitator tools in AE mode.

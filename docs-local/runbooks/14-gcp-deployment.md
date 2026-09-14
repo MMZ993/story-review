@@ -863,3 +863,72 @@ requirements-coverage rows.
   event, gate event, alert-metric observation) remains OPEN.
 - Machine clock note: image tags printed `20260914-*` — the dev
   server's clock drifts; the commit hash in the tag is authoritative.
+
+## Increment 6 close — live gate + three live root causes fixed (2026-09-16, dev server; cloud actions owner-approved in chat "yes please redeploy" / "please proceed with a fix" / "please commit")
+
+Owner-driven live gates (browser, public domain). Four sessions this
+session-window: `sess-cc2c9142` (2 turns), `sess-0a493ae9` (abandon),
+`sess-28ee6721` (delegated turn + accept attempts), `sess-411c6c9b`
+(accept → 500 pre-fix), `sess-7ed6d830` story-07 (full arc → reports).
+
+### Gate evidence (increment 6 close)
+
+- **Structured request logs** both services (probe requests with
+  method/path/status/duration/correlation_id) — slice A live.
+- **App events**: 5× `gate_decision` (all `continue`), 1×
+  `session_parked` (abandon), fields incl. facilitator_turn.
+- **Metric pipeline**: `app-gate-decisions` counted 2/2,
+  `app-sessions-parked` 1/1 vs the logs; alert metrics
+  `app-retry-exhausted`/`app-delegation-validation-failed` exist,
+  policies enabled, 0 points (healthy run — no occurrences; pipeline
+  proven by the sibling metrics). No `delegation_validation_failed` /
+  `retry_exhausted` events occurred (design keeps them failure-only).
+- **Slice B telemetry live from Agent Engine**: `model_call` start/end
+  events as structured JSON on
+  `resource.type=aiplatform…/ReasoningEngine` (model, duration_ms,
+  prompt/total tokens, context level) — observed on story-07 turns.
+  **`tool_call` events: none** — the facilitator made no tool calls in
+  AE; open item: the AE-side MCP toolset creation may still hit the
+  known metadata `default`-account signBlob failure (traceback seen on
+  engine `1fb416d`); tool telemetry unobserved until that is resolved.
+- **503-same-key retry live**: 5× fast-fail 503 on turns (scale-to-zero
+  MCP cold start), webui retried same key every ~4–5 s → 200.
+
+### Root causes found live and fixed (test-first)
+
+1. **Stale MCP images (report 422/VALIDATION_ERROR at finalize)**:
+   mcp-artifact/report/story Cloud Run images predated D19
+   (`FinalizedReview.issues`), so the finalized-review save failed the
+   union validation. Fixed by rebuilding all three (`63f39f6`) +
+   terraform apply. **Gotchas**: plan without ALL six `-var` pointers
+   (3 images + 3 service URLs) would DESTROY an MCP service; the
+   report smoke fixture also predated D19 (added catalog entry,
+   `17f73cd`).
+2. **AE facilitator telemetry not wired**: slice B wired callbacks only
+   in the local `build_facilitator_runner`; `ae_runtime
+   build_facilitator_root_agent` built the agent without them. Fixed
+   (`63f39f6`): telemetry bundle + `configure_logging` in the AE root
+   agent (agent-kit 134). Engine redeployed as `facilitator-1fb416d`
+   (smoke PASS) then `facilitator-17f73cd` (smoke PASS; both retained
+   for the D5 prune). Orchestration repointed + redeployed
+   (`orchestration-00023-q59`, then `-00024-4ld`).
+3. **Live signed URLs could never work (500 at accept)**: docs assumed
+   ambient Cloud Run ADC signs V4 URLs — wrong, token-only compute
+   credentials have no private key (`ensure_signed_credentials`
+   AttributeError). Fixed (`77e038b`): keyless IAM `signBlob` Signing
+   credential (`orchestration/iam_signing.py`) as sa-orchestration
+   (TokenCreator on itself, already in terraform); `warm_up` signs once
+   at startup (fail-loud). Live root causes on the way: IAM rejects
+   urlsafe-unpadded base64 (400); the deploy script's explicit env list
+   didn't forward `ORCH_SIGNER_EMAIL` so the principal resolved to
+   metadata `default` (400) — both fixed; startup probe (real signBlob)
+   PASS on revision `orchestration-00028-n9p`. Orchestration 206+12s.
+4. **Report encoding**: MD objects served as bare `text/markdown`
+   (browsers guess cp1252 → mojibake) and PDF em dash → `?`. Fixed
+   (`2bf6122`): GCS upload content type `text/markdown; charset=utf-8`
+   (wire literal unchanged), `_latin1` transliterates `—` → ` - `.
+   mcp-report 38 (+2); redeployed, smoke PASS. Existing report objects
+   keep the old metadata (regenerate to fix).
+
+End-to-end proof: story-07 accepted → finalized → reports downloaded
+from the public domain.
