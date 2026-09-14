@@ -752,3 +752,89 @@ below); slice C (Cloud Monitoring terraform) next session.
 - Then the live trace gate + requirements-coverage callback row.
 - Deploy the A+B images so the events start flowing before C reads
   them.
+
+### Slice C — application events + Cloud Monitoring (2026-09-16, dev server; apply owner-approved in chat)
+
+Retitle note: slices A+B remain local-only (images NOT rebuilt yet) —
+slice C landed the *monitoring* side plus the orchestration application
+events the alerts filter on. The trace gate and image deploys stay open.
+
+**Code (test-first)**:
+
+- New `orchestration/orchestration/app_events.py`: `log_app_event` on
+  the `storyreview.app` logger (child of the JSON-configured root) +
+  `alert_event_for` classification (`DELEGATION_VALIDATION` →
+  `delegation_validation_failed`; retryable `UPSTREAM_UNAVAILABLE` /
+  `AGENT_CALL_FAILED` / `RENDER_FAILED` → `retry_exhausted`).
+- Wiring: the ApiError exception handler emits the alertable events for
+  every route (correlation_id + user_id + agent + error_code,
+  `error_message` — NOT `message`, see gotcha); `gate_decision` after
+  `evaluate_gate`; `session_parked` after the atomic park transitions in
+  turns_flow (`_persist_and_respond`), abandon, AND flow-1 terminal-
+  failure `_park_failed_session` (review minor; `facilitator_turn=1`).
+  Drive-by: `_upstream` gained an optional `agent` so the exhaustion
+  event names the failing agent.
+- Tests: `test_app_events.py` (4 — park emits gate+park events,
+  continue emits gate only, 422 validation event, 503 exhaustion event;
+  CaptureHandler fixture because the `storyreview` logger does not
+  propagate, caplog cannot see it) + the park-event assertion folded
+  into the flow-1 terminal-failure test.
+- Review: read-only subagent **Ready-to-proceed**; its one actionable
+  minor (missing flow-1 park event) fixed in-session, others were
+  documentation nits.
+
+**Terraform** (`infra/modules/monitoring`, wired in main.tf; logging +
+monitoring APIs added to `required_services`):
+
+- 4 log-based delta counters: `app-retry-exhausted`,
+  `app-delegation-validation-failed`, `app-sessions-parked`,
+  `app-gate-decisions` (label `outcome` via EXTRACT) — filters on
+  `resource.type="cloud_run_revision" AND jsonPayload.service="orchestration" AND jsonPayload.event=...`.
+- 2 alert policies (any single occurrence → incident, 300s ALIGN_SUM,
+  auto-close 1h; **no notification channels — owner decision 2026-09-16**).
+- 1 dashboard `story-review`: requests/s by service, orchestration p95
+  latency, orchestration 5xx rate, application-events panel (classic
+  timeSeriesFilter aggregations, XyChart tiles 2x2).
+- Applied via `tmp/run-slice-c-plan.sh` + `tmp/run-slice-c-apply.sh`
+  (targeted: module.monitoring + the two new API services). Evidence:
+  dashboard `<dashboard-id>` under `$PROJECT_ID`, alert policies
+  `6676422611572631903` / `719859346050099619`, 4 logging metrics + both
+  APIs in state; MCP services re-verified healthy post-apply
+  (`{"status":"ok"}` ×3 with impersonated sa-orchestration tokens).
+
+**Gotchas learned (append-worthy)**:
+
+- `make terraform-plan` without the deployed `-var mcp_*_image/_service_url`
+  pointers plans the three MCP services for **deletion** (same family as
+  runbook 06 spike gotcha). The tmp plan script reads the pointers from
+  state — keep using it until the pointers move into home.tfvars.
+- **`terraform apply -target=... <saved-plan>` does NOT exclude resources
+  already inside the plan file**: the apply "modified" the three MCP
+  services (the benign scaling-block normalization from runbook 06).
+  Harmless — same image, services healthy after — but a new revision per
+  service was created.
+- Logging API: `google_logging_metric` counters need
+  `metric_descriptor { metric_kind/value_type }` (no top-level
+  metric_kind; no `counter {}` block in provider 6.50) + `label_extractors`
+  with `EXTRACT(jsonPayload.<field>)`.
+- Dashboards API via `dashboard_json`: **rejects `promqlQuery`** ("Unknown
+  name promqlQuery") — use classic `timeSeriesFilter` + aggregation;
+  **XyChart tiles must be ≥2x2**; alert policies on metric thresholds
+  **may not set `notification_rate_limit`** (log-based policies only) —
+  all three hit live at the apply, fixed in-module and recorded in its
+  comments.
+- Logging `extra` may not use `message` (LogRecord reserved attribute) —
+  `KeyError: Attempt to overwrite 'message' in LogRecord`; use
+  `error_message`.
+- Impersonated ID tokens need `--include-email` (runbook 10 recipe);
+  orchestration itself 403s for this identity (invoker is sa-webui —
+  expected).
+
+**Verification**: orchestration **202 passed / 12 skipped** (baseline
+198+9s→198+12s pre-slice; +4 new); `terraform fmt` + `validate` clean;
+`git diff --check` clean; nothing else deployed.
+
+**Remaining for increment 6 close**: deploy orchestration (+webui) images
+with slices A+B+C, live trace gate (paired tool events, model latency/
+tokens, validation event, gate event, both alert metrics observed), then
+requirements-coverage rows.
