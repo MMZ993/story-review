@@ -8,6 +8,8 @@ with fakes.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from agent_kit.ae_runtime import (
@@ -289,3 +291,78 @@ class TestIdTokenAuthInitialRefresh:
         assert creds.token == "tok"
         assert minted["audience"] == "https://svc"
         assert minted["account"] == "sa@proj.iam.gserviceaccount.com"
+
+
+class TestFacilitatorRootAgentTelemetry:
+    """Slice B (Item D): the AE facilitator root agent carries the same
+    telemetry callbacks as the local runner — its model/tool calls must
+    emit the content-safe storyreview.agent.* events."""
+
+    def test_facilitator_root_agent_emits_model_and_tool_events(
+        self, monkeypatch
+    ):
+        import logging
+
+        from agent_kit.ae_runtime import build_facilitator_root_agent
+        from agent_kit.config import AgentConfig
+
+        captured: dict = {}
+
+        def fake_build_agent(prompt, config, **kwargs):
+            captured.update(kwargs)
+            return object()  # root agent shell; callbacks are the subject
+
+        class _Records(logging.Handler):
+            records: list[logging.LogRecord] = []
+
+            def emit(self, record):
+                self.records.append(record)
+
+        handler = _Records()
+        for name in ("storyreview.agent.model", "storyreview.agent.tool"):
+            logger = logging.getLogger(name)
+            logger.addHandler(handler)
+            logger.setLevel(logging.INFO)
+
+        prompts_dir = Path(__file__).resolve().parents[3] / "prompts"
+        monkeypatch.setenv("PROMPTS_DIR", str(prompts_dir))
+
+        root = build_facilitator_root_agent(
+            "facilitator",
+            fake_build_agent,
+            lambda: AgentConfig(
+                model="gemini-test", location="europe-west4",
+                temperature=0.0, max_output_tokens=1024,
+            ),
+            story_url="https://story.example.test/mcp",
+            artifact_url="https://artifact.example.test/mcp",
+        )
+        assert root is not None
+        assert captured["before_tool_callback"] is not None
+        assert captured["after_tool_callback"] is not None
+        assert captured["before_model_callback"] is not None
+        assert captured["after_model_callback"] is not None
+
+        class _Ctx:
+            pass
+
+        class _Request:
+            model = "gemini-test"
+
+        class _Response:
+            partial = False
+            model_version = "gemini-test"
+            usage_metadata = None
+
+        captured["before_model_callback"](_Ctx(), _Request())
+        captured["after_model_callback"](_Ctx(), _Response())
+
+        class _Tool:
+            name = "noop"
+
+        captured["before_tool_callback"](_Tool, {})
+        captured["after_tool_callback"](_Tool, {}, _Ctx(), {})
+
+        events = [(r.name, r.getMessage()) for r in _Records.records]
+        assert ("storyreview.agent.model", "model_call") in events
+        assert ("storyreview.agent.tool", "tool_call") in events
