@@ -9,6 +9,8 @@ docs-local/plans/phase-6-orchestration.md increments 1-4.
 
 from __future__ import annotations
 
+import logging
+import time
 import uuid
 from contextlib import asynccontextmanager
 
@@ -26,6 +28,7 @@ from .health import Downstream, dependencies_state
 from .mcp_client import McpClient
 from .id_tokens import metadata_id_token
 from .signed_urls import ReportSigner
+from .structured_logging import configure_logging
 
 
 def create_app(
@@ -41,6 +44,7 @@ def create_app(
     """Build the orchestration app; tests may inject settings, clients,
     agent fakes, and an existing pool (which suppresses the lifespan)."""
     resolved = settings or Settings.from_env()
+    configure_logging("orchestration")
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -80,6 +84,30 @@ def create_app(
     app.state.signer = signer or ReportSigner.from_settings(resolved)
     app.state.signer.warm_up()
     app.state.pool = pool
+
+    request_logger = logging.getLogger("storyreview.request")
+
+    # Registered before the correlation middleware so correlation runs
+    # outermost: the request log can read the minted/echoed id.
+    @app.middleware("http")
+    async def request_logging(request: Request, call_next):
+        """Emit one structured event per request (observability.md
+        telemetry): method, path, status, duration, correlation id, and
+        the anonymous user id when the scoped routes supplied one."""
+        started = time.perf_counter()
+        response = await call_next(request)
+        request_logger.info(
+            "request",
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "status": response.status_code,
+                "duration_ms": round((time.perf_counter() - started) * 1000, 1),
+                "correlation_id": getattr(request.state, "correlation_id", None),
+                "user_id": request.headers.get("x-user-id"),
+            },
+        )
+        return response
 
     @app.middleware("http")
     async def correlation_id(request: Request, call_next):
