@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (session: increment 6 slice C COMPLETE + **DEPLOYED** — orchestration `orchestration-00022-kth` + webui images carry slices A+B+C; structured JSON logs verified in Cloud Logging; header repo link live; trace gate + alert-metric observation OPEN; flow-1-fix live re-test DEFERRED; 75% context compaction DEFERRED — see Runbook 14 inc 6 slice C). Prior: increment 6 slices A+B local (structured logging + facilitator telemetry); flow-1 fix DEPLOYED, /health ok; **D26 full-history purge — all pre-2026-09-14 hashes stale**; Cloud SQL left RUNNING for the walkthrough — pause when done).
+Last updated: 2026-09-16 (session: increment 6 **CLOSED** live-gate + three live root causes fixed: stale pre-D19 MCP images redeployed; AE facilitator telemetry wired (model_call events observed live from Agent Engine); keyless IAM signBlob signing for live V4 report URLs (docs assumption unimplementable — D27); report encoding fixes (MD charset + PDF em dash). Full browser arc green end-to-end: story-07 accept → finalize → reports. Engines `facilitator-1fb416d` + `17f73cd` retained for D5 prune; orchestration `orchestration-00028-n9p`. OPEN: AE facilitator MCP toolset `default`-account signBlob failure — tool_call telemetry unobserved (D27 am 1). Cloud SQL left RUNNING during the session — pause when done).
 
 ## Where we are
 
@@ -42,8 +42,28 @@ Last updated: 2026-09-16 (session: increment 6 slice C COMPLETE + **DEPLOYED** �
 
 ## Previous Session Summary
 
-Increment 6 slice C COMPLETE (2026-09-16, dev server; apply owner-approved
-in chat; detail: Runbook 14 §Increment 6 slice C):
+Increment 6 close — live gate + live root causes (2026-09-16, dev
+server; detail: Runbook 14 §Increment 6 close, D27):
+- **Gate evidence**: structured request logs both services; app events
+  (`gate_decision` ×5, `session_parked`); log-based metrics counting
+  (gate 2/2, parked 1/1; alert metrics 0 points = healthy);
+  **model_call telemetry live from Agent Engine** (duration/tokens/
+  context level on the ReasoningEngine log); 503-same-key retry path
+  observed live. `tool_call` events unobserved — see open item.
+- **Fixes (test-first, all deployed)**: (1) stale pre-D19 MCP images →
+  all three rebuilt + apply (plan gotcha: missing `-var` pointers
+  DESTROY services); (2) AE facilitator root agent had no telemetry
+  callbacks → wired + JSON handler (agent-kit 134; engines
+  `1fb416d`/`17f73cd`, smoke PASS both); (3) live V4 signing impossible
+  with token-only ADC → keyless IAM signBlob credential + fail-loud
+  warm_up (orchestration 206+12s; gotchas: padded standard base64;
+  deploy env list missing ORCH_SIGNER_EMAIL → metadata `default`);
+  (4) report encoding: MD charset utf-8 + PDF em dash ` - `
+  (mcp-report 38). Commits: `63f39f6`, `17f73cd`, `77e038b`,
+  `2bf6122` + chore.
+- **Owner pushed**: main → `1fb416d` early in the session; later
+  commits to push at wrap-up.
+Increment 6 slice C (prior session, detail Runbook 14 §Increment 6 slice C):
 - **Code (test-first)**: `orchestration/app_events.py` — alertable
   events (`retry_exhausted`, `delegation_validation_failed`; emitted
   from the ApiError handler, one funnel for all routes) + gate/park
