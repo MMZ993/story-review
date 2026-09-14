@@ -50,7 +50,14 @@ _REPORT_KEY = "runs/{run}/reports/{artifact_id}.{ext}"
 _META_KEY = "runs/{run}/reports/{artifact_id}.json"
 _IDEM_KEY = "runs/{run}/report-idem/{format}"
 
+#: Wire form (schemas.md ArtifactReference literals).
 _CONTENT_TYPE = {"md": "text/markdown", "pdf": "application/pdf"}
+#: GCS upload form — MD carries the UTF-8 charset so browsers never guess
+#: cp1252 and render the em dash as mojibake (found live on story-07).
+_UPLOAD_CONTENT_TYPE = {
+    "md": "text/markdown; charset=utf-8",
+    "pdf": "application/pdf",
+}
 
 
 class ReportStore:
@@ -211,7 +218,7 @@ class ReportStore:
         try:
             content.upload_from_string(
                 rendered,
-                content_type=_CONTENT_TYPE[request.format],
+                content_type=_UPLOAD_CONTENT_TYPE[request.format],
                 if_generation_match=0,
             )
         except PreconditionFailed:
