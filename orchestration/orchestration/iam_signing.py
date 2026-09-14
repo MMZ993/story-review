@@ -50,6 +50,7 @@ def iam_signer_email(adc_credentials: Any, *, hint: str = "") -> str:
 
 def _default_transport() -> Transport:
     def transport(url: str, *, token: str, payload: dict) -> bytes:
+        import urllib.error
         import urllib.request
 
         request = urllib.request.Request(
@@ -60,8 +61,14 @@ def _default_transport() -> Transport:
                 "Content-Type": "application/json",
             },
         )
-        with urllib.request.urlopen(request, timeout=10) as response:
-            return response.read()
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            body = error.read().decode("utf-8", "replace")[:500]
+            raise RuntimeError(
+                f"IAM signBlob call failed: {error.code} {error.reason}: {body}"
+            ) from error
 
     return transport
 
