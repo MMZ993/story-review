@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-15 (session: increment 6 observability slices A+B — structured JSON logging orchestration/webui, Item D facilitator telemetry callbacks; slice C = Cloud Monitoring terraform NEXT; flow-1-fix live re-test DEFERRED; 75% context compaction DEFERRED — see Runbook 14 inc 6). Prior: flow-1 fix DEPLOYED to Cloud Run, /health ok; **D26 full-history purge of `docs/source`** — all branches filter-repo'd + force-pushed, all pre-2026-09-14 hashes in runbooks/HANDOFF are now stale labels; Cloud SQL left RUNNING for the walkthrough — pause when done). Prior: flow-1 422 defect fixed locally (park + story release on terminal agent failure).
+Last updated: 2026-09-16 (session: increment 6 slice C COMPLETE — orchestration application events + Cloud Monitoring terraform APPLIED; slices A+B+C still NOT deployed; trace gate OPEN; flow-1-fix live re-test DEFERRED; 75% context compaction DEFERRED — see Runbook 14 inc 6 slice C). Prior: increment 6 slices A+B local (structured logging + facilitator telemetry); flow-1 fix DEPLOYED, /health ok; **D26 full-history purge — all pre-2026-09-14 hashes stale**; Cloud SQL left RUNNING for the walkthrough — pause when done).
 
 ## Where we are
 
@@ -42,8 +42,30 @@ Last updated: 2026-09-15 (session: increment 6 observability slices A+B — stru
 
 ## Previous Session Summary
 
-Increment 6 (observability) slices A+B COMPLETE locally, 2026-09-15,
-dev server, no cloud actions (detail: Runbook 14 §Increment 6):
+Increment 6 slice C COMPLETE (2026-09-16, dev server; apply owner-approved
+in chat; detail: Runbook 14 §Increment 6 slice C):
+- **Code (test-first)**: `orchestration/app_events.py` — alertable
+  events (`retry_exhausted`, `delegation_validation_failed`; emitted
+  from the ApiError handler, one funnel for all routes) + gate/park
+  events (`gate_decision` at `evaluate_gate`, `session_parked` after
+  every atomic park transition: turns gate, abandon, flow-1 terminal
+  failure). Drive-by: `_upstream` carries the agent name.
+- **Terraform APPLIED**: `infra/modules/monitoring` — 4 log-based
+  metrics over the structured events, the 2 designed alert policies
+  (any-occurrence, auto-close 1h, **no notification channels — owner
+  decision**), 1 `story-review` dashboard; logging+monitoring APIs
+  enabled. Evidence + gotchas in the runbook (dashboard_json rejects
+  promqlQuery; XyChart ≥2x2; no notification_rate_limit on metric
+  policies; plan-without-`-var`-pointers destroys MCP services;
+  `-target` does not prune a saved plan — 3 benign MCP revisions).
+- **Review**: read-only subagent Ready-to-proceed; its minor (missing
+  flow-1 park event) fixed in-session.
+- **Verification**: orchestration **202 passed / 12 skipped** (+4);
+  terraform fmt/validate clean; MCP services re-verified healthy
+  post-apply. **Nothing deployed** — A+B+C all land in the next
+  orchestration image build.
+
+Increment 6 slices A+B (2026-09-15, local, detail Runbook 14 §Increment 6):
 - **Slice A**: structured JSON logging — `structured_logging.py`
   (JsonFormatter + idempotent configure_logging) in orchestration,
   webui, and agent-kit (three identical copies, deliberate across
