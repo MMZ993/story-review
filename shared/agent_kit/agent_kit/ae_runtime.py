@@ -320,7 +320,9 @@ def build_facilitator_root_agent(
 ) -> LlmAgent:
     """Facilitator AE root agent: the local runner's read-only MCP
     toolsets (same tool filters as ``build_facilitator_runner``) with
-    audience-scoped ID-token auth instead of the compose network.
+    audience-scoped ID-token auth instead of the compose network, plus
+    the same Item D telemetry bundle (content-safe tool/model events to
+    the ``storyreview.agent.*`` loggers — slice B).
 
     The adapter-side lineage tool guard is contextvar-bound to the local
     HTTP shell's request and has no Agent Engine equivalent yet; the
@@ -337,6 +339,8 @@ def build_facilitator_root_agent(
         ARTIFACT_READ_TOOLS,
         STORY_TOOLS,
     )
+    from agent_kit.structured_logging import configure_logging
+    from agent_kit.telemetry import TelemetryCallbacks
 
     prompt: LoadedPrompt = load_prompt(slug)
     config: AgentConfig = load_config_fn()
@@ -362,7 +366,19 @@ def build_facilitator_root_agent(
             tool_filter=ARTIFACT_READ_TOOLS,
         ),
     ]
-    return build_agent_fn(prompt, config, tools=toolsets)
+    telemetry = TelemetryCallbacks(service=slug)
+    # structured JSON events on stdout (idempotent) — the AE engine's
+    # stdout reaches Cloud Logging, carrying the paired event fields
+    configure_logging(slug)
+    return build_agent_fn(
+        prompt,
+        config,
+        tools=toolsets,
+        before_tool_callback=telemetry.before_tool,
+        after_tool_callback=telemetry.after_tool,
+        before_model_callback=telemetry.before_model,
+        after_model_callback=telemetry.after_model,
+    )
 
 
 __all__ = [
