@@ -78,6 +78,19 @@ summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   letter-spacing: -0.02em;
 }
 
+.repo-link {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
+.repo-link:hover,
+.repo-link:focus-visible {
+  color: #58a6ff;
+  text-decoration: underline;
+}
+
 #orchestration-status,
 .session-header,
 #picker-status,
