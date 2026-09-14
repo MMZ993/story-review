@@ -57,6 +57,7 @@ def _app_client() -> httpx.AsyncClient:
         engineering_url="http://engineering:8080",
         synthesis_url="http://synthesis:8080",
         facilitator_url="http://facilitator:8080",
+        gcs_public_url="https://gcs.invalid",
     )
     app = create_app(settings=settings)
     return httpx.AsyncClient(

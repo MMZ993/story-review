@@ -208,6 +208,7 @@ orchestration-test: ## Phase 6: orchestration deterministic tests (throwaway Pos
 		deploy/cloud-sql/run-migrations.sh && \
 	cd orchestration && \
 	ORCH_TEST_DB_DSN=postgres://orch:orch@127.0.0.1:$${ORCH_TEST_DB_PORT:-9030}/orchestration \
+	ORCH_GCS_PUBLIC_URL=https://gcs.invalid \
 	ORCH_STORY_URL=http://story:8080/mcp ORCH_ARTIFACT_URL=http://artifact:8080/mcp \
 	ORCH_REPORT_URL=http://report:8080/mcp ORCH_BUCKET=artifacts-local \
 	ORCH_BUSINESS_URL=http://business:8080 ORCH_ENGINEERING_URL=http://engineering:8080 \

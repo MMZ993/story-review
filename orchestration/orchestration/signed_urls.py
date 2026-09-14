@@ -30,6 +30,8 @@ from google.oauth2 import service_account
 from review_schemas.api import ReportDownload
 from review_schemas.synthesis import ArtifactReference
 
+from .iam_signing import IamSignBlobCredentials, iam_signer_email
+
 #: Throwaway local-only signer identity (fake-gcs never validates it).
 _LOCAL_SIGNER_EMAIL = "local-signed-urls@fake-gcs.invalid"
 _KEY_PATH = Path(__file__).with_name("local_signing_key.pem")
@@ -50,12 +52,14 @@ class ReportSigner:
         bucket: str,
         ttl_seconds: int,
         public_url: str | None = None,
+        signer_email: str | None = None,
     ):
         """`public_url` enables the local fake-gcs substitution; without
         it, ambient default credentials sign against real GCS."""
         self._bucket_name = bucket
         self._ttl = timedelta(seconds=ttl_seconds)
         self._public_url = public_url.rstrip("/") if public_url else None
+        self._signer_email = signer_email
         self._client: storage.Client | None = None
         self._credentials = None
 
@@ -65,13 +69,15 @@ class ReportSigner:
             bucket=settings.bucket,
             ttl_seconds=settings.signed_url_ttl_seconds,
             public_url=settings.gcs_public_url,
+            signer_email=settings.signer_email,
         )
 
     def warm_up(self) -> None:
-        """Build the signing client eagerly so misconfiguration (missing
-        key file, unusable ambient credentials) fails at startup, not on
+        """Build the signing client and sign once eagerly so
+        misconfiguration (missing key file, credentials that cannot sign —
+        e.g. bare token ADC without IAM signing) fails at startup, not on
         the first report request."""
-        self._bucket()
+        self.download(_warmup_reference())
 
     def _bucket(self) -> storage.Bucket:
         if self._client is None:
@@ -89,8 +95,16 @@ class ReportSigner:
                     project="local", credentials=AnonymousCredentials()
                 )
             else:
-                credentials = None
-                client = storage.Client(project="local")
+                # Cloud Run ambient ADC cannot sign client-side (token-only
+                # credentials) — sign keylessly via IAM signBlob as the
+                # attached service account (TokenCreator on itself).
+                import google.auth
+
+                adc, _ = google.auth.default()
+                credentials = IamSignBlobCredentials(
+                    iam_signer_email(adc, hint=self._signer_email or "")
+                )
+                client = storage.Client(project="local", credentials=AnonymousCredentials())
             self._client = client
             self._credentials = credentials
         return self._client.bucket(self._bucket_name)
@@ -124,3 +138,19 @@ def _rewrite_host(url: str, public_url: str) -> str:
     storage.googleapis.com (the fake-gcs README's client-side rewrite)."""
     marker = url.find("/", url.find("://") + 3)
     return f"{public_url}{url[marker:]}"
+
+
+def _warmup_reference() -> ArtifactReference:
+    """Deterministic throwaway reference for the startup signing probe."""
+    import uuid
+    from datetime import UTC, datetime
+
+    return ArtifactReference(
+        artifact_id=f"art-{uuid.uuid4()}",
+        story_run_id=f"run-{uuid.uuid4()}",
+        type="report-md",
+        version=1,
+        created_at=datetime.now(UTC),
+        content_type="text/markdown",
+        checksum_sha256="0" * 64,
+    )
