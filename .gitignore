@@ -29,3 +29,6 @@ deploy/cloud-run/*/.env
 
 # node (webui frontend dev tooling)
 node_modules/
+
+# capstone source docs - stay local only
+docs/source/
