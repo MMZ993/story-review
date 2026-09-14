@@ -102,3 +102,23 @@ def test_pdf_differs_for_different_content() -> None:
     review = _review()
     other = review.model_copy(update={"po_accepted": False, "remaining_open_issues": []})
     assert render_pdf(review) != render_pdf(other)
+
+
+def test_pdf_transliterates_the_em_dash_instead_of_dropping_it() -> None:
+    # latin-1 has no em dash; the label separator must become a readable
+    # hyphen in PDF, never a lossy '?' (found live on the story-07 report)
+    from report_mcp.render import _latin1, document_blocks
+
+    blocks = document_blocks(finalized_review(run_id()))
+    texts = [b.text for b in blocks if "—" in b.text]
+    assert texts, "expected em-dash blocks in the document"
+    for text in texts:
+        assert "?" not in _latin1(text)
+        assert " - " in _latin1(text)
+
+
+def test_markdown_object_carries_the_utf8_charset() -> None:
+    # browsers guess cp1252 for bare text/markdown and show mojibake
+    from report_mcp.storage import _UPLOAD_CONTENT_TYPE
+
+    assert _UPLOAD_CONTENT_TYPE["md"] == "text/markdown; charset=utf-8"

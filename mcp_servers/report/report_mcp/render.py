@@ -145,5 +145,13 @@ def render(content: FinalizedReview, fmt: str) -> bytes:
 
 
 def _latin1(text: str) -> str:
-    """Map to the built-in fonts' latin-1 repertoire, lossily but stably."""
-    return text.encode("latin-1", "replace").decode("latin-1")
+    """Map to the built-in fonts' latin-1 repertoire, lossily but stably.
+
+    The typographic characters the renderer itself emits (the em-dash
+    label separator) are transliterated to readable ASCII first — never
+    the generic '?' replacement."""
+    return (
+        text.replace("—", " - ")
+        .encode("latin-1", "replace")
+        .decode("latin-1")
+    )
