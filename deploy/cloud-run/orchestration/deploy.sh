@@ -49,6 +49,7 @@ fi
 : "${ORCH_AE_ENGINEERING_VERSION:?ORCH_AE_ENGINEERING_VERSION not set (see .env.example)}"
 : "${ORCH_AE_SYNTHESIS_VERSION:?ORCH_AE_SYNTHESIS_VERSION not set (see .env.example)}"
 : "${ORCH_AE_FACILITATOR_VERSION:?ORCH_AE_FACILITATOR_VERSION not set (see .env.example)}"
+: "${ORCH_SIGNER_EMAIL:?ORCH_SIGNER_EMAIL not set (see .env.example)}"
 
 STORY_URL="$(terraform -chdir=infra output -json mcp_services | jq -r .story.url)/mcp"
 ARTIFACT_URL="$(terraform -chdir=infra output -json mcp_services | jq -r .artifact.url)/mcp"
@@ -77,6 +78,7 @@ ORCH_STORY_URL=${STORY_URL},\
 ORCH_ARTIFACT_URL=${ARTIFACT_URL},\
 ORCH_REPORT_URL=${REPORT_URL},\
 ORCH_BUCKET=${BUCKET},\
+ORCH_SIGNER_EMAIL=${ORCH_SIGNER_EMAIL},\
 ORCH_AE_BUSINESS_RESOURCE=${ORCH_AE_BUSINESS_RESOURCE},\
 ORCH_AE_BUSINESS_VERSION=${ORCH_AE_BUSINESS_VERSION},\
 ORCH_AE_ENGINEERING_RESOURCE=${ORCH_AE_ENGINEERING_RESOURCE},\
