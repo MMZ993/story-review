@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-14 (autonomous session: flow-1 422 defect FIXED locally — park + story release on terminal agent failure, docs aligned, NOT yet deployed to CR; Cloud SQL paused at wrap-up). Prior: increment 5 deploy COMPLETE, walkthrough OPEN.
+Last updated: 2026-09-14 (session: flow-1 fix DEPLOYED to Cloud Run, /health ok; **D26 full-history purge of `docs/source`** — all branches filter-repo'd + force-pushed, all pre-2026-09-14 hashes in runbooks/HANDOFF are now stale labels; Cloud SQL left RUNNING for the walkthrough — pause when done). Prior: flow-1 422 defect fixed locally (park + story release on terminal agent failure).
 
 ## Where we are
 
@@ -42,29 +42,11 @@ Last updated: 2026-09-14 (autonomous session: flow-1 422 defect FIXED locally �
 
 ## Previous Session Summary
 
-Flow-1 422 defect fix, autonomous session (2026-09-14, dev server; no
-cloud actions, no user questions per owner instruction):
-- **Fix** (`fix: 6ad0c2c`): a non-retryable `ApiError` in flow 1 after the
-  session row exists now **parks the session + story run and releases the
-  idempotency claim atomically** (`flows._park_failed_session`;`idempotency.release`
-  gained a `conn` param) — the story is immediately reusable with a fresh
-  key. Retryable failures keep takeover semantics (session active, claim
-  in_progress). Same-key retry of a terminally-failed attempt — including
-  the crash window (stale in_progress claim + parked session) — is rejected
-  `409 IDEMPOTENCY_KEY_REUSED` with the claim row released, no agent
-  re-invocation. Park is best-effort (a park failure must not mask the
-  client-visible terminal error; D22 abandon stays the recovery).
-- **Docs** (`docs: 15c64f1`, cherry-picked to frozen as `2d921c2`):
-  api-contract `POST /sessions` error table now defines the late `422`
-  (terminal agent failure → parked session, released story, new key
-  required) and the 409 same-key-retry nuance.
-- **Review**: read-only subagent — 1 Important (guard leaked a fresh claim
-  row) fixed + crash-window test added + best-effort park + style nit;
-  re-verified green.
-- **Verification**: orchestration **195+12s** (baseline 191+12s, +4 tests).
-  Runbook 14 §Increment 5 walkthrough — defect fixed (full evidence).
-  `WORKING_ENVIRONMENT.md` (gitignored) updated: terraform state IS here
-  now; main-PC copy stale.
+Flow-1 fix deploy + D26 history purge (2026-09-14, dev server; cloud actions owner-approved in chat):
+- **Deploy**: Cloud SQL resumed (`db-resume`, ~10 min to RUNNABLE — first deploy attempt failed the startup probe on a connector TimeoutError; transient cold-start race, retry succeeded). CR `orchestration` now runs the fix (image `20260914-…`, pre-D26 hash label `91d563a`). `/health` fully ok (first probe read degraded on scale-to-zero MCP cold starts — expected).
+- **D26** (owner decision, explicit exception to the no-rewrite rule): `docs/source/{evaluation,topic}.md` purged from the **full history** of all branches via `git filter-repo --invert-paths`; `.gitignore` entry; files restored locally (ignored); `main`, `docs/initial-frozen`, `dev-server/session-23` force-pushed. Recorded in local-decisions D26. **Standing consequence: every hash recorded in HANDOFF/runbooks/local-decisions before 2026-09-14 is a stale label** (incl. the frozen-branch freeze label `d5cb413`); git log is authoritative.
+- **Pushes**: owner-approved agent pushes — `main` → `7a8a168` (tip), `docs/initial-frozen` → `7d53ff5`; remote verified identical to local.
+- Gotcha: `git filter-repo --force` discards uncommitted working-tree changes (the Runbook 14 deploy entry was lost and re-applied) — commit before rewriting.
 
 Phase 8 increment 5, deploy part COMPLETE + environment move (2026-09-13,
 dev server — now the PRIMARY machine; see WORKING_ENVIRONMENT.md):
@@ -888,16 +870,11 @@ after changes):
 
 ## Next Steps
 
-1. **Deploy the fix**: `bash deploy/cloud-run/orchestration/deploy.sh`
-   (tier-2 — owner approves/runs or explicitly delegates; commit `6ad0c2c`
-   must be in the image). Then verify `/health`.
-2. Resume the increment-5 walkthrough: story-01 abandoned + retried after
-   the fix; two-user cookie-scoping proof (normal + incognito window).
-3. Owner pushes main (`…6ad0c2c`) + `docs/initial-frozen` (`2d921c2`).
-4. Later increments 6–7 per `docs-local/plans/phase-8-gcp-deployment.md`;
+1. **Walkthrough (owner, browser)**: resume increment-5 at `https://story-review.mmz.sh` — story-01 abandon + fresh-key retry (exercises the deployed fix); two-user cookie-scoping proof (normal + incognito window). **`make db-pause` after** (Cloud SQL left RUNNING for this).
+2. Later increments 6–7 per `docs-local/plans/phase-8-gcp-deployment.md`;
    D5 prune (owner-run) also covers the 15 broken/superseded facilitator
    engines listed in Runbook 14 inc 3.
-5. Housekeeping when local stack no longer needed: `make
+3. Housekeeping when local stack no longer needed: `make
    agents-compose-down`; local `cloudsql-proxy` container can be removed
    (`docker rm -f cloudsql-proxy`) once no more migration runs are due.
 
@@ -917,9 +894,7 @@ Pre-existing items folded into the plan: run-migrations argv/retry minors
   unset `$ADO_ORG` makes it a false match) is a mandatory pre-publication
   gate and must run after the last commit of the session performing it.
   History rewrites end at publication.
-- **Cloud SQL was RUNNING during this session, PAUSED at wrap-up**
-  (owner instruction; `make db-pause` — increment-5 continuation needs
-  `make db-resume` first: the deployed orchestration reads Cloud SQL).
+- **Cloud SQL left RUNNING at wrap-up (owner wants the walkthrough next)** — pause with `make db-pause` (prefix `CLOUDSDK_CORE_PROJECT=$PROJECT_ID`) once the walkthrough is done.
   Standing rule: `make db-resume` before any phase needing it. **Billable Agent Engine resources now: 3
   current reviewers + current facilitator (`facilitator-dc95165`) + 3
   superseded good facilitators (incl. N-1) + 15 broken facilitator
