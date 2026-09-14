@@ -271,12 +271,19 @@ class TestIdTokenAuthInitialRefresh:
         minted = {}
 
         class FakeBase:
-            service_account_email = "sa@proj.iam.gserviceaccount.com"
+            service_account_email = "default"
 
         class FakeIDTokenCredentials:
-            def __init__(self, request, target_audience, service_account_email):
+            def __init__(
+                self,
+                request,
+                target_audience,
+                service_account_email=None,
+                use_metadata_identity_endpoint=False,
+            ):
                 minted["audience"] = target_audience
                 minted["account"] = service_account_email
+                minted["metadata_endpoint"] = use_metadata_identity_endpoint
                 self.token = None
 
             def refresh(self, request):
@@ -290,7 +297,53 @@ class TestIdTokenAuthInitialRefresh:
         creds = auth._mint()
         assert creds.token == "tok"
         assert minted["audience"] == "https://svc"
-        assert minted["account"] == "sa@proj.iam.gserviceaccount.com"
+
+    def test_mint_uses_metadata_identity_endpoint_not_signblob(
+        self, monkeypatch
+    ):
+        """The default IDTokenCredentials path builds an IAM Signer over
+        the resolved account and mints the token via signBlob — AE's
+        compute credentials report the account as ``default``, so IAM
+        rejects it (400 "Invalid form of account ID default", observed
+        live at the inc-6 gate: facilitator toolsets failed to load).
+        With use_metadata_identity_endpoint=True the metadata identity
+        endpoint mints the audience token directly, no signing."""
+        import asyncio
+
+        import google.auth
+        import google.auth.compute_engine
+
+        from agent_kit.ae_runtime import _IdTokenAuth
+
+        minted = {}
+
+        class FakeBase:
+            service_account_email = "default"
+
+        class FakeIDTokenCredentials:
+            def __init__(
+                self,
+                request,
+                target_audience,
+                service_account_email=None,
+                use_metadata_identity_endpoint=False,
+            ):
+                minted["account"] = service_account_email
+                minted["metadata_endpoint"] = use_metadata_identity_endpoint
+                self.token = None
+                self.expired = False
+
+            def refresh(self, request):
+                self.token = "tok"
+
+        monkeypatch.setattr(google.auth, "default", lambda: (FakeBase(), None))
+        monkeypatch.setattr(
+            google.auth.compute_engine, "IDTokenCredentials", FakeIDTokenCredentials
+        )
+        auth = _IdTokenAuth("https://svc")
+        auth._mint()
+        assert minted["metadata_endpoint"] is True
+        assert minted["account"] is None
 
 
 class TestFacilitatorRootAgentTelemetry:
