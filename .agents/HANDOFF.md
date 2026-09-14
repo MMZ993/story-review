@@ -10,6 +10,38 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 
 Last updated: 2026-09-16 (session: increment 6 **CLOSED** live-gate + three live root causes fixed: stale pre-D19 MCP images redeployed; AE facilitator telemetry wired (model_call events observed live from Agent Engine); keyless IAM signBlob signing for live V4 report URLs (docs assumption unimplementable — D27); report encoding fixes (MD charset + PDF em dash). Full browser arc green end-to-end: story-07 accept → finalize → reports. Engines `facilitator-1fb416d` + `17f73cd` retained for D5 prune; orchestration `orchestration-00028-n9p`. OPEN: AE facilitator MCP toolset `default`-account signBlob failure — tool_call telemetry unobserved (D27 am 1). Cloud SQL left RUNNING during the session — pause when done).
 
+## Next Session
+
+### Remaining Tasks
+
+- **AE facilitator MCP toolsets (D27 am 1 open item)**: engine logs show
+  `signBlob … Invalid form of account ID default` at toolset session
+  creation — facilitator tools + `tool_call` telemetry unverified in AE
+  mode. Investigate first.
+- **75% context compaction** (Item D remainder, owner-deferred): typed
+  summary + session-history replacement; mechanism decision still open.
+- **Requirements-coverage rows** for increment 6 if not yet complete.
+- **Existing report objects** keep bare `text/markdown` metadata —
+  regenerate reports to pick up the charset fix (cosmetic).
+
+### Next Steps
+
+1. Investigate the AE MCP toolset `default`-account failure (mirror of
+   the increment-3 metadata resolution fix — off-loop email fetch).
+2. Then the deferred 75% compaction decision (D25/Item D).
+3. D5 engine prune now has ~6 retained facilitator engines incl.
+   `1fb416d` + `17f73cd` — schedule after the versioning proof.
+
+### Verification and Review
+
+This session: orchestration 206+12s, agent-kit 134, mcp-report 38,
+review-schemas 177, mcp-story/artifact/report smokes PASS (cloud),
+facilitator engine smokes PASS ×2; end-to-end browser arc green;
+identifier check 0 hits; independent review not run (live fixes,
+all test-pinned — acceptable per development-rules; D27 records the
+only design-adjacent deviation). All work pushed: main `89a9334`,
+frozen in sync.
+
 ## Where we are
 
 - **Phase 7 (Web UI) COMPLETE and CLOSED** (sessions 39–50; increments 0–4
