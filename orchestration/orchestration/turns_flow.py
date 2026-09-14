@@ -31,6 +31,7 @@ from review_schemas.records import TurnRecord
 from review_schemas.synthesis import SynthesisReport
 
 from . import (
+    app_events,
     finalization,
     flows,
     idempotency,
@@ -350,6 +351,12 @@ async def _execute(
     outcome = evaluate_gate(
         facilitator_turn=facilitator_turn,
         delegation=delegation,
+    )
+    app_events.gate_decision(
+        outcome=outcome,
+        facilitator_turn=facilitator_turn,
+        session_id=session_id,
+        correlation_id=correlation_id,
     )
     turn = await records_store.create_turn_or_get(
         pool,
@@ -672,6 +679,12 @@ async def _persist_and_respond(
                 canonical.model_dump(mode="json"),
                 conn=conn,
             )
+    if outcome == "park":
+        app_events.session_parked(
+            session_id=session_id,
+            facilitator_turn=facilitator_turn_count,
+            correlation_id=turn.correlation_id,
+        )
     return TurnResponse(
         session_id=canonical.session_id,
         turn_number=canonical.turn_number,

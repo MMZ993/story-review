@@ -36,7 +36,7 @@ from review_schemas.records import (
 from review_schemas.review import StoryDetail
 from review_schemas.synthesis import ArtifactReference
 
-from . import idempotency, records_store
+from . import app_events, idempotency, records_store
 from .agent_clients import (
     AgentCallFailure,
     AgentSet,
@@ -135,10 +135,13 @@ async def _save_artifact(
     return output.reference
 
 
-def _upstream(message: str, correlation_id: str) -> ApiError:
+def _upstream(message: str, correlation_id: str, agent: str | None = None) -> ApiError:
     return ApiError(
         503,
-        make_error("UPSTREAM_UNAVAILABLE", message, correlation_id, retryable=True),
+        make_error(
+            "UPSTREAM_UNAVAILABLE", message, correlation_id,
+            retryable=True, agent=agent,
+        ),
     )
 
 
@@ -169,7 +172,7 @@ def _agent_failure(exc: Exception, correlation_id: str, agent: str) -> ApiError:
                 retryable=error.retryable, agent=agent,
             ),
         )
-    return _upstream(f"{agent} invocation failed", correlation_id)
+    return _upstream(f"{agent} invocation failed", correlation_id, agent)
 
 
 async def run_create_session(
@@ -274,14 +277,16 @@ async def run_create_session(
             # terminal error (the stuck session stays recoverable via the
             # D22 abandon endpoint).
             try:
-                await _park_failed_session(pool, session_record.session_id, key)
+                await _park_failed_session(
+                    pool, session_record.session_id, key, correlation_id
+                )
             except Exception:
                 pass
         raise
 
 
 async def _park_failed_session(
-    pool: asyncpg.Pool, session_id: str, key: uuid.UUID
+    pool: asyncpg.Pool, session_id: str, key: uuid.UUID, correlation_id: str
 ) -> None:
     """Park a flow-1 session after a terminal failure, atomically with the
     idempotency-claim release (both or neither — a crash between the two
@@ -293,6 +298,11 @@ async def _park_failed_session(
                 pool, session_id, state="parked", conn=conn
             )
             await idempotency.release(pool, ROUTE, "", key, conn=conn)
+    app_events.session_parked(
+        session_id=session_id,
+        facilitator_turn=1,
+        correlation_id=correlation_id,
+    )
 
 
 async def _initial_pipeline(
@@ -428,7 +438,7 @@ async def _initial_pipeline(
     except AgentCallFailure as exc:
         raise _agent_failure(exc, correlation_id, "facilitator") from exc
     except (AgentTransportError, AgentDeadlineExceeded) as exc:
-        raise _upstream("facilitator invocation failed", correlation_id) from exc
+        raise _upstream("facilitator invocation failed", correlation_id, "facilitator") from exc
 
     _assert_opening_turn(facilitator.output, correlation_id)
     turn = await records_store.create_turn_or_get(

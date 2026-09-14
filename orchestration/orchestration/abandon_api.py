@@ -17,7 +17,7 @@ import uuid
 from fastapi import APIRouter, Depends, Header, Request
 from review_schemas.api import AbandonSessionResponse
 
-from . import flows, idempotency, lease, records_store, turns_flow
+from . import app_events, flows, idempotency, lease, records_store, turns_flow
 from .api_errors import ApiError, make_error
 from .errors import IdempotencyKeyReused, SessionLocked
 from .users import require_user_id
@@ -124,4 +124,9 @@ async def _park_now(
             await idempotency.complete(
                 pool, ROUTE, session.session_id, key, canonical, conn=conn
             )
+    app_events.session_parked(
+        session_id=session.session_id,
+        facilitator_turn=session.facilitator_turn_count,
+        correlation_id=correlation_id,
+    )
     return AbandonSessionResponse.model_validate(canonical)
