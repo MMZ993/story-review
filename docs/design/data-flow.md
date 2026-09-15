@@ -237,7 +237,7 @@ sequenceDiagram
                 A-->>T: artifact payload [MCP-L]
             end
             T-->>F: reply + structured DelegationDecision [LLM]
-            F->>C: persist pre-delegation typed output (delegation rationale; reply not shown to PO) [D]
+            F->>C: persist pre-delegation typed output (delegation rationale, reply not shown to PO) [D]
             alt invoke = both reviewers
                 par parallel fan-out (asyncio.gather) [D]
                     F->>B: invoke (story + prev + extra_context) [D]
@@ -286,7 +286,7 @@ sequenceDiagram
             end
         end
         alt outcome = finalize
-            Note over F: continue synchronously to flow 3; no response yet
+            Note over F: continue synchronously to flow 3, no response yet
         else outcome = park
             F->>C: release turn lock [D]
             F-->>PO: final reply + latest synthesis + park outcome (single response) [D]
@@ -577,7 +577,7 @@ sequenceDiagram
         PO->>F: retry finalization/download (session ID, idempotency key) [D]
         F->>C: load completed session + report reference [D]
         C-->>F: immutable report reference [D]
-        Note over F: generate fresh signed URL; no render or write [D]
+        Note over F: generate fresh signed URL, no render or write [D]
         F-->>PO: final report reference + signed URL (single response) [D]
         PO->>G: download with signed URL [D]
         G-->>PO: report bytes [D]
@@ -769,7 +769,7 @@ sequenceDiagram
     F->>A: fetch artifacts by reference [MCP-D]
     A-->>F: artifacts [MCP-D]
     F-->>PO: history replay + artifacts [D]
-    note over PO,F: completed and parked sessions are read-only;<br/>report URLs can be regenerated; new sessions may use the same story
+    note over PO,F: completed and parked sessions are read-only,<br/>report URLs can be regenerated,<br/>new sessions may use the same story
 ```
 
 Sequence diagram (ASCII):
