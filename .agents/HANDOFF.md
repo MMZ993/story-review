@@ -8,18 +8,29 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-15 (dev server, **Phase 9 in progress — increment 1 code
-complete + reviewed; live t1 gate pending owner spend approval**; 82 unit
-tests green. Cloud SQL was RESUMED on owner request and is RUNNING — **do
-not pause it until the owner explicitly asks**. Evidence: Runbook 15.)
+Last updated: 2026-09-15 (dev server, **Phase 9 increment 1 COMPLETE —
+live t1 gate: 3 CODE-class root causes fixed test-first (adapter strict-
+mode datetime, ADK event_data evidence, produced_artifacts listing per
+owner decision); run 4 = CODE bucket empty, all remaining failures
+PROMPT/DATASET class for increments 2–3. Compose stack left RUNNING per
+owner instruction. Evidence: Runbook 15 §Live t1 gate.**)
 
 ## Next Session
 
 ### Remaining Tasks
 
-- Phase 9 implementation, increment by increment, per
-  `docs-local/plans/phase-9-evaluation.md` (start at **increment 0** —
-  judge + runner skeleton, test-first, local only, minimal Vertex spend).
+- Phase 9 increments 2–3 per plan (dataset tuning + PROMPT-class
+  backlog, Runbook 15 §Live t1 gate run 4): delegation calibration
+  (never where expected; always `both` in unresolvable), severity
+  calibration (blockers vs info ceilings), open issues never empty at
+  acceptance, conflicts never detected, facilitator never reads
+  comments via story MCP, synthesis inputs-echo corruption (stochastic),
+  park-at-10 not reached; expected-file calibration (plain-turn `[]`
+  vs every-turn re-synthesis).
+- **Web UI mobile fix (owner request, next session)**: story selection
+  sits below the fold on mobile (Review Story button on top, story list
+  at bottom, not visible) — plan a mobile-friendly arrangement (e.g.
+  floating button).
 - Deferred Phase-8 review minors (Runbook 14 §Increment 7): env-pointer/
   version runtime cross-check; compaction checkpoint-boundary +
   genai-Content test nits; per-call summarizer client.
@@ -29,20 +40,24 @@ not pause it until the owner explicitly asks**. Evidence: Runbook 15.)
 
 ### Next Steps
 
-1. **Live t1 gate for increment 1** (owner approval needed — real agent
-turns on Vertex): `make agents-compose-up` (rebuilds orchestration with
-real agent-run spans + postgres host port 15432) → `make evaluation-test
-TEMPLATES=t1` → triage every failing assertion CODE/DATASET/PROMPT (log
-in Runbook 15 §Increment 1).
-   - Remaining open doc item: evaluation-tests.md wording for
-     finding-key presence (judge-matched by dataset contract — only the
-     severity ceiling is deterministic).
-   - Note: dev Cloud SQL is RUNNING (owner request) — leave it up.
-2. Phase 9 increments 2–5 per `docs-local/plans/phase-9-evaluation.md`.
+1. Phase 9 increments 2–5 per `docs-local/plans/phase-9-evaluation.md`
+   (start at increment 2 — dataset tuning; then 3 — prompt tuning loop).
+2. Web UI mobile fix session (owner request).
+
+   Note: dev Cloud SQL is RUNNING (owner request) — leave it up; the
+   local compose stack is also intentionally left up.
 
 ### Verification and Review
 
-This session (Phase 9 increment 1 + span fix): `make evaluation-unit-test`
+This session (live t1 gate, 4 runs): evaluation unit tests **87 passed**
+(+5: ADK event shape + payload column); agent-kit **148 passed** (+2:
+comments-story `/invoke` JSON-mode boundary); orchestration **207 passed
+/ 12 skipped** (+3: flow-1/delegated/finalizing turn produced_artifacts;
+D19 catalog type filter); compose contract **20**; run 4 full t1 with
+CODE bucket empty; runbook + HANDOFF updated. Remaining open doc item
+unchanged (evaluation-tests.md finding-key wording).
+
+Prior session (Phase 9 increment 1 + span fix): `make evaluation-unit-test`
 **82 passed**; orchestration suite **207 passed / 12 skipped** (+1:
 agent_runs record real invocation spans — reviewers overlap, synthesis
 after both, facilitator after synthesis; `timed_invoke`/`TimedResult`,
@@ -91,7 +106,29 @@ No cloud actions; Cloud SQL STOPPED throughout.
 
 ## Previous Session Summary
 
-Phase 9 increment 1 (2026-09-17, dev server; local only, detail: Runbook 15
+Live t1 gate, increment 1 close (2026-09-15, dev server; owner-approved
+spend; detail: Runbook 15 §Live t1 gate):
+- **Three CODE-class root causes fixed test-first, each verified by a
+  live re-run**: (1) reviewer adapter strict-mode body validation
+  rejected comment stories' ISO `created_at` strings → `model_validate_json`
+  (agent-kit 148). (2) evaluation `db_evidence` vs the compose ADK
+  `events` table shape (`event_data` jsonb + inner `content`; plus a
+  row-key bug found at the rerun) → evaluation 87. (3) owner decision
+  "list all artifacts per turn": flow-1/delegated/finalizing turns now
+  record reviews/synthesis/finalized+reports; D19 catalog filters to
+  synthesis-type refs (orchestration 207+12s; compose contract 20).
+- **Run 4 verdict**: CODE bucket empty; remaining failures all
+  PROMPT/DATASET (delegation calibration — never where expected yet
+  always `both` in unresolvable; severity ceilings exceeded everywhere;
+  open issues never empty; conflicts undetected; facilitator never
+  reads comments; stochastic synthesis inputs-echo corruption).
+- Compose gotcha: `agents-compose-up` recreated the Postgres volume on
+  the first up (fresh `orchestration` db + migrations re-applied);
+  later rebuilds preserved it.
+- Stack left UP per owner instruction; web UI mobile fix recorded for
+  a next session.
+
+Phase 9 increment 1 code (2026-09-17, dev server; local only, detail: Runbook 15
 §Increment 1):
 - **Deterministic assertion engine delivered test-first (judge OFF)**:
   `capture.py` (typed CaseCapture), `orchestration_client.py` (webui

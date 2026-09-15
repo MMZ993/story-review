@@ -211,6 +211,108 @@ Independent read-only review (subagent): 1 Critical / 5 Important /
 
 Triage log (CODE / DATASET / PROMPT): to be filled at the live gate.
 
+## Live t1 gate (2026-09-15, dev server; owner-approved spend; stack kept RUNNING per owner)
+
+Run 1 (`make evaluation-test TEMPLATES=t1`, fresh compose-up): **0/10**,
+two uniform failure classes:
+
+1. `no ADK events table found` (all 10) — CODE (evaluation suite): the
+   compose ADK `events` table stores payloads in **`event_data` (jsonb)**
+   with the parts nested under an inner `content` object, not a `content`
+   column. Fixed test-first in `db_evidence.py` (discovery accepts
+   `content` or `event_data`; `_tool_call_names` descends the inner
+   `content`; `_rows_to_tool_names` keyed by the discovered payload
+   column — the row-key bug was found at the rerun). Evaluation suite
+   86→87 passed.
+2. Comments scenarios `create-session → 422` — CODE (agent adapters):
+   orchestration sends the reviewer request with
+   `story.model_dump(mode="json")` (ISO datetime strings); the reviewer
+   adapter validated the FastAPI body in **python/strict mode**, where
+   pydantic rejects datetime strings outright
+   (`StrictModel(strict=True)`). `StoryComment.created_at` is the only
+   datetime inside `StoryDetail`, so only comment stories hit it — which
+   is why no earlier live walkthrough (stories 02/04/05/07/09/13/15, no
+   comments) ever exposed it. Fixed test-first: `/invoke` now validates
+   the raw body via `model_validate_json` (the synthesis + facilitator
+   adapters' established pattern). agent-kit 146→148 passed; verified
+   live (comment story request now reaches the model).
+
+Gotchas:
+- `agents-compose-up` recreated the compose Postgres with a fresh
+  anonymous volume — the `orchestration` database (and old compose
+  session history) was gone. Recreated the db + re-applied migrations
+  0001–0005 through the 15432 host port before orchestration would
+  start (`InvalidCatalogNameError`; orchestration has no connect retry
+  at startup — restart after the db exists).
+- The runner's stdout is piped through `tail` in the make target, so
+  live progress is invisible until completion; per-case artifacts land
+  in `tests/evaluation/artifacts/cases/` as cases finish.
+
+Run 3 (both CODE fixes deployed, full t1): every case executes to a
+terminal state and produces deterministic verdicts. **0/10 pass**;
+per-case failure lists in `tests/evaluation/artifacts/cases/t1_*.json`
+(run 3 artifacts; run 1/2 overwritten). Triage:
+
+- **CODE/DATASET (open, owner decision needed)** — `turn[N].produced_artifacts`
+  observes only `[(synthesis, v)]`; expected files assert the full set
+  (both reviews v1 on turn 1; re-review v2 on delegation turns;
+  finalized-review + reports on acceptance turns). Orchestration
+  records `produced_artifacts=[synthesis_reference]` only
+  (`flows.py` / `turns_flow.py` / finalization). Either the
+  implementation should list every artifact the turn produced (CODE),
+  or the expected contract should assert synthesis-only per turn with
+  full lineage read from the artifact MCP store (DATASET/suite).
+- **PROMPT-class (increment 3 loop)**:
+  - synthesis `inputs` echo corruption: model echoes a wrong or
+    malformed `checksum_sha256` (observed a 40-hex SHA-1-like string
+    where 64-hex is required) — business-weak (2 runs), comments-benign
+    (1 run); stochastic.
+  - delegation not invoked where expected (business-weak,
+    engineering-weak, partial-resolution, comments-clarify-business —
+    all `expected engineering/business, observed none`).
+  - severity calibration far above expected ceilings (blockers/majors
+    in every case incl. `clean`, which expects `info`).
+  - open issues never empty at acceptance (8–18 remaining everywhere).
+  - conflicting/hidden-conflict: no conflicts detected in synthesis
+    (`conflicts: []`) and no facilitator-gate finalize at the expected
+    turn (plan flag from increment 2: confirm finalize-on-completed-
+    with-po_accepted:false is actually reachable).
+  - unresolvable: sessions run the full 10 turns (synthesis v6 by turn
+    8) — park-at-10 not observed as expected (final state not reached).
+  - mcp_evidence: no facilitator story-MCP tool calls in the ADK trace
+    for comment scenarios (facilitator never reads comments →
+    comments never influence the review).
+
+Run 4 (produced-artifacts CODE fix deployed — owner decision "list all
+artifacts per turn"; orchestration: flow-1 turn lists both reviews +
+synthesis, delegated turns list the re-review(s) + synthesis, the
+finalizing turn is stamped with finalized-review + reports by
+`set_finalizing_turn_artifacts`, and the D19 catalog now filters to
+synthesis-type refs; orchestration suite 207+12s, compose contract 20):
+**no transport errors, no CODE-class failures remain.** Remaining
+failures (4–11 per case) are all behavioral, feeding increments 2–3:
+
+- facilitator never delegates where expected (business-weak,
+  engineering-weak, partial-resolution, comments-clarify-business) but
+  DOES delegate `both` on every turn in `unresolvable` (reviews v2..v9
+  + synthesis each turn; expected files assume artifact-free plain
+  turns) — delegation calibration is the dominant PROMPT gap.
+- severity ceilings exceeded in every case (blockers/majors where
+  info/minor expected, incl. `clean`).
+- open issues never empty at acceptance (5–19 remaining).
+- conflicting/hidden-conflict/partial-resolution: synthesis detects no
+  conflicts (`conflicts: []`) and the facilitator-gate finalize never
+  fires (final state stays active).
+- comment scenarios: still no facilitator story-MCP tool calls (the
+  facilitator never reads comments).
+
+Increment-1 gate met: deterministic engine runs all t1 cases, produces
+per-case artifacts + verdicts, CODE bucket empty.
+
+Sessions/state: compose stack left UP (orchestration, adapters, MCP,
+  postgres, webui) per owner instruction; compose Postgres carries the
+  run-4 sessions (evaluation artifacts retained on disk).
+
 ## Session note — dev DB resumed (2026-09-15)
 
 Owner requested the dev environment usable: Cloud SQL resumed
