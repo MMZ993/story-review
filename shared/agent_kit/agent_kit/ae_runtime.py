@@ -332,11 +332,13 @@ def build_facilitator_root_agent(
         StreamableHTTPConnectionParams,
     )
 
+    from agent_kit.compaction import CompactionCallbacks, genai_summarizer
     from agent_kit.facilitator_adapter import (
         ARTIFACT_READ_TOOLS,
         STORY_TOOLS,
     )
     from agent_kit.structured_logging import configure_logging
+    from agent_kit.telemetry import DEFAULT_CONTEXT_TOKEN_LIMIT
     from agent_kit.telemetry import TelemetryCallbacks
 
     prompt: LoadedPrompt = load_prompt(slug)
@@ -368,7 +370,15 @@ def build_facilitator_root_agent(
             tool_filter=ARTIFACT_READ_TOOLS,
         ),
     ]
-    telemetry = TelemetryCallbacks(service=slug)
+    telemetry = TelemetryCallbacks(
+        service=slug, context_token_limit=DEFAULT_CONTEXT_TOKEN_LIMIT
+    )
+    compaction = CompactionCallbacks(
+        service=slug,
+        # lazy: the client + schema call resolve on first compaction,
+        # never at agent build time
+        summarizer=lambda text: genai_summarizer(config.model, config.location)(text),
+    )
     # structured JSON events on stdout (idempotent) — the AE engine's
     # stdout reaches Cloud Logging, carrying the paired event fields
     configure_logging(slug)
@@ -378,7 +388,10 @@ def build_facilitator_root_agent(
         tools=toolsets,
         before_tool_callback=telemetry.before_tool,
         after_tool_callback=telemetry.after_tool,
-        before_model_callback=telemetry.before_model,
+        before_model_callback=[
+            telemetry.before_model,
+            compaction.before_model,
+        ],
         after_model_callback=telemetry.after_model,
     )
 

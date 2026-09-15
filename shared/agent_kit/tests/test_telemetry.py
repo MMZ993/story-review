@@ -196,8 +196,13 @@ def test_runner_attaches_guard_then_telemetry_callbacks(monkeypatch):
     # before telemetry's start event can mislead (no end would follow).
     assert callable(before_tool[0])
     assert isinstance(before_tool[1].__self__, TelemetryCallbacks)
-    for name in ("after_tool_callback", "before_model_callback", "after_model_callback"):
-        assert callable(seen["callbacks"][name])
+    assert callable(seen["callbacks"]["after_tool_callback"])
+    assert callable(seen["callbacks"]["after_model_callback"])
+    # before_model = [telemetry, compaction] (D28): the 75% compaction
+    # callback runs after telemetry's start event.
+    before_model = seen["callbacks"]["before_model_callback"]
+    assert isinstance(before_model[0].__self__, TelemetryCallbacks)
+    assert before_model[1].__name__ == "before_model"
 
 
 def test_facilitator_app_configures_json_logging(monkeypatch):

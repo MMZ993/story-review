@@ -29,6 +29,11 @@ from typing import Any
 WARN_FRACTION = 0.5
 SUMMARIZE_FRACTION = 0.75
 
+#: Default context limit for the configured model family (gemini-2.5-
+#: flash, per agents/<agent>/config.yaml); used when no explicit limit
+#: is injected, so the policy is live by default rather than dormant.
+DEFAULT_CONTEXT_TOKEN_LIMIT = 1_048_576
+
 
 def context_level(prompt_tokens: int, limit: int) -> tuple[str, float]:
     """Classify one prompt token count against the context limit.
@@ -142,6 +147,11 @@ class TelemetryCallbacks:
         fraction: float | None = None
         if prompt_tokens is not None and self.context_token_limit:
             level, fraction = context_level(prompt_tokens, self.context_token_limit)
+            # Persist the classification in session state: the D28
+            # compaction callback reads it at the next model call.
+            state = getattr(callback_context, "state", None)
+            if state is not None:
+                state["context_level"] = level
         self._model_logger.info(
             "model_call",
             extra={

@@ -407,7 +407,13 @@ class TestFacilitatorRootAgentTelemetry:
             model_version = "gemini-test"
             usage_metadata = None
 
-        captured["before_model_callback"](_Ctx(), _Request())
+        captured["before_model_callback"] = (
+            captured["before_model_callback"]
+            if isinstance(captured["before_model_callback"], list)
+            else [captured["before_model_callback"]]
+        )
+        for before_model in captured["before_model_callback"]:
+            before_model(_Ctx(), _Request())
         captured["after_model_callback"](_Ctx(), _Response())
 
         class _Tool:
