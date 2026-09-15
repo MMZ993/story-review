@@ -23,7 +23,7 @@ WEBUI_PORT         ?= 8120
 	engineering-reviewer-adapter-test engineering-reviewer-live-test \
 	synthesis-adapter-test synthesis-live-test facilitator-adapter-test \
 	facilitator-live-test agents-compose-up agents-compose-down \
-	compose-up compose-down compose-contract-test orchestration-test orchestration-flow1-live-test orchestration-turns-live-test orchestration-finalize-live-test orchestration-integration-test webui-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
+	compose-up compose-down compose-contract-test evaluation-unit-test evaluation-test evaluation-smoke orchestration-test orchestration-flow1-live-test orchestration-turns-live-test orchestration-finalize-live-test orchestration-integration-test webui-test mcp-story-deploy mcp-artifact-deploy mcp-report-deploy mcp-story-smoke mcp-artifact-smoke mcp-report-smoke terraform-plan terraform-apply db-pause db-resume db-status
 
 # Fails the target early if PROJECT_ID could not be resolved from home.env.
 define guard-project
@@ -372,6 +372,21 @@ compose-contract-test: ## Phase 4 cross-service contract tests over HTTP (needs 
 	cd tests/contract && \
 	uv run --no-project --with-requirements requirements.lock \
 		python -m pytest . -q
+
+evaluation-unit-test: ## Phase 9: evaluation package unit tests (no stack, no model calls)
+	cd tests/evaluation && \
+	uv run --no-project --with-requirements requirements.lock \
+		python -m pytest tests -q
+
+evaluation-test: ## Phase 9: evaluation suite over compose (needs agents-compose-up; skeleton in inc 0)
+	cd tests/evaluation && \
+	uv run --no-project --with-requirements requirements.lock \
+		python -m evaluation.runner --base-url $${EVAL_BASE_URL:-http://127.0.0.1:8130}
+
+evaluation-smoke: ## Phase 9: judge smoke — ONE live Vertex judge call on a canned case (spends tokens)
+	cd tests/evaluation && \
+	uv run --no-project --with-requirements requirements.lock \
+		python -m evaluation.runner --judge-smoke
 
 # Phase 4 increment 5: Cloud Run deploys + smoke.
 # _mcp_url is a shell command (run via $(...) in recipes) reading the

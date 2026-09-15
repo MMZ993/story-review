@@ -32,3 +32,6 @@ node_modules/
 
 # capstone source docs - stay local only
 docs/source/
+
+# evaluation run artifacts (kept locally, never committed)
+tests/evaluation/artifacts/
