@@ -45,8 +45,10 @@ from google.genai import types
 from pydantic import StringConstraints, ValidationError
 
 from agent_kit.adapter import error_response
+from agent_kit.compaction import CompactionCallbacks, genai_summarizer
 from agent_kit.config import AgentConfig
 from agent_kit.prompts import LoadedPrompt, load_prompt
+from agent_kit.telemetry import DEFAULT_CONTEXT_TOKEN_LIMIT
 from agent_kit.facilitator_input import (
     FacilitatorRequest,
     FacilitatorResponse,
@@ -308,7 +310,14 @@ def build_facilitator_runner(
         ),
     ]
     telemetry = TelemetryCallbacks(
-        service=slug, context_token_limit=context_token_limit
+        service=slug,
+        context_token_limit=context_token_limit or DEFAULT_CONTEXT_TOKEN_LIMIT,
+    )
+    compaction = CompactionCallbacks(
+        service=slug,
+        # lazy: the client + schema call resolve on first compaction,
+        # never at agent build time
+        summarizer=lambda text: genai_summarizer(config.model, config.location)(text),
     )
     agent: LlmAgent = build_agent_fn(
         prompt,
@@ -319,7 +328,10 @@ def build_facilitator_runner(
             telemetry.before_tool,
         ],
         after_tool_callback=telemetry.after_tool,
-        before_model_callback=telemetry.before_model,
+        before_model_callback=[
+            telemetry.before_model,
+            compaction.before_model,
+        ],
         after_model_callback=telemetry.after_model,
     )
     return Runner(
