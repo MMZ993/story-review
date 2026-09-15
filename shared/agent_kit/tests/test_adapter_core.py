@@ -112,3 +112,73 @@ def make_request():
     from agent_kit.reviewer_input import ReviewerRequest
 
     return ReviewerRequest.model_validate({"story": make_story()})
+
+
+class TestInvokeBoundary:
+    """The /invoke HTTP body must validate in JSON mode: strict dict-mode
+    validation rejects ISO-8601 datetime strings inside comment stories
+    (evaluation gate 2026-09-15: create-session 422 on comments scenarios)."""
+
+    @staticmethod
+    def _comments_story() -> dict:
+        story = make_story()
+        story["comments"] = [
+            {
+                "author": "Story Author",
+                "text": "Should the table appear in order history too?",
+                "created_at": "2026-09-08T14:05:17.217000Z",
+            }
+        ]
+        return story
+
+    @staticmethod
+    def _app(monkeypatch=None):
+        import os
+        from pathlib import Path
+
+        from agent_kit.adapter import create_reviewer_app
+
+        prompts_dir = Path(__file__).resolve().parents[3] / "prompts"
+        if monkeypatch is not None:
+            monkeypatch.setenv("PROMPTS_DIR", str(prompts_dir))
+        else:  # direct (non-fixture) invocation
+            os.environ["PROMPTS_DIR"] = str(prompts_dir)
+
+        return create_reviewer_app(
+            slug="engineering-reviewer",
+            perspective="engineering",
+            build_agent_fn=lambda *_: object(),  # never a real model call
+            load_config_fn=lambda: object(),
+            agent_version=AGENT_VERSION,
+        )
+
+    def test_comments_story_passes_body_validation(self, monkeypatch):
+        import asyncio
+
+        from httpx import ASGITransport, AsyncClient
+
+        async def run():
+            async with AsyncClient(
+                transport=ASGITransport(app=self._app(monkeypatch)), base_url="http://t"
+            ) as client:
+                return await client.post(
+                    "/invoke", json={"story": self._comments_story()}
+                )
+
+        response = asyncio.run(run())
+        # Validation passed; the stub agent fails at the model-call boundary.
+        assert response.status_code == 503, response.text
+        assert response.json()["error"]["code"] == "UPSTREAM_UNAVAILABLE"
+
+    def test_still_a_story_without_comments(self, monkeypatch):
+        import asyncio
+
+        from httpx import ASGITransport, AsyncClient
+
+        async def run():
+            async with AsyncClient(
+                transport=ASGITransport(app=self._app(monkeypatch)), base_url="http://t"
+            ) as client:
+                return await client.post("/invoke", json={"story": make_story()})
+
+        assert asyncio.run(run()).status_code == 503

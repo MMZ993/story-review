@@ -147,13 +147,22 @@ def create_reviewer_app(
         return {"status": "ok", "agent_version": agent_version}
 
     @app.post("/invoke", response_model=None)
-    async def invoke(request: ReviewerRequest) -> ReviewerResponse | JSONResponse:
+    async def invoke(request: Request) -> ReviewerResponse | JSONResponse:
+        """Validate the raw body in JSON mode: strict models still parse
+        ISO datetimes from JSON strings (python-mode would reject them —
+        the comments stories' created_at, evaluation gate 2026-09-15)."""
+        try:
+            parsed = ReviewerRequest.model_validate_json(await request.body())
+        except ValidationError as exc:
+            return error_response(
+                400, "VALIDATION_ERROR", str(exc.errors()[:5]), agent=slug
+            )
         try:
             report = await run_reviewer(
-                agent, render_reviewer_message(request), app_name=slug
+                agent, render_reviewer_message(parsed), app_name=slug
             )
             return assemble_response(
-                report, request, prompt, agent_version, perspective
+                report, parsed, prompt, agent_version, perspective
             )
         except (OutputParseError, ReportMismatchError) as exc:
             return error_response(422, "VALIDATION_ERROR", str(exc), agent=slug)
