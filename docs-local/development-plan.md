@@ -137,14 +137,17 @@ phase-close review Ready-to-proceed (findings codified in Runbook 14 §Increment
 Deferred minors recorded there (env-pointer/version cross-check, two compaction
 test nits, per-call summarizer client). D5 engine prune pending (owner-run).
 
-## Phase 9 — Evaluation suite & demo — planned
+## Phase 9 — Evaluation suite & tuning — planned
 
 Scope: judge config + `prompts/judge.md`; expected-file test runner with
-deterministic assertions; run modes (local compose preferred); demo script using the
-same stories; update requirements-coverage.md statuses with evidence.
+deterministic assertions; run modes (local compose preferred); **tuning loop over the
+dataset stories and agent prompts until all required cases pass (D29)**; update
+requirements-coverage.md statuses with evidence. Plan:
+`docs-local/plans/phase-9-evaluation.md`.
 
 Exit criteria: all required dataset cases pass (deterministic + judged) locally and
-against dev; demo rehearsed; coverage table updated.
+against dev; demo **deferred until the evaluation is complete (D29-1)**; coverage
+table updated.
 
 Cost: Vertex AI tokens (agents + judge) across cases.
 

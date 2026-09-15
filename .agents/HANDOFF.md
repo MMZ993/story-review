@@ -8,38 +8,39 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (dev server, **Phase 8 COMPLETE + D5 prune DONE, session wrapped** — increment-7 versioning/rollback proof executed live: facilitator redeployed as `facilitator-747d9d1` (engine `6251392106976247808`, carries D28 compaction), smoke PASS; orchestration re-pointed forward (`orchestration-00031-xtj`) → rollback (`orchestration-00032-2xz` → `facilitator-573011d`) → forward final (`orchestration-00033-x5t`), a live public-domain flow-1 turn verified on each step; regression battery all green; independent phase-close review Ready-to-proceed with findings codified (minor #2 fixed: `GOOGLE_GENAI_USE_VERTEXAI=1` staged in `agents_env`; #3–5 recorded in Runbook 14 §Increment 7). Phase 8 marked COMPLETE in development-plan; requirements-coverage versioning row → verified, conversation-length row → implemented. **D5 prune executed (owner-approved)**: 20 superseded engines deleted; 5 remain (live facilitator, N-1 `573011d`, three `7d1b9bd` reviewers/synthesis); public domain verified 200 after. All work committed + pushed (main `987e363`, frozen `3eee796`). **Cloud SQL STOPPED at wrap-up** (Runbook 14 §Session wrap-up; `make db-pause` gotcha recorded).)
+Last updated: 2026-09-16 (dev server, **Phase 9 planned — evaluation suite & tuning** — owner decisions D29 recorded: demo deferred until the whole evaluation passes; story tuning and agent-prompt tuning are in scope; detailed per-increment plan written at `docs-local/plans/phase-9-evaluation.md` with a verified case-matrix section; development-plan Phase 9 retitled "Evaluation suite & tuning" with amended exit criteria. Docs-only session: no code, no compose/cloud actions; Cloud SQL remains STOPPED.)
 
 ## Next Session
 
 ### Remaining Tasks
 
-- `make db-pause` unless the next session needs Cloud SQL. **Done at
-  wrap-up** — Cloud SQL STOPPED; use `make db-resume` (or direct
-  `gcloud sql instances patch … --activation-policy ALWAYS`) when a
-  live session is next needed.
-- Minor Makefile gap: `db-pause`/`db-status` fail without a configured
-  gcloud core project (no `--project`/`CLOUDSDK_CORE_PROJECT` passed) —
-  Runbook 14 §Session wrap-up.
-- Deferred review minors (Runbook 14 §Increment 7): env-pointer/version
-  runtime cross-check; compaction checkpoint-boundary + genai-Content
-  test nits; per-call summarizer client.
+- Phase 9 implementation, increment by increment, per
+  `docs-local/plans/phase-9-evaluation.md` (start at **increment 0** —
+  judge + runner skeleton, test-first, local only, minimal Vertex spend).
+- Deferred Phase-8 review minors (Runbook 14 §Increment 7): env-pointer/
+  version runtime cross-check; compaction checkpoint-boundary +
+  genai-Content test nits; per-call summarizer client.
+- One live test session (`sess-8031e95b…`, story-09) left active on dev —
+  its x-user-id wasn't persisted, cannot be abandoned from here (carry-over
+  from increment 7).
 
 ### Next Steps
 
-1. Phase 9 — evaluation suite & demo (development-plan §Phase 9).
+1. Phase 9 increment 0 — `tests/evaluation/` package skeleton,
+   `prompts/judge.md`, `config.yaml`, judge client (fixed retry policy,
+   no best-of-N), `JudgeResult` types, `make evaluation-test` /
+   `evaluation-smoke` targets, unit tests.
+2. Then increment 1 (deterministic assertion engine, judge off,
+   `--templates t1` cheap subset) with the CODE/DATASET/PROMPT triage
+   protocol driving increments 2–3.
 
 ### Verification and Review
 
-This session: agent-kit **142 → 146 passed** across iterations, agents
-4×3-4, facilitator adapter 3+1s; live: facilitator smoke PASS ×2
-(engines `1b933d1`, `573011d`), orchestration `/health` ok, live turn
-with paired `tool_call` events, test session abandoned. Independent
-read-only review of the D28 compaction (subagent): 1 Critical (stale
-checkpoint silently dropping turns) + 3 Importants + minors — **all
-fixed in-session** with new tests; identifier check pending before push.
-Commits: `f6b8024`, `1b933d1`, `573011d`, `af5ed51`, `f3cc0fd` + frozen
-`80a1db2` (not yet pushed — owner pushes).
+This session: docs-only (plan + decisions + development-plan update);
+no suites run (no code changed), no cloud actions, Cloud SQL STOPPED
+throughout. Dataset case-matrix facts in the plan were verified against
+`dataset/expected/*.json` programmatically (scenario shapes, delegation
+turns, final states).
 
 ## Where we are
 
@@ -78,6 +79,31 @@ Commits: `f6b8024`, `1b933d1`, `573011d`, `af5ed51`, `f3cc0fd` + frozen
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Phase 9 planning (2026-09-16, dev server; docs-only, no cloud actions,
+Cloud SQL STOPPED throughout):
+- **D29 recorded** (owner, chat): (1) live demo **deferred until the whole
+evaluation suite passes** — it opens the next phase; (2) **story tuning in
+scope** — the 45-case matrix is iterated so the dataset better represents
+all scenarios (edits in the ADO source of truth + re-export, never
+hand-edited JSON); (3) **agent prompt tuning in scope**, re-proven by the
+suite. No CI/CD (D24-1): `make evaluation-test`, the designed
+`pipelines/evaluation.yml` stays documented intent.
+- **Plan written**: `docs-local/plans/phase-9-evaluation.md` — verified case
+matrix (10 scenarios; delegation/park/MCP-evidence/persistence mapping),
+increments 0–5 with detailed mechanics: 0 judge+runner skeleton; 1
+deterministic assertion engine (fixture-unit-tested assertions, CODE/
+DATASET/PROMPT triage, `--templates t1` cheap subset); 2 dataset tuning
+pass (ADO re-export, representativeness walk; flags: implicit re-review
+conflict detection; `conflicting`/`hidden-conflict` expect completed with
+`po_accepted:false` — confirm facilitator-gate finalize is intended);
+3 judged full set + prompt tuning loop + smoke set; 4 dev-mode run
+(Cloud SQL resume→pause, redeploy if prompts changed); 5 close (coverage
+table, phase review).
+- development-plan Phase 9 retitled "Evaluation suite & tuning" with
+amended exit criteria (demo deferred per D29-1).
+- Verification: case-matrix facts checked programmatically against
+`dataset/expected/*.json`; no suites run (docs-only).
 
 Phase 8 increment 7 — versioning/rollback proof + phase close (2026-09-16, dev
 server; cloud actions owner-approved "please do increment 7"; detail: Runbook 14
