@@ -43,7 +43,8 @@ async def _discover_events_columns(conn: asyncpg.Connection) -> tuple[str, list[
     """Find the ADK events table and its column names (version-tolerant).
 
     Exact name ``events`` wins; otherwise the alphabetically first table
-    whose name contains ``event`` with both ``session_id`` and ``content``.
+    whose name contains ``event`` with ``session_id`` and a payload column
+    (``content`` or ``event_data`` — ADK's schema varies by version).
     """
     rows = await conn.fetch(
         "select table_name, column_name from information_schema.columns "
@@ -55,7 +56,9 @@ async def _discover_events_columns(conn: asyncpg.Connection) -> tuple[str, list[
     candidates = [
         table
         for table, columns in by_table.items()
-        if "event" in table and {"session_id", "content"} <= columns
+        if "event" in table
+        and "session_id" in columns
+        and ("content" in columns or "event_data" in columns)
     ]
     if "events" in candidates:
         return "events", sorted(by_table["events"])
@@ -66,11 +69,21 @@ async def _discover_events_columns(conn: asyncpg.Connection) -> tuple[str, list[
 
 
 def _tool_call_names(content_json: str) -> list[str]:
-    """Function-call tool names inside one ADK event content blob."""
+    """Function-call tool names inside one ADK event content blob.
+
+    Tolerates both shapes: a bare content object (``parts`` at the top
+    level) and an ``event_data`` blob whose parts sit under an inner
+    ``content`` object.
+    """
     try:
         content = json.loads(content_json)
     except (TypeError, ValueError):
         return []
+    if not isinstance(content, dict):
+        return []
+    inner = content.get("content")
+    if isinstance(inner, dict):
+        content = inner
     names = []
     for part in content.get("parts", []):
         call = part.get("function_call")
@@ -79,19 +92,32 @@ def _tool_call_names(content_json: str) -> list[str]:
     return names
 
 
+def _payload_column(columns: list[str]) -> str:
+    """The event payload column present in this table's schema."""
+    if "content" in columns:
+        return "content"
+    return "event_data"
+
+
+def _rows_to_tool_names(rows, payload: str) -> list[str]:
+    """Decode payload cells (str or jsonb dict) into tool-call names."""
+    names: list[str] = []
+    for row in rows:
+        content = row[payload]
+        text = content if isinstance(content, str) else json.dumps(content)
+        names.extend(_tool_call_names(text))
+    return names
+
+
 async def _fetch_tool_calls(dsn: str, session_id: str) -> list[str]:
     conn = await asyncpg.connect(dsn)
     try:
-        table, _ = await _discover_events_columns(conn)
+        table, columns = await _discover_events_columns(conn)
+        payload = _payload_column(columns)
         rows = await conn.fetch(
-            f"select content from {table} where session_id = $1", session_id
+            f"select {payload} from {table} where session_id = $1", session_id
         )
-        names: list[str] = []
-        for row in rows:
-            content = row["content"]
-            text = content if isinstance(content, str) else json.dumps(content)
-            names.extend(_tool_call_names(text))
-        return names
+        return _rows_to_tool_names(rows, payload)
     finally:
         await conn.close()
 
