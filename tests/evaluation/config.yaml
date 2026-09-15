@@ -1,0 +1,11 @@
+# Judge configuration (Phase 9, docs/quality/evaluation-tests.md).
+# The judge is a plain stateless Vertex AI call — not a deployed agent.
+# temperature 0, one candidate, no best-of-N. The judge prompt is pinned
+# by content hash: a drifted prompts/judge.md fails the suite loudly
+# before any model call.
+model: gemini-2.5-pro
+location: europe-west4
+temperature: 0.0
+candidate_count: 1
+prompt_path: prompts/judge.md
+judge_md_sha256: 8323bbd0a5dedc4d23da48f36a5a5844fbac5e701424321d9fe0e295d9a5e006

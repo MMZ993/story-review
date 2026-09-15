@@ -1,0 +1,40 @@
+{
+  "case_id": "clean-story-05",
+  "case_input": {
+    "scenario": "clean",
+    "story_id": "story-05",
+    "expected_summary": {
+      "turns": 2,
+      "final_state": "completed",
+      "po_accepted": true,
+      "delegation": "none",
+      "conflicts": []
+    },
+    "transcript": [
+      {
+        "turn": 1,
+        "po_message": null,
+        "facilitator_reply_summary": "Both perspectives reviewed the story; no significant findings. Synthesis v1: story is ready for acceptance.",
+        "open_issues": [],
+        "invoke": "none",
+        "artifacts": [
+          {"type": "review-business", "version": 1, "findings": []},
+          {"type": "review-engineering", "version": 1, "findings": []},
+          {"type": "synthesis", "version": 1, "conflicts": []}
+        ]
+      },
+      {
+        "turn": 2,
+        "po_message": null,
+        "po_accepted": true,
+        "outcome": "finalize",
+        "state_after": "completed",
+        "artifacts": [
+          {"type": "finalized-review", "version": 1, "po_accepted": true, "remaining_open_issues": []},
+          {"type": "report-md", "version": 1},
+          {"type": "report-pdf", "version": 1}
+        ]
+      }
+    ]
+  }
+}
