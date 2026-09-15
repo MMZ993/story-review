@@ -974,3 +974,92 @@ Three stacked live root causes, each fixed test-first on `main`:
 - Verification: agent-kit **136** (+2), agents 4×3-4. Machine clock
   drift note: real UTC lags the session labels — logs were queried with
   explicit windows, not "since 2026-09-16".
+
+## Increment 7 — versioning/rollback proof + phase close (2026-09-15/16 labels, dev server; cloud actions owner-approved "please do increment 7")
+
+All evidence sanitized; engine numeric ids are random resource ids kept
+for the D5 prune map.
+
+### Gotchas
+
+1. **`adk deploy` telemetry prompt hangs the script**: mid-deploy the CLI
+   printed an interactive `Enable telemetry? [Y/n]:` and blocked (first
+   facilitator deploy attempt). Fix: run
+   `uv run --with "google-adk[mcp,db]==2.8.0" adk telemetry disable`
+   once per workstation; deploy then runs unattended.
+
+### Procedure executed (per plan §7 + deployment.md "Versioning and rollback")
+
+1. Baseline: `make agent-kit-test` — **146 passed** (includes the D28
+   compaction suite).
+2. **New versioned resource**: `make agents-deploy-facilitator` (HEAD
+   `747d9d1`, clean tree) → engine `6251392106976247808`, display name
+   `facilitator-747d9d1`. The staged extra packages include `agent_kit`
+   → D28 `compaction.py` ships in this artifact.
+3. **Unit smoke PASS**: `deploy/agents/smoke.py facilitator` against the
+   new engine — strict-schema `FacilitatorTurnOutput` validated,
+   session `dc60fe45…` (smoke cleans up its sessions).
+4. **Forward**: `deploy/cloud-run/orchestration/.env` pointer → new
+   engine + `facilitator-747d9d1`; `deploy.sh` → revision
+   `orchestration-00031-xtj` (image `20260915-1142-747d9d1`). Verified:
+   Cloud Run v2 env carries the new RESOURCE/VERSION; public-domain
+   flow-1 turn on story-07 → 201, opening facilitator reply OK
+   (`sess-ef465404…`, abandoned → parked afterwards).
+5. **Rollback**: pointer back to `facilitator-573011d`
+   (engine `7147608432822976512`) → revision `orchestration-00032-2xz`
+   (image `20260915-1149-747d9d1`). Verified: env shows the old engine;
+   public-domain flow-1 turn on story-08 → 201 (`sess-9f781887…`,
+   abandoned → parked). **Rollback proven: pointer switch + revision
+   redeploy, no in-place AE mutation, both versions serve live turns.**
+6. **Forward (final)**: pointer to `facilitator-747d9d1` again →
+   revision `orchestration-00033-x5t` (image `20260915-1155-747d9d1`),
+   env verified, flow-1 turn on story-09 → 201
+   (`sess-8031e95b…` — **left active**: its `x-user-id` was not
+   persisted by the driver, so it cannot be abandoned by this client;
+   harmless, invisible to other anonymous users; candidate for a manual
+   park if observed). D28 compaction now ships live (cannot trigger in
+   practice: 10-turn cap vs 1M-token policy limit — recorded D28).
+
+Tag↔resource map (facilitator line): `7d1b9bd` business/engineering/
+synthesis (unchanged); `573011d` → 7147608432822976512 (retained for
+N-1 rollback); `747d9d1` → **6251392106976247808 (current live)**.
+Plus earlier retained engines (`f6b8024`, `1b933d1`, `a7257a3`,
+`3b61a75`, `dc95165`, `1fb416d`, `17f73cd` numeric ids in the
+sections above) — D5 prune list.
+
+### Regression battery (all green, at/above baseline)
+
+agent-kit **146**, review-schemas **177**, orchestration **206+12s**,
+webui **pytest 25 + vitest 89**, agents **3/3/3/4**, facilitator
+adapter **3+1s**, compose contract **20** (after `make compose-up` —
+the stack was down; the first run errored on unreachable services,
+expected).
+
+### Independent phase-close review (read-only subagent)
+
+**Ready to proceed** conditional on this codification. Findings:
+- Important (F1, this section): increment-7 evidence not yet in repo —
+  fixed by this entry + requirements-coverage + development-plan +
+  HANDOFF updates.
+- Minor #2: compaction summarizer's `genai.Client` relies implicitly on
+  AE runtime Vertex env → **fixed**: `agents_env` in
+  `deploy/agents/common.sh` now stages `GOOGLE_GENAI_USE_VERTEXAI=1`
+  (takes effect on the NEXT agent deploy; current engine relies on the
+  runtime default, failure mode safe — compaction skipped, context
+  kept).
+- Minor #3 (recorded, not fixed): no runtime cross-check between
+  `ORCH_AE_FACILITATOR_RESOURCE` and `..._VERSION` — audit label could
+  mismatch silently; candidate startup assertion (engine display_name
+  == slug-version) or runbook checklist item.
+- Minor #4 (recorded): compaction checkpoint-boundary case and the
+  genai-`types.Content` branch of `_summary_content` untested in the
+  deterministic tier.
+- Minor #5 (recorded): `genai_summarizer` client re-created per
+  compaction call — harmless at compaction frequency.
+
+### Remaining at close
+
+- D5 prune (destructive, owner-run): the engine list above minus
+  `6251392106976247808`.
+- `make db-pause` at wrap-up (Cloud SQL left RUNNING during this
+  session).

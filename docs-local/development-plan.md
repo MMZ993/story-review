@@ -120,23 +120,22 @@ a browser against the local stack.
 
 Cost: Vertex AI tokens only.
 
-## Phase 8 — Real GCP deployment & versioning proof — planned (plan written 2026-09-21: plans/phase-8-gcp-deployment.md, decisions D24; increments 0–7 incl. anonymous multi-user scoping, AE client + CR→AE gate, webui Cloud Run + mmz.sh subdomain, facilitator-first Item D, versioning/rollback proof)
+## Phase 8 — Real GCP deployment & versioning proof — **COMPLETE** (closed 2026-09-16; plan: plans/phase-8-gcp-deployment.md, decisions D24; evidence: Runbook 14 increments 0–7)
 
 Scope: deploy all units to Cloud Run + Agent Engine via runbook/Makefile; env
 pointers; smoke tests; observability wiring (structured logs, traces, dashboards,
 alerts); versioning proof: redeploy one agent as a new versioned resource, re-point,
 roll back.
 
-Exit criteria: full system works on GCP; **including live proof of the
-Cloud Run (orchestration) → Agent Engine leg, untested in Phase 1** (verify
-`sa-orchestration` IAM incl. `roles/aiplatform.user` for session create, and
-`:streamQuery?alt=sse` from Cloud Run — see Runbook 06 gotchas 3–4); versioning/rollback
-evidence recorded;
-requirements-coverage rows for deployment/versioning/observability move toward
-verified.
-
-Cost: the main spend phase — Agent Engine resources, Cloud Run, Cloud SQL uptime,
-Vertex AI. Prune Agent Engine resources per D5 after evidence.
+Exit criteria (all met): full system live on GCP over the public domain
+(webui → orchestration → Agent Engine → MCP, CR→AE leg proven increment 4);
+versioning/rollback proof live — facilitator redeployed as `facilitator-747d9d1`,
+orchestration re-pointed forward/rollback/forward with a live flow-1 turn verified
+on each revision (Runbook 14 §Increment 7); requirements-coverage rows for
+deployment/versioning/observability moved to verified/implemented. Independent
+phase-close review Ready-to-proceed (findings codified in Runbook 14 §Increment 7).
+Deferred minors recorded there (env-pointer/version cross-check, two compaction
+test nits, per-call summarizer client). D5 engine prune pending (owner-run).
 
 ## Phase 9 — Evaluation suite & demo — planned
 
