@@ -221,6 +221,13 @@ async def test_delegation_both_reruns_reviewers_and_synthesis(
         assert turn is not None and turn["outcome"] == "continue"
         assert turn["po_message"] == "The API limit is 100 rps."
         assert json.loads(turn["delegation"])["invoke"] == "none"
+        # produced artifacts: the turn's re-reviews + the fresh synthesis
+        produced = json.loads(turn["produced_artifacts"])
+        assert [(item["type"], item["version"]) for item in produced] == [
+            ("review-business", 2),
+            ("review-engineering", 2),
+            ("synthesis", 2),
+        ]
         assert turn["facilitator_reply"] == "Summary after re-review."
         assert turn["delegation_rationale_reply"] == "Here is my reply."
         count = await conn.fetchval(
@@ -505,6 +512,16 @@ async def test_open_issues_empty_finalize_completes(pool, settings, artifact):
         assert row["state"] == "completed"
         assert len(json.loads(row["report_references"])) == 1
         assert row["final_review_reference"] is not None
+        # the finalizing turn lists the artifacts flow 3 produced
+        turn = await conn.fetchrow(
+            "select produced_artifacts from turns "
+            "where session_id = $1 and outcome = 'finalize'",
+            session["session_id"],
+        )
+        assert [
+            (item["type"], item["version"])
+            for item in json.loads(turn["produced_artifacts"])
+        ] == [("finalized-review", 1), ("report-md", 1)]
     # finalized-review artifact content carries the acceptance state
     saved = [
         call

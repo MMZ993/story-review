@@ -292,6 +292,10 @@ async def run_flow3(
         seen: set[str] = set()
         for turn in turns:
             for reference in turn.produced_artifacts:
+                # only synthesis versions feed the catalog; turns also list
+                # the review/finalized/report artifacts they produced
+                if reference.type != "synthesis":
+                    continue
                 if reference.artifact_id not in seen:
                     seen.add(reference.artifact_id)
                     version_refs.append(reference)
@@ -335,6 +339,11 @@ async def run_flow3(
                 pool, session.session_id, state="active"
             )
         raise
+    await records_store.set_finalizing_turn_artifacts(
+        pool,
+        session.session_id,
+        [final_reference, *report_references],
+    )
     return FinalizationResult(
         final_review_reference=final_reference,
         report_references=report_references,

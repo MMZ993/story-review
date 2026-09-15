@@ -378,7 +378,10 @@ async def _execute(
             resolutions=resolutions,
             new_issues=list(final_output.new_issues),
             outcome=outcome,
-            produced_artifacts=([synthesis_reference] if synthesis.produced else []),
+            produced_artifacts=[
+                *new_references,
+                *([synthesis_reference] if synthesis.produced else []),
+            ],
             created_at=_now(),
             completed_at=_now(),
         ),

@@ -218,6 +218,12 @@ async def assert_flow_state(pool, body: dict, artifact: FakeArtifactMcp):
         assert turn is not None and turn["state"] == "succeeded"
         assert turn["po_message"] is None and turn["outcome"] == "continue"
         import json as _json
+        produced = _json.loads(turn["produced_artifacts"])
+        assert [(item["type"], item["version"]) for item in produced] == [
+            ("review-business", 1),
+            ("review-engineering", 1),
+            ("synthesis", 1),
+        ]
         delegation = _json.loads(turn["delegation"])
         assert delegation["invoke"] == "none"
         assert turn["facilitator_reply"] == body["facilitator_reply"]

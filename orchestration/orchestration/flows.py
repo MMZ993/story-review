@@ -455,7 +455,11 @@ async def _initial_pipeline(
             delegation=facilitator.output.delegation,
             resolutions=[],
             outcome="continue",
-            produced_artifacts=[synthesis_reference],
+            produced_artifacts=[
+                business_reference,
+                engineering_reference,
+                synthesis_reference,
+            ],
             created_at=_now(),
             completed_at=_now(),
         ),

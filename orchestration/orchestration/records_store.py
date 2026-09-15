@@ -458,6 +458,37 @@ async def list_turns(
     return [_turn_from_row(row) for row in rows]
 
 
+async def set_finalizing_turn_artifacts(
+    pool: asyncpg.Pool,
+    session_id: str,
+    references: list,
+) -> None:
+    """Stamp the finalizing turn's produced_artifacts with the
+    finalized-review + report references flow 3 produced.
+
+    Deterministic overwrite (not append): a finalize retry re-runs flow 3
+    idempotently and rewrites the same reference set. The finalizing turn
+    (outcome='finalize', whether a PO acceptance or a facilitator gate
+    decision) exists before flow 3 starts (crash-safety), so this only
+    fills in what flow 3 added.
+    """
+    async with pool.acquire() as conn:
+        turn_number = await conn.fetchval(
+            "select turn_number from turns where session_id = $1 "
+            "and outcome = 'finalize' order by turn_number desc limit 1",
+            session_id,
+        )
+        if turn_number is None:
+            return
+        await conn.execute(
+            "update turns set produced_artifacts = $3 "
+            "where session_id = $1 and turn_number = $2",
+            session_id,
+            turn_number,
+            _dumps(list(references)),
+        )
+
+
 # --- agent runs -----------------------------------------------------------
 
 
