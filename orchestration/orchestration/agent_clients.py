@@ -24,6 +24,7 @@ import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Protocol
 
 import httpx
@@ -151,6 +152,33 @@ class FacilitatorResult:
     prompt_sha256: str
     corrective_reprompts: int = 0
     transport_attempts: int = 1
+
+
+@dataclass(frozen=True)
+class TimedResult:
+    """One successful agent invocation wrapped with its real wall-clock
+    span (agent_runs audit evidence: reviewer overlap / call ordering).
+
+    Attribute access proxies to the wrapped frozen-contract result, so
+    call sites keep reading ``.report`` / ``.output`` / audit fields
+    unchanged. Built by :func:`timed_invoke`; never constructed by hand.
+    """
+
+    result: object
+    started_at: datetime
+    finished_at: datetime
+
+    def __getattr__(self, name: str):
+        return getattr(self.__dict__["result"], name)
+
+
+async def timed_invoke(invoke, request, *, deadline: float | None = None) -> TimedResult:
+    """Run one agent invocation, capturing its span for the audit row
+    (evaluation-tests.md: reviewer spans overlap, synthesis starts after
+    both reviewers of the turn completed)."""
+    started_at = datetime.now(UTC)
+    result = await invoke(request, deadline=deadline)
+    return TimedResult(result, started_at, datetime.now(UTC))
 
 
 class ReviewerClient(Protocol):

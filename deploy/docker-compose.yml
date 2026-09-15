@@ -150,6 +150,11 @@ services:
       POSTGRES_USER: facilitator
       POSTGRES_PASSWORD: facilitator
       POSTGRES_DB: facilitator
+    # Evaluation-suite read-only evidence access (agent_runs in the
+    # `orchestration` db, facilitator ADK events in `facilitator`); host
+    # loopback only, local-agents profile only.
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-15432}:5432"
     # Runtime state only (sessions); no host port needed.
     profiles: ["local-agents"]
 

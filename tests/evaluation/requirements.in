@@ -2,3 +2,7 @@ pytest>=8
 pyyaml
 httpx
 google-genai
+asyncpg
+-e ../../shared/ado_wire
+-e ../../shared/review_schemas
+-e ../../dataset/loader

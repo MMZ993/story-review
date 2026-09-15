@@ -40,7 +40,12 @@ from . import (
     records_store,
     turn_execution,
 )
-from .agent_clients import AgentSet, DecisionState, FacilitatorInvocation
+from .agent_clients import (
+    AgentSet,
+    DecisionState,
+    FacilitatorInvocation,
+    timed_invoke,
+)
 from .api_errors import ApiError, make_error
 from .config import Settings
 from .errors import SessionLocked
@@ -250,7 +255,7 @@ async def _execute(
     ]
 
     try:
-        facilitator = await agents.facilitator.invoke(
+        facilitator = await timed_invoke(agents.facilitator.invoke,
             FacilitatorInvocation(
                 session_id=session_id,
                 turn_number=facilitator_turn,
@@ -461,7 +466,7 @@ async def _invoke_summary_facilitator(
         ),
     ]
     try:
-        summary = await agents.facilitator.invoke(
+        summary = await timed_invoke(agents.facilitator.invoke,
             FacilitatorInvocation(
                 session_id=session.session_id,
                 turn_number=facilitator_turn,
