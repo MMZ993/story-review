@@ -8,7 +8,7 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (dev server, **Phase 9 planned — evaluation suite & tuning** — owner decisions D29 recorded: demo deferred until the whole evaluation passes; story tuning and agent-prompt tuning are in scope; detailed per-increment plan written at `docs-local/plans/phase-9-evaluation.md` with a verified case-matrix section; development-plan Phase 9 retitled "Evaluation suite & tuning" with amended exit criteria. Docs-only session: no code, no compose/cloud actions; Cloud SQL remains STOPPED.)
+Last updated: 2026-09-16 (dev server, **Phase 9 in progress — increment 0 done**: judge + runner skeleton, test-first, local only; 21 unit tests green, no cloud/compose actions, Cloud SQL STOPPED throughout. Live judge smoke pending owner spend approval. Evidence: Runbook 15.)
 
 ## Next Session
 
@@ -26,21 +26,20 @@ Last updated: 2026-09-16 (dev server, **Phase 9 planned — evaluation suite & t
 
 ### Next Steps
 
-1. Phase 9 increment 0 — `tests/evaluation/` package skeleton,
-   `prompts/judge.md`, `config.yaml`, judge client (fixed retry policy,
-   no best-of-N), `JudgeResult` types, `make evaluation-test` /
-   `evaluation-smoke` targets, unit tests.
-2. Then increment 1 (deterministic assertion engine, judge off,
-   `--templates t1` cheap subset) with the CODE/DATASET/PROMPT triage
-   protocol driving increments 2–3.
+1. Phase 9 **increment 1** — deterministic
+   assertion engine (`assertions.py` + `case_runner.py` over compose HTTP,
+   judge off, `--templates t1` cheap subset) with the CODE/DATASET/PROMPT
+   triage protocol driving increments 2–3.
 
 ### Verification and Review
 
-This session: docs-only (plan + decisions + development-plan update);
-no suites run (no code changed), no cloud actions, Cloud SQL STOPPED
-throughout. Dataset case-matrix facts in the plan were verified against
-`dataset/expected/*.json` programmatically (scenario shapes, delegation
-turns, final states).
+This session (Phase 9 increment 0): `make evaluation-unit-test` **21
+passed** (judge_client retry/fail policy against a fake transport,
+JudgeResult pass-rule validation, config sha check incl. the shipped
+config); `make evaluation-test` fails cleanly (exit 2) without a stack;
+`git diff --check` clean; syntax checks ok. Independent review skipped
+(new isolated test package, no production code touched — recorded here).
+No cloud or compose actions; Cloud SQL STOPPED throughout.
 
 ## Where we are
 
@@ -79,6 +78,23 @@ turns, final states).
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Phase 9 increment 0 (2026-09-16, dev server; local only, detail: Runbook 15
+§Increment 0):
+- **Skeleton delivered test-first**: `prompts/judge.md` (five dimensions
+0–4, blocker severity, strict-JSON JudgeResult reply); `tests/evaluation/`
+package — `config.yaml` (gemini-2.5-pro, temp 0, candidate_count 1,
+judge-md sha-pinned), suite-local `JudgeResult` models with the fixed
+pass-rule validator, strict config loader, judge client (≤1 identical
+retry on transient transport failure; invalid output / second failure =
+case failed; no best-of-N ever), runner skeleton (config+sha check, stack
+reachability, `--judge-smoke` live path).
+- **Make targets**: `evaluation-unit-test` (21 passed), `evaluation-test`
+  (clean exit 2 without a stack), `evaluation-smoke` (**live PASS**:
+  passed=true, all dimensions 4/4, attempts=1; `vertexai=True` +
+  `GOOGLE_CLOUD_PROJECT` env required — gotchas in Runbook 15).
+- Judge `JudgeResult` kept suite-local per plan; moves to review-schemas
+only if another unit consumes it.
 
 Phase 9 planning (2026-09-16, dev server; docs-only, no cloud actions,
 Cloud SQL STOPPED throughout):
