@@ -137,7 +137,7 @@ phase-close review Ready-to-proceed (findings codified in Runbook 14 §Increment
 Deferred minors recorded there (env-pointer/version cross-check, two compaction
 test nits, per-call summarizer client). D5 engine prune pending (owner-run).
 
-## Phase 9 — Evaluation suite & tuning — planned
+## Phase 9 — Evaluation suite & tuning — in progress (increment 0 done 2026-09-16; Runbook 15)
 
 Scope: judge config + `prompts/judge.md`; expected-file test runner with
 deterministic assertions; run modes (local compose preferred); **tuning loop over the
