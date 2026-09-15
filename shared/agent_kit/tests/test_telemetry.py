@@ -106,6 +106,26 @@ def test_tool_callback_marks_error_results():
     assert handler.records[-1].status == "error"
 
 
+def test_after_tool_accepts_adk_keyword_calling_convention():
+    """ADK invokes canonical after_tool callbacks with keyword arguments
+    (tool=, args=, tool_context=, tool_response=) — a positional `result`
+    parameter is never supplied, raising TypeError live on Agent Engine
+    the moment a tool call actually happens (observed at the inc-6 gate
+    smoke: facilitator toolsets loaded, first tool call crashed the turn)."""
+    telemetry = TelemetryCallbacks()
+    telemetry.before_tool(FakeTool(), {}, None)
+    with capture(f"{LOGGER_BASE}.tool") as handler:
+        telemetry.after_tool(
+            tool=FakeTool(),
+            args={},
+            tool_context=None,
+            tool_response={"story": {}},
+        )
+
+    assert handler.records[-1].phase == "end"
+    assert handler.records[-1].status == "ok"
+
+
 # --- model telemetry ------------------------------------------------------
 
 

@@ -87,9 +87,18 @@ class TelemetryCallbacks:
         return None
 
     def after_tool(
-        self, tool: Any, args: dict, tool_context: Any, result: dict, **_
+        self,
+        tool: Any,
+        args: dict,
+        tool_context: Any = None,
+        result: dict = None,
+        **_,
     ) -> None:
-        """Record a tool call end with duration and error/ok status."""
+        """Record a tool call end with duration and error/ok status.
+
+        ADK invokes canonical after-tool callbacks with keyword arguments
+        (tool_response=, never positional ``result``) — both are accepted."""
+        response = _.pop("tool_response", result)
         name = getattr(tool, "name", str(tool))
         self._tool_logger.info(
             "tool_call",
@@ -97,7 +106,9 @@ class TelemetryCallbacks:
                 "service": self.service,
                 "tool": name,
                 "phase": "end",
-                "status": "error" if isinstance(result, dict) and result.get("error") else "ok",
+                "status": "error"
+                if isinstance(response, dict) and response.get("error")
+                else "ok",
                 "duration_ms": self._elapsed("tool"),
             },
         )
