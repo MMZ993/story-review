@@ -1071,3 +1071,52 @@ transliterates the em dash to ` - ` before the lossy latin-1 mapping
 creation (metadata `default` account in signBlob; traceback seen in
 ReasoningEngine logs) — `tool_call` telemetry and tool use inside AE
 unverified; investigate before relying on facilitator tools in AE mode.
+
+**D27 amendment 2**: the D27 open item is closed. AE-side audience ID
+tokens for the facilitator MCP toolsets are minted via the **metadata
+identity endpoint** (`compute_engine.IDTokenCredentials(
+use_metadata_identity_endpoint=True)`) — google-auth's default path
+signs a JWT through the IAM signBlob API as `service_account_email`,
+which Agent Engine compute credentials report as `"default"` (IAM 400).
+No IAM permissions change; the attached sa-facilitator is untouched.
+Incidentally learned and fixed at the same gate: ADK invokes canonical
+`after_tool` callbacks with keyword `tool_response=` (not positional
+`result`), and the AE toolset connect timeout is 30 s (Cloud Run
+scale-to-zero cold starts exceed 10 s). Facilitator tool use and
+`tool_call` telemetry verified live end-to-end (runbook 14 §D27 open
+item closed).
+
+## D28 — 75% context compaction mechanism (facilitator-side callback)
+
+Owner decision (chat, options reviewed): the Item D remainder (typed
+summary at 75% context, observability.md) is implemented **inside the
+facilitator agent** as a `before_model` ADK callback — not
+orchestration-side (would cross the facilitator-owned session-store
+boundary, fits poorly with D25).
+
+Mechanism (shared/agent_kit/compaction.py):
+- telemetry `after_model` persists the context classification in ADK
+  session state (`context_level`);
+- `CompactionCallbacks.before_model` at level `summarize`: calls an
+  injected summarizer (one structured-output google-genai call, the
+  agent's configured model), validates the strict-schema
+  `ConversationSummary` (unresolved issues, decisions, story/run IDs,
+  artifact references, open points — all mandatory non-empty), stores
+  the checkpoint in session state, and rewrites the model request
+  contents to `[summary, *last 4 contents]`; a stored checkpoint is
+  re-applied on later turns without a second summary call;
+- **Implementation nuance vs observability.md wording**: session-store
+  events are NOT deleted — they remain the audit record; the model's
+  effective context is what gets compacted. On summarizer/validation
+  failure the original contents are kept (a structured
+  `compaction_failed` event is logged) rather than surfacing a
+  retryable error — the failure mode here can only skip compaction,
+  never drop context, which preserves the design's safety intent.
+- `DEFAULT_CONTEXT_TOKEN_LIMIT` (1,048,576, gemini-2.5-flash) makes the
+  policy live by default; explicit injection still wins.
+- Typed summary stays inside the facilitator (no wire contract → no
+  review-schemas/schemas.md change needed).
+- Deployment note: wired into both the local runner and the AE root
+  agent, but the live engine predates it; ships with the increment-7
+  versioning-proof redeploy (it cannot trigger live in practice:
+  10-turn cap, ~3k-token prompts vs 1M limit).

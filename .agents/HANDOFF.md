@@ -8,39 +8,39 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (session: increment 6 **CLOSED** live-gate + three live root causes fixed: stale pre-D19 MCP images redeployed; AE facilitator telemetry wired (model_call events observed live from Agent Engine); keyless IAM signBlob signing for live V4 report URLs (docs assumption unimplementable — D27); report encoding fixes (MD charset + PDF em dash). Full browser arc green end-to-end: story-07 accept → finalize → reports. Engines `facilitator-1fb416d` + `17f73cd` retained for D5 prune; orchestration `orchestration-00028-n9p`. OPEN: AE facilitator MCP toolset `default`-account signBlob failure — tool_call telemetry unobserved (D27 am 1). Cloud SQL left RUNNING during the session — pause when done).
+Last updated: 2026-09-16 (follow-up session, dev server: D27 open item CLOSED — three stacked AE facilitator root causes fixed test-first and deployed: ID-token mint via metadata identity endpoint (not signBlob), telemetry after_tool `tool_response=` keyword, toolset connect timeout 30s; **`tool_call` telemetry verified live end-to-end** on engine `facilitator-573011d` via a real public-domain turn (paired `get_story` start/end); orchestration repointed + redeployed `orchestration-00030-lfz`. D28 DECIDED + IMPLEMENTED: facilitator-side 75% context compaction callback (`agent_kit/compaction.py`, reviewed, agent-kit 146) — ships to AE with the increment-7 versioning-proof redeploy. Requirements-coverage rows for increment 6 moved toward verified (docs + frozen cherry-pick `80a1db2`). Item 4 (regenerate old reports) dropped by owner. Cloud SQL left RUNNING.)
 
 ## Next Session
 
 ### Remaining Tasks
 
-- **AE facilitator MCP toolsets (D27 am 1 open item)**: engine logs show
-  `signBlob … Invalid form of account ID default` at toolset session
-  creation — facilitator tools + `tool_call` telemetry unverified in AE
-  mode. Investigate first.
-- **75% context compaction** (Item D remainder, owner-deferred): typed
-  summary + session-history replacement; mechanism decision still open.
-- **Requirements-coverage rows** for increment 6 if not yet complete.
-- **Existing report objects** keep bare `text/markdown` metadata —
-  regenerate reports to pick up the charset fix (cosmetic).
+- **75% compaction live deploy**: the D28 callback is wired locally + AE
+  code-side but the live engine `facilitator-573011d` predates it — ship
+  with the increment-7 versioning-proof redeploy (cannot trigger live in
+  practice: 10-turn cap, ~3k-token prompts vs 1M limit).
+- **D5 engine prune**: ~9 retained facilitator engines now (latest:
+  `f6b8024`, `1b933d1`, `573011d`) — schedule after the versioning proof.
+- Owner pushes: main (`f3cc0fd` tip) + `docs/initial-frozen` (`80a1db2`).
 
 ### Next Steps
 
-1. Investigate the AE MCP toolset `default`-account failure (mirror of
-   the increment-3 metadata resolution fix — off-loop email fetch).
-2. Then the deferred 75% compaction decision (D25/Item D).
-3. D5 engine prune now has ~6 retained facilitator engines incl.
-   `1fb416d` + `17f73cd` — schedule after the versioning proof.
+1. Increment 7 exit gate: versioning/rollback proof (redeploy facilitator
+   with D28 code as the versioned resource, re-point, verify, roll back),
+   then the D5 prune.
+2. Phase-close: full regression battery + independent phase review;
+   Phase 8 COMPLETE in development-plan.
 
 ### Verification and Review
 
-This session: orchestration 206+12s, agent-kit 134, mcp-report 38,
-review-schemas 177, mcp-story/artifact/report smokes PASS (cloud),
-facilitator engine smokes PASS ×2; end-to-end browser arc green;
-identifier check 0 hits; independent review not run (live fixes,
-all test-pinned — acceptable per development-rules; D27 records the
-only design-adjacent deviation). All work pushed: main `89a9334`,
-frozen in sync.
+This session: agent-kit **142 → 146 passed** across iterations, agents
+4×3-4, facilitator adapter 3+1s; live: facilitator smoke PASS ×2
+(engines `1b933d1`, `573011d`), orchestration `/health` ok, live turn
+with paired `tool_call` events, test session abandoned. Independent
+read-only review of the D28 compaction (subagent): 1 Critical (stale
+checkpoint silently dropping turns) + 3 Importants + minors — **all
+fixed in-session** with new tests; identifier check pending before push.
+Commits: `f6b8024`, `1b933d1`, `573011d`, `af5ed51`, `f3cc0fd` + frozen
+`80a1db2` (not yet pushed — owner pushes).
 
 ## Where we are
 
@@ -73,6 +73,33 @@ frozen in sync.
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+D27 open item + D28 + coverage rows (2026-09-16 follow-up, dev server;
+detail: Runbook 14 §D27 open item closed, D27 am 2, D28):
+- **D27 am 1 CLOSED** (three stacked root causes, each test-first,
+  committed, deployed): (1) `_IdTokenAuth` minted via google-auth's IAM
+  signBlob path with account `"default"` → 400; fixed with
+  `use_metadata_identity_endpoint=True` (`f6b8024`); (2) ADK calls
+  canonical after-tool callbacks with keyword `tool_response=` —
+  positional `result` TypeError crashed the first real tool call
+  (`1b933d1`); (3) MCP Cloud Run cold starts exceed the 10s toolset
+  connect timeout → 30s (`573011d`). Engines `f6b8024`/`1b933d1`/`573011d`
+  (current, orchestration repointed resource+version). **Live gate**:
+  story-07 turn via public domain → paired `tool_call` (`get_story`, ok)
+  + `model_call` telemetry from AE; session abandoned after.
+- **D28 decided (facilitator-side) + implemented**: `agent_kit/compaction.py`
+  (ConversationSummary strict schema, genai structured-output summarizer,
+  checkpoint + freshness re-summarization, contents rewrite keeping last
+  4; failures keep context + `compaction_failed` event); telemetry
+  persists `context_level` in session state; `DEFAULT_CONTEXT_TOKEN_LIMIT`
+  1,048,576 makes the policy live by default. Nuances recorded in D28
+  (session events kept as audit; skip-compaction-not-error failure mode).
+- **Requirements-coverage**: 5 rows moved toward verified/implemented with
+  sanitized evidence; frozen cherry-pick `80a1db2`.
+- Owner dropped item 4 (old report regeneration) — old objects keep bare
+  `text/markdown`.
+- Gotcha: dev-server clock drifted back below the session labels — query
+  Cloud Logging with explicit windows, not "since <label date>".
 
 Increment 6 close — live gate + live root causes (2026-09-16, dev
 server; detail: Runbook 14 §Increment 6 close, D27):
