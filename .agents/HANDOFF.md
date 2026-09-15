@@ -8,27 +8,26 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (follow-up session, dev server: D27 open item CLOSED — three stacked AE facilitator root causes fixed test-first and deployed: ID-token mint via metadata identity endpoint (not signBlob), telemetry after_tool `tool_response=` keyword, toolset connect timeout 30s; **`tool_call` telemetry verified live end-to-end** on engine `facilitator-573011d` via a real public-domain turn (paired `get_story` start/end); orchestration repointed + redeployed `orchestration-00030-lfz`. D28 DECIDED + IMPLEMENTED: facilitator-side 75% context compaction callback (`agent_kit/compaction.py`, reviewed, agent-kit 146) — ships to AE with the increment-7 versioning-proof redeploy. Requirements-coverage rows for increment 6 moved toward verified (docs + frozen cherry-pick `80a1db2`). Item 4 (regenerate old reports) dropped by owner. Cloud SQL left RUNNING.) Follow-up docs fix: replaced semicolons in Mermaid labels in `docs/design/data-flow.md` (GitHub parser treats `;` as statement terminator — diagrams 2–4 failed to render); cherry-picked to frozen branch.
+Last updated: 2026-09-16 (dev server, **Phase 8 COMPLETE** — increment-7 versioning/rollback proof executed live: facilitator redeployed as `facilitator-747d9d1` (engine `6251392106976247808`, carries D28 compaction), smoke PASS; orchestration re-pointed forward (`orchestration-00031-xtj`) → rollback (`orchestration-00032-2xz` → `facilitator-573011d`) → forward final (`orchestration-00033-x5t`), a live public-domain flow-1 turn verified on each step; regression battery all green; independent phase-close review Ready-to-proceed with findings codified (minor #2 fixed: `GOOGLE_GENAI_USE_VERTEXAI=1` staged in `agents_env`; #3–5 recorded in Runbook 14 §Increment 7). Phase 8 marked COMPLETE in development-plan; requirements-coverage versioning row → verified, conversation-length row → implemented. Cloud SQL left RUNNING pending the D5 prune decision.)
 
 ## Next Session
 
 ### Remaining Tasks
 
-- **75% compaction live deploy**: the D28 callback is wired locally + AE
-  code-side but the live engine `facilitator-573011d` predates it — ship
-  with the increment-7 versioning-proof redeploy (cannot trigger live in
-  practice: 10-turn cap, ~3k-token prompts vs 1M limit).
-- **D5 engine prune**: ~9 retained facilitator engines now (latest:
-  `f6b8024`, `1b933d1`, `573011d`) — schedule after the versioning proof.
-- Owner pushes: main (`f3cc0fd` tip) + `docs/initial-frozen` (`80a1db2`).
+- **D5 engine prune** (destructive — owner-run): retained facilitator
+  engines minus current `6251392106976247808` (`facilitator-747d9d1`):
+  `7147608432822976512` (`573011d`, kept as N-1 rollback until pruned),
+  `1782976851694583808`, `1090266934009659392`, plus the increment-3/4-era
+  ids listed in Runbook 14. Prune list + map: Runbook 14 §Increment 7.
+- `make db-pause` unless the next session needs Cloud SQL.
+- Deferred review minors (Runbook 14 §Increment 7): env-pointer/version
+  runtime cross-check; compaction checkpoint-boundary + genai-Content
+  test nits; per-call summarizer client.
 
 ### Next Steps
 
-1. Increment 7 exit gate: versioning/rollback proof (redeploy facilitator
-   with D28 code as the versioned resource, re-point, verify, roll back),
-   then the D5 prune.
-2. Phase-close: full regression battery + independent phase review;
-   Phase 8 COMPLETE in development-plan.
+1. D5 prune (owner) + `db-pause`.
+2. Phase 9 — evaluation suite & demo (development-plan §Phase 9).
 
 ### Verification and Review
 
@@ -44,6 +43,12 @@ Commits: `f6b8024`, `1b933d1`, `573011d`, `af5ed51`, `f3cc0fd` + frozen
 
 ## Where we are
 
+- **Phase 8 (Real GCP deployment & versioning proof) COMPLETE and
+  CLOSED** (Runbook 14 increments 0–7, decisions D24–D28): everything
+  live on GCP (webui/orchestration/MCP on Cloud Run, four AE agents,
+  Cloud SQL, monitoring); versioning/rollback proof live; system
+  reachable at the public domain. Remaining cleanup: D5 engine prune
+  (owner-run).
 - **Phase 7 (Web UI) COMPLETE and CLOSED** (sessions 39–50; increments 0–4
   + Items E/F/G + D18–D22, walkthrough gate PASS session 49, phase-close
   review session 50 Ready-to-proceed with findings fixed in-session.
@@ -74,33 +79,28 @@ Commits: `f6b8024`, `1b933d1`, `573011d`, `af5ed51`, `f3cc0fd` + frozen
 
 ## Previous Session Summary
 
-D27 open item + D28 + coverage rows (2026-09-16 follow-up, dev server;
-detail: Runbook 14 §D27 open item closed, D27 am 2, D28):
-- **D27 am 1 CLOSED** (three stacked root causes, each test-first,
-  committed, deployed): (1) `_IdTokenAuth` minted via google-auth's IAM
-  signBlob path with account `"default"` → 400; fixed with
-  `use_metadata_identity_endpoint=True` (`f6b8024`); (2) ADK calls
-  canonical after-tool callbacks with keyword `tool_response=` —
-  positional `result` TypeError crashed the first real tool call
-  (`1b933d1`); (3) MCP Cloud Run cold starts exceed the 10s toolset
-  connect timeout → 30s (`573011d`). Engines `f6b8024`/`1b933d1`/`573011d`
-  (current, orchestration repointed resource+version). **Live gate**:
-  story-07 turn via public domain → paired `tool_call` (`get_story`, ok)
-  + `model_call` telemetry from AE; session abandoned after.
-- **D28 decided (facilitator-side) + implemented**: `agent_kit/compaction.py`
-  (ConversationSummary strict schema, genai structured-output summarizer,
-  checkpoint + freshness re-summarization, contents rewrite keeping last
-  4; failures keep context + `compaction_failed` event); telemetry
-  persists `context_level` in session state; `DEFAULT_CONTEXT_TOKEN_LIMIT`
-  1,048,576 makes the policy live by default. Nuances recorded in D28
-  (session events kept as audit; skip-compaction-not-error failure mode).
-- **Requirements-coverage**: 5 rows moved toward verified/implemented with
-  sanitized evidence; frozen cherry-pick `80a1db2`.
-- Owner dropped item 4 (old report regeneration) — old objects keep bare
-  `text/markdown`.
-- Gotcha: dev-server clock drifted back below the session labels — query
-  Cloud Logging with explicit windows, not "since <label date>".
+Phase 8 increment 7 — versioning/rollback proof + phase close (2026-09-16, dev
+server; cloud actions owner-approved "please do increment 7"; detail: Runbook 14
+§Increment 7):
+- **Proof executed live**: new engine `facilitator-747d9d1`
+  (`6251392106976247808`, HEAD commit, carries D28 compaction) — unit smoke
+  PASS; orchestration re-point forward/rollback/forward, revisions
+  `00031-xtj` / `00032-2xz` (old `573011d`) / `00033-x5t`, live flow-1 turn
+  verified on each over the public domain. Final live = `facilitator-747d9d1`.
+- **Regression battery green**: agent-kit 146, review-schemas 177,
+  orchestration 206+12s, webui 25+89, agents 3/3/3/4, facilitator adapter
+  3+1s, compose contract 20.
+- **Phase-close review**: Ready-to-proceed; Important = codification (done:
+  runbook/coverage/plan/HANDOFF); minors #2 fixed (`agents_env` stages
+  `GOOGLE_GENAI_USE_VERTEXAI=1` — effective on the next agent deploy),
+  #3–5 recorded in the runbook.
+- Gotchas: `adk deploy` hangs on the telemetry prompt unless
+  `adk telemetry disable` was run; one live test session (`sess-8031e95b…`,
+  story-09) left active — its x-user-id wasn't persisted so it can't be
+  abandoned from here.
+- Cloud SQL left RUNNING; D5 prune (owner-run) is the remaining cleanup.
 
+Prior sessions — see git history of this file and Runbooks 13–14.
 Increment 6 close — live gate + live root causes (2026-09-16, dev
 server; detail: Runbook 14 §Increment 6 close, D27):
 - **Gate evidence**: structured request logs both services; app events
