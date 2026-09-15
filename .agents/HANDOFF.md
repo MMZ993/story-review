@@ -8,17 +8,12 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (dev server, **Phase 8 COMPLETE** — increment-7 versioning/rollback proof executed live: facilitator redeployed as `facilitator-747d9d1` (engine `6251392106976247808`, carries D28 compaction), smoke PASS; orchestration re-pointed forward (`orchestration-00031-xtj`) → rollback (`orchestration-00032-2xz` → `facilitator-573011d`) → forward final (`orchestration-00033-x5t`), a live public-domain flow-1 turn verified on each step; regression battery all green; independent phase-close review Ready-to-proceed with findings codified (minor #2 fixed: `GOOGLE_GENAI_USE_VERTEXAI=1` staged in `agents_env`; #3–5 recorded in Runbook 14 §Increment 7). Phase 8 marked COMPLETE in development-plan; requirements-coverage versioning row → verified, conversation-length row → implemented. Cloud SQL left RUNNING pending the D5 prune decision.)
+Last updated: 2026-09-16 (dev server, **Phase 8 COMPLETE + D5 prune DONE** — increment-7 versioning/rollback proof executed live: facilitator redeployed as `facilitator-747d9d1` (engine `6251392106976247808`, carries D28 compaction), smoke PASS; orchestration re-pointed forward (`orchestration-00031-xtj`) → rollback (`orchestration-00032-2xz` → `facilitator-573011d`) → forward final (`orchestration-00033-x5t`), a live public-domain flow-1 turn verified on each step; regression battery all green; independent phase-close review Ready-to-proceed with findings codified (minor #2 fixed: `GOOGLE_GENAI_USE_VERTEXAI=1` staged in `agents_env`; #3–5 recorded in Runbook 14 §Increment 7). Phase 8 marked COMPLETE in development-plan; requirements-coverage versioning row → verified, conversation-length row → implemented. **D5 prune executed (owner-approved)**: 20 superseded engines deleted; 5 remain (live facilitator, N-1 `573011d`, three `7d1b9bd` reviewers/synthesis); public domain verified 200 after. All work committed + pushed (main `…`, frozen `3eee796`). Cloud SQL still RUNNING — pause when done for the day.)
 
 ## Next Session
 
 ### Remaining Tasks
 
-- **D5 engine prune** (destructive — owner-run): retained facilitator
-  engines minus current `6251392106976247808` (`facilitator-747d9d1`):
-  `7147608432822976512` (`573011d`, kept as N-1 rollback until pruned),
-  `1782976851694583808`, `1090266934009659392`, plus the increment-3/4-era
-  ids listed in Runbook 14. Prune list + map: Runbook 14 §Increment 7.
 - `make db-pause` unless the next session needs Cloud SQL.
 - Deferred review minors (Runbook 14 §Increment 7): env-pointer/version
   runtime cross-check; compaction checkpoint-boundary + genai-Content
@@ -26,8 +21,7 @@ Last updated: 2026-09-16 (dev server, **Phase 8 COMPLETE** — increment-7 versi
 
 ### Next Steps
 
-1. D5 prune (owner) + `db-pause`.
-2. Phase 9 — evaluation suite & demo (development-plan §Phase 9).
+1. Phase 9 — evaluation suite & demo (development-plan §Phase 9).
 
 ### Verification and Review
 

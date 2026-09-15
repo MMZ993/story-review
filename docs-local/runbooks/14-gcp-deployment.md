@@ -1063,3 +1063,20 @@ expected).
   `6251392106976247808`.
 - `make db-pause` at wrap-up (Cloud SQL left RUNNING during this
   session).
+
+### D5 engine prune executed (owner-approved "please do")
+
+Deleted 20 superseded reasoning engines (17 facilitator iteration
+engines incl. all `7d1b9bd` duplicates and the `-dirty` one, plus 2
+duplicate business engines) via REST DELETE (`gcloud ai` no longer has
+a reasoning-engines subcommand). Kept: `facilitator-747d9d1`
+(`6251392106976247808`, live), `facilitator-573011d`
+(`7147608432822976512`, N-1 rollback), and the three live
+business/engineering/synthesis `7d1b9bd` engines. Post-prune list
+verified: exactly those 5; public domain `/api/v1/stories` 200.
+
+Gotchas: (1) Reasoning Engine **write quota** is ~10 requests/min/
+region — batched deletes 429'd; retry with ~12 s spacing (per-minute
+window); (2) engines holding child sessions (early smoke leftovers)
+reject DELETE 400 "contains child resources" — `?force=true` deletes
+them (used on `facilitator-a7257a3` only, superseded smoke sessions).
