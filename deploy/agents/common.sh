@@ -55,6 +55,10 @@ agents_stage() {
 # agents_env <slug> — runtime .env lines common to every agent.
 agents_env() {
     printf 'PROMPTS_DIR=/app/prompts\n'
+    # Explicit so the D28 compaction summarizer's genai.Client cannot silently
+    # miss Vertex config on the AE runtime (failure mode is safe: compaction
+    # skipped with context kept — make it impossible instead).
+    printf 'GOOGLE_GENAI_USE_VERTEXAI=1\n'
 }
 
 # agents_config <slug> <service_account> — .agent_engine_config.json body.
