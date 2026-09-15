@@ -46,6 +46,7 @@ from .agent_clients import (
     PerspectivePair,
     ReviewerInvocation,
     SynthesisInvocation,
+    timed_invoke,
 )
 from .api_errors import ApiError, make_error
 from .config import Settings
@@ -376,7 +377,7 @@ async def _initial_pipeline(
         pool, session_record.session_id, "synthesizing"
     )
     try:
-        synthesis = await agents.synthesis.invoke(
+        synthesis = await timed_invoke(agents.synthesis.invoke,
             SynthesisInvocation(
                 business=PerspectivePair(
                     report=business_review.report,
@@ -421,7 +422,7 @@ async def _initial_pipeline(
         pool, session_record.session_id, "facilitator"
     )
     try:
-        facilitator = await agents.facilitator.invoke(
+        facilitator = await timed_invoke(agents.facilitator.invoke,
             FacilitatorInvocation(
                 session_id=session_record.session_id,
                 turn_number=1,
@@ -541,8 +542,12 @@ async def _fan_out_reviewers(agents: AgentSet, story: StoryDetail, deadline: flo
     sibling attempt is cancelled (no orphaned model cost)."""
     request = ReviewerInvocation(story=story)
     tasks = [
-        asyncio.create_task(agents.business.invoke(request, deadline=deadline)),
-        asyncio.create_task(agents.engineering.invoke(request, deadline=deadline)),
+        asyncio.create_task(
+            timed_invoke(agents.business.invoke, request, deadline=deadline)
+        ),
+        asyncio.create_task(
+            timed_invoke(agents.engineering.invoke, request, deadline=deadline)
+        ),
     ]
     try:
         return await asyncio.gather(*tasks)
@@ -584,8 +589,8 @@ async def _record_agent_runs(
                 state="succeeded",
                 transport_attempts=result.transport_attempts,
                 corrective_reprompts=corrective,
-                started_at=_now(),
-                finished_at=_now(),
+                started_at=getattr(result, "started_at", None) or _now(),
+                finished_at=getattr(result, "finished_at", None) or _now(),
             ),
         )
 

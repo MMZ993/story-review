@@ -242,6 +242,62 @@ async def assert_flow_state(pool, body: dict, artifact: FakeArtifactMcp):
     assert len(body["artifact_references"]) == 4
 
 
+class SlowReviewer(FakeReviewer):
+    """Reviewer with a real delay so invocation spans are observable
+    (agent_runs timing evidence: parallel overlap, call ordering)."""
+
+    delay = 0.05
+
+    async def invoke(self, request, *, deadline: float):
+        await asyncio.sleep(self.delay)
+        return await super().invoke(request, deadline=deadline)
+
+
+async def test_agent_runs_record_real_invocation_spans(
+    pool, settings, artifact
+):
+    """agent_runs timestamps must be the real invocation spans: reviewer
+    fan-out overlaps, synthesis starts only after both reviewers finish,
+    facilitator after synthesis, every span non-empty."""
+    agents = make_agents()
+    agents.business = SlowReviewer("business")
+    agents.engineering = SlowReviewer("engineering")
+    async with flow_client(settings, pool, artifact, agents) as client:
+        response = await post_create(client, KEY_A, create_payload())
+        assert response.status_code == 201, response.text
+    run_id = response.json()["story_run_id"]
+    async with pool.acquire() as conn:
+        rows = {
+            row["agent"]: row
+            for row in await conn.fetch(
+                "select agent, started_at, finished_at from agent_runs "
+                "where story_run_id = $1",
+                run_id,
+            )
+        }
+    assert set(rows) == {
+        "business-reviewer",
+        "engineering-reviewer",
+        "synthesis",
+        "facilitator",
+    }
+    for agent, row in rows.items():
+        assert row["finished_at"] >= row["started_at"], agent
+    business, engineering = rows["business-reviewer"], rows["engineering-reviewer"]
+    # reviewer spans overlap (parallel fan-out)
+    assert business["started_at"] < engineering["finished_at"]
+    assert engineering["started_at"] < business["finished_at"]
+    # reviewer spans are real, not point-in-time inserts
+    assert (business["finished_at"] - business["started_at"]).total_seconds() > 0
+    # synthesis starts after both reviewers completed
+    synthesis = rows["synthesis"]
+    assert synthesis["started_at"] >= max(
+        business["finished_at"], engineering["finished_at"]
+    )
+    # facilitator starts after synthesis completed
+    assert rows["facilitator"]["started_at"] >= synthesis["finished_at"]
+
+
 async def test_create_session_success(client, pool, artifact):
     response = await post_create(client, KEY_A, create_payload())
     assert response.status_code == 201, response.text

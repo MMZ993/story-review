@@ -25,6 +25,7 @@ from .agent_clients import (
     PerspectivePair,
     ReviewerInvocation,
     SynthesisInvocation,
+    timed_invoke,
 )
 from .mcp_client import McpClient
 
@@ -76,7 +77,9 @@ async def execute_delegation(
     clients = {"business": agents.business, "engineering": agents.engineering}
     tasks = {
         perspective: asyncio.create_task(
-            clients[perspective].invoke(request, deadline=deadline)
+            timed_invoke(
+                clients[perspective].invoke, request, deadline=deadline
+            )
         )
         for perspective, request in requests.items()
     }
@@ -161,7 +164,7 @@ async def maybe_synthesize(
         pairs[perspective] = PerspectivePair(report=report, reference=reference)
 
     try:
-        result = await agents.synthesis.invoke(
+        result = await timed_invoke(agents.synthesis.invoke,
             SynthesisInvocation(
                 business=pairs["business"], engineering=pairs["engineering"]
             ),
@@ -237,7 +240,7 @@ async def record_run(
             state="succeeded",
             transport_attempts=result.transport_attempts,
             corrective_reprompts=getattr(result, "corrective_reprompts", 0),
-            started_at=_now(),
-            finished_at=_now(),
+            started_at=getattr(result, "started_at", None) or _now(),
+            finished_at=getattr(result, "finished_at", None) or _now(),
         ),
     )

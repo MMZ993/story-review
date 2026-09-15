@@ -378,10 +378,13 @@ evaluation-unit-test: ## Phase 9: evaluation package unit tests (no stack, no mo
 	uv run --no-project --with-requirements requirements.lock \
 		python -m pytest tests -q
 
-evaluation-test: ## Phase 9: evaluation suite over compose (needs agents-compose-up; skeleton in inc 0)
+evaluation-test: ## Phase 9: deterministic evaluation suite over compose (needs agents-compose-up; TEMPLATES=t1 default)
 	cd tests/evaluation && \
 	uv run --no-project --with-requirements requirements.lock \
-		python -m evaluation.runner --base-url $${EVAL_BASE_URL:-http://127.0.0.1:8130}
+		python -m evaluation.runner --base-url $${EVAL_BASE_URL:-http://127.0.0.1:8130} \
+		--templates $${TEMPLATES:-t1} \
+		--orchestration-dsn postgresql://facilitator:facilitator@127.0.0.1:$${POSTGRES_HOST_PORT:-15432}/orchestration \
+		--facilitator-dsn postgresql://facilitator:facilitator@127.0.0.1:$${POSTGRES_HOST_PORT:-15432}/facilitator
 
 evaluation-smoke: ## Phase 9: judge smoke — ONE live Vertex judge call on a canned case (spends tokens)
 	cd tests/evaluation && \
