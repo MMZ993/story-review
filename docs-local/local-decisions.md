@@ -1120,3 +1120,20 @@ Mechanism (shared/agent_kit/compaction.py):
   agent, but the live engine predates it; ships with the increment-7
   versioning-proof redeploy (it cannot trigger live in practice:
   10-turn cap, ~3k-token prompts vs 1M limit).
+
+## D29 — Phase 9 scope: evaluation-driven tuning, demo deferred (2026-09-16, owner decision)
+
+1. The **live demo is postponed** until the whole evaluation suite passes
+   (all required dataset cases, deterministic + judged, local and dev). The
+   demo becomes the opening item of the next phase.
+2. **Tuning the existing stories is in scope**: the 45-case matrix
+   (stories, expected files, manual plans) is iterated so the dataset better
+   represents all scenarios the evaluation must prove. Story edits happen in
+   the ADO source of truth + re-export, never hand-edited JSON.
+3. **Agent prompt tuning is in scope**: evaluation failures attributable to
+   prompt wording are fixed in `prompts/*.md` and re-proven by the suite.
+   Consistent with D24-1: the evaluation runs as a local make target, no
+   CI/CD (`pipelines/evaluation.yml` stays a documented intent).
+
+Plan: `docs-local/plans/phase-9-evaluation.md`; development-plan Phase 9
+scope/exit criteria updated accordingly.
