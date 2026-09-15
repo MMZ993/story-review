@@ -341,11 +341,16 @@ def build_facilitator_root_agent(
 
     prompt: LoadedPrompt = load_prompt(slug)
     config: AgentConfig = load_config_fn()
+    # 30s connect timeout: the MCP services scale to zero and their
+    # first-request cold start exceeded the earlier 10s on AE (observed
+    # live at the inc-6 gate smoke — a toolset dropped out with "timed
+    # out waiting for the session to become ready").
+    toolset_timeout = 30.0
     toolsets = [
         McpToolset(
             connection_params=StreamableHTTPConnectionParams(
                 url=story_url,
-                timeout=10.0,
+                timeout=toolset_timeout,
                 httpx_client_factory=id_token_httpx_client_factory(
                     _audience_for(story_url)
                 ),
@@ -355,7 +360,7 @@ def build_facilitator_root_agent(
         McpToolset(
             connection_params=StreamableHTTPConnectionParams(
                 url=artifact_url,
-                timeout=10.0,
+                timeout=toolset_timeout,
                 httpx_client_factory=id_token_httpx_client_factory(
                     _audience_for(artifact_url)
                 ),
