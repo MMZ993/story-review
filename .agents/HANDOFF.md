@@ -8,13 +8,19 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (dev server, **Phase 8 COMPLETE + D5 prune DONE** — increment-7 versioning/rollback proof executed live: facilitator redeployed as `facilitator-747d9d1` (engine `6251392106976247808`, carries D28 compaction), smoke PASS; orchestration re-pointed forward (`orchestration-00031-xtj`) → rollback (`orchestration-00032-2xz` → `facilitator-573011d`) → forward final (`orchestration-00033-x5t`), a live public-domain flow-1 turn verified on each step; regression battery all green; independent phase-close review Ready-to-proceed with findings codified (minor #2 fixed: `GOOGLE_GENAI_USE_VERTEXAI=1` staged in `agents_env`; #3–5 recorded in Runbook 14 §Increment 7). Phase 8 marked COMPLETE in development-plan; requirements-coverage versioning row → verified, conversation-length row → implemented. **D5 prune executed (owner-approved)**: 20 superseded engines deleted; 5 remain (live facilitator, N-1 `573011d`, three `7d1b9bd` reviewers/synthesis); public domain verified 200 after. All work committed + pushed (main `…`, frozen `3eee796`). Cloud SQL still RUNNING — pause when done for the day.)
+Last updated: 2026-09-16 (dev server, **Phase 8 COMPLETE + D5 prune DONE, session wrapped** — increment-7 versioning/rollback proof executed live: facilitator redeployed as `facilitator-747d9d1` (engine `6251392106976247808`, carries D28 compaction), smoke PASS; orchestration re-pointed forward (`orchestration-00031-xtj`) → rollback (`orchestration-00032-2xz` → `facilitator-573011d`) → forward final (`orchestration-00033-x5t`), a live public-domain flow-1 turn verified on each step; regression battery all green; independent phase-close review Ready-to-proceed with findings codified (minor #2 fixed: `GOOGLE_GENAI_USE_VERTEXAI=1` staged in `agents_env`; #3–5 recorded in Runbook 14 §Increment 7). Phase 8 marked COMPLETE in development-plan; requirements-coverage versioning row → verified, conversation-length row → implemented. **D5 prune executed (owner-approved)**: 20 superseded engines deleted; 5 remain (live facilitator, N-1 `573011d`, three `7d1b9bd` reviewers/synthesis); public domain verified 200 after. All work committed + pushed (main `987e363`, frozen `3eee796`). **Cloud SQL STOPPED at wrap-up** (Runbook 14 §Session wrap-up; `make db-pause` gotcha recorded).)
 
 ## Next Session
 
 ### Remaining Tasks
 
-- `make db-pause` unless the next session needs Cloud SQL.
+- `make db-pause` unless the next session needs Cloud SQL. **Done at
+  wrap-up** — Cloud SQL STOPPED; use `make db-resume` (or direct
+  `gcloud sql instances patch … --activation-policy ALWAYS`) when a
+  live session is next needed.
+- Minor Makefile gap: `db-pause`/`db-status` fail without a configured
+  gcloud core project (no `--project`/`CLOUDSDK_CORE_PROJECT` passed) —
+  Runbook 14 §Session wrap-up.
 - Deferred review minors (Runbook 14 §Increment 7): env-pointer/version
   runtime cross-check; compaction checkpoint-boundary + genai-Content
   test nits; per-call summarizer client.

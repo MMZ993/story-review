@@ -1080,3 +1080,13 @@ region — batched deletes 429'd; retry with ~12 s spacing (per-minute
 window); (2) engines holding child sessions (early smoke leftovers)
 reject DELETE 400 "contains child resources" — `?force=true` deletes
 them (used on `facilitator-a7257a3` only, superseded smoke sessions).
+
+### Session wrap-up (D5 prune session)
+
+- Cloud SQL paused at wrap-up (standing rule): `gcloud sql instances
+  patch <instance> --activation-policy NEVER` → STOPPED/NEVER.
+  Gotcha: `make db-pause` (and `db-status`) fail when gcloud has no
+  configured core project — the targets resolve `$PROJECT_ID` for the
+  instance name but don't pass `--project`/`CLOUDSDK_CORE_PROJECT` to
+  gcloud. Workaround: prefix with
+  `CLOUDSDK_CORE_PROJECT="$PROJECT_ID"`; Makefile fix deferred (minor).
