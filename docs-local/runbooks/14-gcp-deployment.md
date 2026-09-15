@@ -932,3 +932,45 @@ session-window: `sess-cc2c9142` (2 turns), `sess-0a493ae9` (abandon),
 
 End-to-end proof: story-07 accepted → finalized → reports downloaded
 from the public domain.
+
+### D27 open item closed — AE MCP toolsets + tool_call telemetry live (dev server; cloud actions owner-approved "run it")
+
+Three stacked live root causes, each fixed test-first on `main`:
+
+1. **ID-token mint via signBlob (the recorded D27 open item)**:
+   `_IdTokenAuth._mint` built `compute_engine.IDTokenCredentials` with
+   defaults — google-auth then mints via an **IAM Signer over
+   `service_account_email`**, which AE compute credentials report as
+   `"default"` → IAM 400 "Invalid form of account ID default" → ADK
+   dropped the toolset ("agent will run without the tools"). Fix
+   (`f6b8024`): `use_metadata_identity_endpoint=True` — the metadata
+   identity endpoint mints the audience token directly, no signing, no
+   account resolution.
+2. **after_tool callback signature**: first smoke then failed with
+   `TypeError: after_tool() missing 1 required positional argument:
+   'result'` — ADK calls canonical after-tool callbacks with keyword
+   `tool_response=`, never positional `result` (only observable once a
+   tool call actually happened; local tests called it positionally).
+   Fix (`1b933d1`): accept both, `tool_response=` pinned by a new test.
+3. **Toolset connect timeout**: smoke PASS but one toolset still
+   dropped out — "timed out after 10.0s waiting for the session to
+   become ready" (MCP Cloud Run scale-to-zero cold start; the artifact
+   toolset took ~10 s itself, live logs show it connected just in
+   time). Fix (`573011d`): AE toolset connect timeout 10 s → 30 s.
+
+- Engines: `facilitator-f6b8024` (1782976851694583808, FAIL — cause 2),
+  `facilitator-1b933d1` (1090266934009659392, smoke PASS but cause 3),
+  `facilitator-573011d` (**7147608432822976512, current**, smoke PASS,
+  both toolsets load, no dropouts) — all retained for the D5 prune.
+- Orchestration repointed (resource **and** version — resource is what
+  `ae_client` dials, version is only the audit label) + redeployed as
+  `orchestration-00030-lfz`; `/health` ok (first probe read `degraded`
+  on the report MCP cold start — expected, second probe ok).
+- **Live gate PASS**: story-07 session over the public domain, PO turn
+  asking about story content → paired `tool_call` start/end events for
+  `get_story` (status ok) + `model_call` events with tokens/duration on
+  the engine's structured logs; test session abandoned afterwards
+  (parked). D27 amendment 2 records the deviation.
+- Verification: agent-kit **136** (+2), agents 4×3-4. Machine clock
+  drift note: real UTC lags the session labels — logs were queried with
+  explicit windows, not "since 2026-09-16".
