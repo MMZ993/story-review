@@ -8,7 +8,10 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (dev server, **Phase 9 in progress — increment 0 done**: judge + runner skeleton, test-first, local only; 21 unit tests green, no cloud/compose actions, Cloud SQL STOPPED throughout. Live judge smoke pending owner spend approval. Evidence: Runbook 15.)
+Last updated: 2026-09-15 (dev server, **Phase 9 in progress — increment 1 code
+complete + reviewed; live t1 gate pending owner spend approval**; 82 unit
+tests green. Cloud SQL was RESUMED on owner request and is RUNNING — **do
+not pause it until the owner explicitly asks**. Evidence: Runbook 15.)
 
 ## Next Session
 
@@ -26,20 +29,29 @@ Last updated: 2026-09-16 (dev server, **Phase 9 in progress — increment 0 done
 
 ### Next Steps
 
-1. Phase 9 **increment 1** — deterministic
-   assertion engine (`assertions.py` + `case_runner.py` over compose HTTP,
-   judge off, `--templates t1` cheap subset) with the CODE/DATASET/PROMPT
-   triage protocol driving increments 2–3.
+1. **Live t1 gate for increment 1** (owner approval needed — real agent
+turns on Vertex): `make agents-compose-up` (rebuilds orchestration with
+real agent-run spans + postgres host port 15432) → `make evaluation-test
+TEMPLATES=t1` → triage every failing assertion CODE/DATASET/PROMPT (log
+in Runbook 15 §Increment 1).
+   - Remaining open doc item: evaluation-tests.md wording for
+     finding-key presence (judge-matched by dataset contract — only the
+     severity ceiling is deterministic).
+   - Note: dev Cloud SQL is RUNNING (owner request) — leave it up.
+2. Phase 9 increments 2–5 per `docs-local/plans/phase-9-evaluation.md`.
 
 ### Verification and Review
 
-This session (Phase 9 increment 0): `make evaluation-unit-test` **21
-passed** (judge_client retry/fail policy against a fake transport,
-JudgeResult pass-rule validation, config sha check incl. the shipped
-config); `make evaluation-test` fails cleanly (exit 2) without a stack;
-`git diff --check` clean; syntax checks ok. Independent review skipped
-(new isolated test package, no production code touched — recorded here).
-No cloud or compose actions; Cloud SQL STOPPED throughout.
+This session (Phase 9 increment 1 + span fix): `make evaluation-unit-test`
+**82 passed**; orchestration suite **207 passed / 12 skipped** (+1:
+agent_runs record real invocation spans — reviewers overlap, synthesis
+after both, facilitator after synthesis; `timed_invoke`/`TimedResult`,
+owner-approved "fix timestamps only"); `make evaluation-test` fails
+cleanly (exit 2) without a stack; `git diff --check` clean; compileall
+ok; modules < 300 lines. Independent read-only review: 1 Critical +
+5 Important + 6 Minor → all fixed in-session except the finding-key
+wording deviation (Runbook 15 §Increment 1).
+No cloud actions; Cloud SQL STOPPED throughout.
 
 ## Where we are
 
@@ -78,6 +90,27 @@ No cloud or compose actions; Cloud SQL STOPPED throughout.
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+Phase 9 increment 1 (2026-09-17, dev server; local only, detail: Runbook 15
+§Increment 1):
+- **Deterministic assertion engine delivered test-first (judge OFF)**:
+  `capture.py` (typed CaseCapture), `orchestration_client.py` (webui
+  idempotency discipline: key persisted before POST, 5 attempts, 503 /
+  SESSION_LOCKED same-key retry honoring retry_after_seconds),
+  `artifact_client.py` (minimal MCP JSON-RPC client for get_artifact,
+  JSON+SSE), `db_evidence.py` (agent_runs + ADK events reads over the new
+  compose postgres host port 127.0.0.1:15432), `case_runner.py` (replays
+  po_script, captures turns/artifacts/audit/tool-trace, persistence
+  probes incl. cross-run read rejection), `assertions/` package (turn
+  structure, delegation, findings ceiling, pinned conflicts, final state,
+  audit rows, MCP evidence, persistence), `runner.py` full suite mode
+  (`--templates t1` default, per-case JSON artifacts, summary, exit 0/1/2).
+- **Review findings fixed** (Critical suite-abort, retry/health/DSN
+  minors, SSE decode, tests added).
+- **Span fix (owner: "fix timestamps only")**: orchestration records
+  real invocation spans; suite asserts the designed fan-out/ordering
+  directly (only the reviewer pair may overlap).
+- Live t1 gate + triage log pending owner spend approval.
 
 Phase 9 increment 0 (2026-09-16, dev server; local only, detail: Runbook 15
 §Increment 0):
