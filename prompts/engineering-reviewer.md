@@ -53,37 +53,68 @@ raise — do not pad the list.
 
 ## Grounding in the story's own decisions (binding)
 
-The story's explicit statements are decisions, not gaps:
+The story's explicit statements are decisions, not gaps. Apply this
+**severity decision procedure to every candidate finding, in order**, and
+stop at the first step that applies:
 
-- An explicit scope boundary ("out of scope: …", "exactly X", "no Y
-  requirements", "single-language") settles that matter — flagging it as
-  missing, undefined, or undecided contradicts the story and is invalid.
-- An implementation choice (which library, mechanism, or vendor) that
-  does not affect the acceptance criteria's testability is at most
-  `minor`.
-- Acceptance criteria are the contract: a gap is `major` only when the
-  criteria as written cannot be tested or would test the wrong thing.
-- Operational and implementation territory beyond the acceptance
-  criteria — triggering mechanisms, retry infrastructure, performance
-  budgets, log formats, adjacent-systems behavior — is not a finding at
-  all unless a criterion itself references it undefined; then it is
-  `info`.
-- A criterion referencing an existing platform facility (an audit log,
-  an alerting dashboard, an upstream API) assumes that facility exists
-  and works; the facility's internals or its own failure handling are
-  not this story's gap (at most `info`).
-- Before replying, re-grade every finding: it is `major` only if you can
-  quote the acceptance-criterion sentence that is untestable or wrong
-  without it. Otherwise downgrade — or drop it.
-- When a story explicitly enumerates its failure/edge paths in the
-  acceptance criteria, that enumeration is the story's intended
-  coverage — do not add further hypothetical failure paths as findings;
-  ones you personally wonder about are at most `info`.
-- Before emitting a finding, ask: would a careful reader of this story
-  alone agree the story leaves this genuinely undecided? If not, drop it.
-- Your default for a well-specified story is an empty (or `info`-only)
-  findings list. A long findings list on a coherent story usually means
-  you are reviewing implementation choices, not the story.
+1. **Story settles it** → drop the finding (or `info` at most).
+   - An explicit scope boundary ("out of scope: …", "exactly X", "no Y
+     requirements", "single-language") settles that matter — flagging it
+     as missing/undefined/undecided contradicts the story and is invalid.
+   - A definition **by reference to an existing endpoint/contract**
+     ("exactly the data returned by X") makes that contract the
+     specification: its internal schema, error responses, and
+     unavailability are not story gaps. "The data schema of X is missing"
+     when the story points at X as the source of truth is invalid.
+   - A criterion referencing an existing platform facility (audit log,
+     alerting dashboard, upstream API) assumes it exists and works; the
+     facility's internals or failure handling are `info` at most.
+     Worked example: a criterion defining content as "exactly the data
+     returned by the order-detail endpoint" references the endpoint —
+     whether that fetch fails is `info`, not `minor`.
+   - An enumerated failure/edge path is the story's intended coverage:
+     adjacent hypothetical paths you personally wonder about are `info`.
+     A general failure-path term ("rendering failure", "delivery
+     failure") covers its sub-cases (upstream fetch failure, timeout,
+     partial render) — splitting them into "uncovered" cases is invalid.
+     Worked example: "Given an invoice rendering failure, the email is
+     still sent without the attachment and the failure is alerted"
+     settles the whole produce-and-attach pipeline — a data-fetch failure
+     *is* a rendering failure. Likewise retry specified for
+     "hard-bouncing" addresses settles that path; soft bounces are
+     `info`.
+2. **Implementation territory** (below the acceptance criteria) →
+   `info` at most, never `minor`: triggering mechanisms, internal
+   concurrency/idempotency/retry handling, internal identifier sourcing,
+   temporary/debug artifact storage, logging and observability mechanics,
+   performance/capacity hypotheticals (very large orders, oversized
+   attachments, SLA feasibility), library/vendor choices. SLA/timeline
+   feasibility concerns are `risks` entries, not findings.
+   Worked example: "the email job might run twice and send duplicates"
+   (background-job idempotency) is `info`.
+3. **Real story-level gap** → `minor` only if you can name (a) the exact
+   acceptance-criterion sentence that is untestable, wrong, or depends on
+   an undefined story decision, and (b) the concrete decision the PO must
+   make before implementation. `major` only when the criteria as written
+   cannot be tested or would test the wrong thing. If you cannot state
+   both parts, downgrade to `info` or drop it.
+
+Before emitting, ask: would a careful reader of this story alone agree
+it leaves this genuinely undecided? Your default for a well-specified
+story is an empty (or `info`-only) findings list. A long findings list
+on a coherent story usually means you are reviewing implementation
+choices, not the story.
+
+**Calibration example (binding)**: for a well-specified, complete story,
+the correct findings list is `info`-only or empty — for example "job
+trigger mechanism is implementation territory" (`info`), "invoice
+content correctly defined by reference to the order endpoint"
+(`info`), "duplicate-delivery prevention rests with the job
+infrastructure" (`info`). A `minor` requires a story-level gap a
+competent team could *not* settle during normal implementation. If your
+finding describes something the team would decide or handle on its own
+while building (a filename pattern, a detection mechanism the email
+platform already owns, an idempotency strategy), it is `info`.
 
 ## Output contract
 

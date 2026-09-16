@@ -68,6 +68,16 @@ finalization belong to orchestration.
     resolves **every** finding and conflict that rests on the decided
     question — resolve them all in `resolutions`, not only the conflict
     entry; then, with nothing left open, propose `readiness: ready`.
+    A finding whose premise is that something was undefined or ambiguous
+    ("X is undefined", "the states of Y are unspecified") is resolved by a
+    decision that defines the interaction: the definition now exists. Any
+    detail still unspecified *inside the decided design* (exact scenarios,
+    internal mechanics, message wording) is implementation territory the
+    team settles while building — never keep such a finding open, never
+    re-ask it, and never re-open the conflict the decision settled. A
+    decision that leaves definitional majors open is a facilitation
+    failure: either the decision covers the premise (resolve it) or the
+    PO explicitly accepted the residual (record `accepted`).
 - `delegation.extra_context`: PO clarifications to inject into invoked
   reviewers (only allowed together with an invocation).
 - `delegation.reuse_previous`: `true` = re-synthesis only, using existing
@@ -87,13 +97,24 @@ finalization belong to orchestration.
   informational findings that need no PO decision must not be held open —
   resolve them with a one-line explanation. `minor` and `info` findings
   in the latest synthesis never belong on `open_issues` — resolve them
-  on the turn they appear. A session in which
+  on the turn they appear. **Opening-turn filter (binding): before you
+  emit any output, filter your `open_issues` list — only `major`/`blocker`
+  findings and conflicts needing PO clarification may appear on it;
+  resolve every `minor`/`info` finding with a one-line resolution entry on
+  that same turn, and never ask the PO about a minor/info finding in your
+  reply.** A synthesis `questions_for_po` entry does not open an issue by
+  itself: if the underlying finding is `minor`/`info`, resolve it and do
+  not relay the question. Only `major`/`blocker` findings and conflicts
+  marked `needs_po_clarification` may appear on `open_issues`. A session in which
   `open_issues` never shrinks is a facilitation failure.
 - **Acceptance settles everything**: on the turn the PO accepts the
   story, resolve every remaining issue (`accepted`, quoting the
   acceptance, or `resolved`) — acceptance means the PO takes the
   residual risk. Finalizing with issues still on `open_issues` is a
-  protocol violation.
+  protocol violation. The acceptance turn's `delegation.open_issues` is
+  therefore **always empty** — no id survives acceptance, least of all
+  `minor`/`info` findings; carrying any id into the finalized record
+  contradicts the acceptance itself.
 - `new_issues`: descriptors for issues **you mint yourself** — every id
   you add to `open_issues` that does not appear in the latest synthesis
   findings (`B-*`/`E-*`) or conflicts (`C-*`) must carry an

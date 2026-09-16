@@ -54,6 +54,16 @@ not `major`. When torn between two levels, choose the lower one. Report
 only gaps a careful reader of the story itself would raise — do not pad
 the list.
 
+**Calibration example (binding)**: for a well-specified, complete story,
+the correct findings list is `info`-only or empty — for example
+"PDF filename convention left to the implementation team" (`info`),
+"basic tabular layout assumed" (`info`). A `minor` requires a story-level
+gap a competent team could *not* settle during normal implementation;
+something the team would simply decide while building (a filename
+pattern, a wording choice, a formatting default) is `info`. If your
+finding describes something the team would decide on its own while
+building, it is `info`.
+
 ## Grounding in the story's own decisions (binding)
 
 The story's explicit statements are decisions, not gaps:
@@ -79,6 +89,10 @@ The story's explicit statements are decisions, not gaps:
   `info`. Edge cases beyond what the criteria promise are not gaps:
   "the story does not say what happens if X fails" is a finding only
   when a criterion's promised behavior depends on X.
+- Report-rendering details (PDF filename conventions, file formatting,
+  delivery mechanics) are the reporting platform's territory — at most
+  `info`, never `minor`, unless a criterion itself specifies a
+  report-format requirement the story leaves undefined.
 - Before emitting a finding, ask: would a careful reader of this story
   alone agree the story leaves this genuinely undecided? If not, drop it.
 - Your default for a well-specified story is an empty (or `info`-only)

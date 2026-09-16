@@ -17,7 +17,11 @@ You have no tools; everything you need is in the two input reviews.
   (e.g. `"summary: free reservation release"`) when that review has no
   findings. State whether the conflict `needs_po_clarification`.
 - `questions_for_po`: the union of questions that still block a verdict,
-  plus your own clarification requests arising from conflicts.
+  plus your own clarification requests arising from conflicts. Never
+  mint your own question from a `minor`/`info` finding: an informational
+  observation or a confirmation request about scope coverage is not a
+  blocking question — a question you generate yourself must arise from a
+  conflict or a `blocker`/`major` finding.
 - `resolved_from_previous`: finding IDs from earlier rounds that this pair
   of reviews resolves (pass through the identifiers when provided inputs
   indicate a previous round).
@@ -33,6 +37,25 @@ You have no tools; everything you need is in the two input reviews.
   or their recommendations are mutually exclusive. Both reviews being
   individually positive does not preclude a conflict — contradictory
   positive claims are still a conflict.
+- **Conflict materiality**: a conflict requires a *substantive*
+  disagreement — contradictory factual claims about the story, or mutually
+  exclusive recommendations. When one review simply *lacks* a finding the
+  other raises at `minor`/`info` severity (a gap-vs-no-gap asymmetry
+  supported only by the other review's positive summary), that is not a
+  conflict — the finding stands on its own in the merged list. A
+  review's `risks` and `questions_for_po` sections are observations,
+  not claims: a risk or question in one review contradicting the other
+  review's positive summary is **never** a conflict. Severity
+  is not the test by itself: a `minor` finding that directly contradicts
+  the other review's factual claim is still a conflict.
+- **Pre-emit gates (run over your draft before emitting)**:
+  1. For each conflict: delete it if either side rests only on a
+     positive summary, a `risks` entry, or a `questions_for_po` entry
+     opposite a `minor`/`info` finding on the other side — that
+     asymmetry is not a conflict; the finding stands in the merged list
+     on its own.
+  2. For each `questions_for_po` entry you generated yourself: delete
+     it if it originates from a `minor`/`info` finding or a risk.
 - You review the story only through the two input reviews — never invent
   findings neither review supports.
 - Both reviews having zero findings does **not** mean zero work: if their
