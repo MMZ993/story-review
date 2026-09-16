@@ -313,6 +313,73 @@ Sessions/state: compose stack left UP (orchestration, adapters, MCP,
   postgres, webui) per owner instruction; compose Postgres carries the
   run-4 sessions (evaluation artifacts retained on disk).
 
+## Increment 2 — dataset tuning pass (2026-09-15, dev server; owner-approved direction + spend; stack kept RUNNING)
+
+Goal per plan §Increment 2: representativeness walk, DATASET-class repairs,
+owner-reviewed ADO edits. All executed:
+
+1. **Representativeness walk (8 tested aspects × 10 scenarios)**: every
+   aspect has ≥1 strong case — reviewer correctness (weak scenarios +
+   comments-complete), conflict detection (conflicting/hidden-conflict/
+   partial-resolution), delegation routing (4 exact-pinned cases),
+   re-review new-conflict (partial-resolution C-2, single but explicit),
+   loop termination (clean/conflicting/hidden-conflict/partial), loop
+   safety cap (unresolvable), persistence (runner-level probes),
+   MCP-evidence (comments 43–45; **structurally sound**: facilitator has
+   the story-MCP toolset + prompt guidance, and FacilitatorRequest
+   carries no story text — never calling the tool is PROMPT-class).
+2. **Oddity resolved (no defect)**: `conflicting`/`hidden-conflict`
+   expecting `completed` + `po_accepted:false` is the designed normal
+   readiness path — data-flow.md gate rule 3; example-interaction.md §5
+   shows exactly this. Recorded, no change.
+3. **D-a (unresolvable expected-file inconsistency)**: turns 2–9 said
+   "routing NOT deterministically pinned" yet asserted
+   `produced_artifacts: []`. Test-first suite changes: loader accepts
+   explicit `produced_artifacts: null` = unpinned (omission still means
+   pinned-empty); `assert_turn_structure` replaces the exact-set check
+   with a session-wide per-type **version-continuity** assertion
+   (strictly +1, no gaps/repeats); `assert_conflicts` falls back to the
+   **observed** synthesis version of the first-seen turn (or first later
+   synthesis) when the expected turn is unpinned. Expected file + manual
+   plan updated with the unpinned note.
+4. **D-b (owner: "Enrich ADO context")**: Feature "Checkout Reliability"
+   (ADO id 4) had **no description** — the business reviewer's run-4
+   "epic misalignment" blocker ("+8% checkout conversion", quoted from
+   the epic id 2 text) was a grounded inference from an empty parent.
+   Added via REST PATCH (PAT basic auth; body must be a **JSON array** of
+   ops — first attempt with a single object → HTTP 400): a post-purchase
+   reliability description (confirmation-email pipeline, invoice
+   delivery). Story-01 (id 5) Scope gained the invoice-content sentence
+   (content = exactly GET /orders/{id}; single-language, EUR; no
+   branding/legal/i18n requirements). Re-exported; diff = the two text
+   changes + mechanical churn (exported_at, revs 2/5, watermarks,
+   comments-story Child links on the features); identifiers sanitized
+   (`$ADO_ORG`/`<project-id>`). canonical-facts.md clean section records
+   both enrichments. Local compose story MCP reads the bind mount —
+   container restarted only to drop any cache; **no dataset-push needed
+   for local runs** (dev-mode runs in increment 4 will need it).
+5. **Run 5** (`make evaluation-test TEMPLATES=t1`, owner-approved spend):
+   **0/10 pass, DATASET bucket EMPTY** — increment-2 gate met.
+   - **t1/engineering-weak: 0 failures — first fully passing case**
+     (engineering-only delegation with extra context, artifacts, severity
+     within ceiling, finalize, reports).
+   - **t1/unresolvable: 11 → 3 failures** — all artifact-pinning failures
+     gone; park-at-10, turn outcomes, parked final state pass.
+   - Remaining failures everywhere are PROMPT-class (increment 3):
+     delegation routing (single-side expected, `both`/none observed;
+     conflicting/hidden-conflict turn-2 delegation instead of
+     conversational resolution), severity ceilings (blockers in every
+     case), open issues never empty at acceptance (7–19), synthesis
+     conflict detection (`conflicts: []` everywhere incl. C-1/C-2),
+     facilitator story-MCP tool calls on comment scenarios.
+6. Verification: dataset **37 passed** (+1 null-semantics loader test);
+   evaluation **90 passed** (+3: unpinned tolerance, version-gap failure,
+   conflict capture-fallback); `git diff --check` clean.
+
+Sessions/state: compose stack left UP per owner instruction; run-5
+sessions in the compose Postgres; run-5 artifacts in
+`tests/evaluation/artifacts/cases/` (run-4 overwritten).
+
 ## Session note — dev DB resumed (2026-09-15)
 
 Owner requested the dev environment usable: Cloud SQL resumed

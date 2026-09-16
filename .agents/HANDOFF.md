@@ -8,25 +8,26 @@ of what was executed), `docs-local/local-decisions.md` (D1–D15),
 `docs-local/development-plan.md` (phase scope/exit criteria), and git history
 (the record of what changed). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-15 (dev server, **Phase 9 increment 1 COMPLETE —
-live t1 gate: 3 CODE-class root causes fixed test-first (adapter strict-
-mode datetime, ADK event_data evidence, produced_artifacts listing per
-owner decision); run 4 = CODE bucket empty, all remaining failures
-PROMPT/DATASET class for increments 2–3. Compose stack left RUNNING per
-owner instruction. Evidence: Runbook 15 §Live t1 gate.**)
+Last updated: 2026-09-15 (dev server, **Phase 9 increment 2 COMPLETE —
+dataset tuning pass: DATASET bucket empty (run 5: engineering-weak 0
+failures = first fully passing case; unresolvable 11→3 via unpinned
+artifact relaxation); ADO enriched (Feature 4 description + story-01
+invoice-content sentence) + re-export; all remaining failures PROMPT-class
+for increment 3. Evidence: Runbook 15 §Increment 2.**)
 
 ## Next Session
 
 ### Remaining Tasks
 
-- Phase 9 increments 2–3 per plan (dataset tuning + PROMPT-class
-  backlog, Runbook 15 §Live t1 gate run 4): delegation calibration
-  (never where expected; always `both` in unresolvable), severity
-  calibration (blockers vs info ceilings), open issues never empty at
-  acceptance, conflicts never detected, facilitator never reads
-  comments via story MCP, synthesis inputs-echo corruption (stochastic),
-  park-at-10 not reached; expected-file calibration (plain-turn `[]`
-  vs every-turn re-synthesis).
+- Phase 9 increments 3–5 per plan (PROMPT-class backlog + judge wiring,
+  Runbook 15 §Increment 2 run 5): delegation calibration (single-side
+  where expected; never `both` in unresolvable dialogue turns;
+  conversational resolution instead of delegation in
+  conflicting/hidden-conflict), severity calibration (blockers everywhere
+  vs info/major ceilings), open issues never empty at acceptance, conflict
+  detection (synthesis `conflicts: []` on every case), facilitator story-MCP
+  tool calls on comment scenarios, synthesis inputs-echo corruption
+  (stochastic).
 - **Web UI mobile fix (owner request, next session)**: story selection
   sits below the fold on mobile (Review Story button on top, story list
   at bottom, not visible) — plan a mobile-friendly arrangement (e.g.
@@ -40,8 +41,8 @@ owner instruction. Evidence: Runbook 15 §Live t1 gate.**)
 
 ### Next Steps
 
-1. Phase 9 increments 2–5 per `docs-local/plans/phase-9-evaluation.md`
-   (start at increment 2 — dataset tuning; then 3 — prompt tuning loop).
+1. Phase 9 increments 3–5 per `docs-local/plans/phase-9-evaluation.md`
+   (start at increment 3 — judged full set + prompt tuning loop).
 2. Web UI mobile fix session (owner request).
 
    Note: dev Cloud SQL is RUNNING (owner request) — leave it up; the
@@ -49,13 +50,12 @@ owner instruction. Evidence: Runbook 15 §Live t1 gate.**)
 
 ### Verification and Review
 
-This session (live t1 gate, 4 runs): evaluation unit tests **87 passed**
-(+5: ADK event shape + payload column); agent-kit **148 passed** (+2:
-comments-story `/invoke` JSON-mode boundary); orchestration **207 passed
-/ 12 skipped** (+3: flow-1/delegated/finalizing turn produced_artifacts;
-D19 catalog type filter); compose contract **20**; run 4 full t1 with
-CODE bucket empty; runbook + HANDOFF updated. Remaining open doc item
-unchanged (evaluation-tests.md finding-key wording).
+This session (Phase 9 increment 2): dataset **37 passed** (+1);
+evaluation **90 passed** (+3); run 5 full t1 with the **DATASET bucket
+empty** (engineering-weak 0 failures; unresolvable 11→3); runbook +
+HANDOFF updated; ADO diff owner-approved; `git diff --check` clean.
+Remaining open doc item unchanged (evaluation-tests.md finding-key
+wording).
 
 Prior session (Phase 9 increment 1 + span fix): `make evaluation-unit-test`
 **82 passed**; orchestration suite **207 passed / 12 skipped** (+1:
@@ -106,7 +106,22 @@ No cloud actions; Cloud SQL STOPPED throughout.
 
 ## Previous Session Summary
 
-Live t1 gate, increment 1 close (2026-09-15, dev server; owner-approved
+Phase 9 increment 2 (2026-09-15, dev server; owner-approved direction +
+spend; detail: Runbook 15 §Increment 2):
+- **Representativeness walk** (8 aspects × 10 scenarios): all covered;
+  oddity resolved — `completed` + `po_accepted:false` is the designed
+  normal-readiness path (data-flow gate rule 3; example-interaction §5).
+- **D-a**: unresolvable expected turns 2–9 unpinned (`produced_artifacts:
+  null`); suite gained version-continuity + capture-based conflict
+  pinning (test-first; evaluation 90, dataset 37).
+- **D-b (owner: enrich ADO)**: Feature 4 description (post-purchase
+  reliability) + story-01 invoice-content sentence; REST PATCH gotcha:
+  JSON-Patch body must be an array. Re-exported; story MCP restarted
+  (bind mount; no dataset-push for local).
+- **Run 5**: DATASET bucket empty — engineering-weak 0 failures (first
+  full pass), unresolvable 11→3; everything left is PROMPT-class.
+
+Phase 9 increment 1, live t1 gate (2026-09-15, dev server; owner-approved
 spend; detail: Runbook 15 §Live t1 gate):
 - **Three CODE-class root causes fixed test-first, each verified by a
   live re-run**: (1) reviewer adapter strict-mode body validation
