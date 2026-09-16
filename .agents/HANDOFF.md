@@ -49,8 +49,8 @@ enrichment; broad regressions on other cases; detail in Runbook 15
    practice if blips persist.
 
 Standing notes: dev Cloud SQL RUNNING (owner request — leave up); local
-compose stack intentionally up (run-23 prompt images); owner pushes
-main (`05592e8` mobile fix + wrap-up commit pending push).
+compose stack intentionally up (run-23 prompt images); all increment-3
+part-2 work pushed (through `4a88656`).
 
 ### Verification and Review
 
