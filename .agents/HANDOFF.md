@@ -9,25 +9,27 @@ of what was executed), `docs-local/local-decisions.md` (D1–D29),
 git history (the session log). Do not let this file grow back into an archive.
 
 Last updated: 2026-09-16 (dev server; Phase 9 increment 3 in progress —
-clean PASSES in full suite (run 23) after rounds 8–10 + story-01
-enrichment; broad regressions on other cases; detail in Runbook 15
-§Increment 3 part 2).
+run 24 (round-11 validation): 0/10 but every case converged (open issues
+4–19 → 1–3, blockers eliminated); round-12 prompts landed (re-review
+scope discipline, decision-enforcement worked example, synthesis gate-3
+scope fix). Comments-story ACs restored (D30); gate-finalize arcs
+adapted (D30). Detail: Runbook 15 §Increment 3 part 4.
 
 ## Next Session
 
 ### Remaining Tasks
 
-- **Phase 9 increment 3 (continue)**: t1 is 1/10 (run 23): clean
-  green; next clusters, in evidence order — (1) comments-scenario
-  severity over-escalation (blockers/majors on ceiling-info stories —
-  calibration did not generalize beyond story-01); (2) routing
-  regressions on engineering-weak turn 2 (`both` instead of
-  `engineering`) and partial-resolution turn 3 (`both`+extra_context
-  instead of `none` on a decision turn); (3) unresolvable blocker
-  over-escalation + synthesis v2 dropping C-1; (4) hidden-conflict 422
-  (facilitator re-listed C-1 without `reopened`); (5) conflicting
-  finalize cluster (unchanged). Then judge (`JUDGE=1`) once ≥1 case
-  deterministic-green (clean now qualifies).
+- **Phase 9 increment 3 (continue)**: run-24 evidence (Runbook 15
+  §Increment 3 part 4): dominant residual cluster = summary/final turns
+  keeping 1–3 issues open (re-reviews minting new majors from
+  PO-supplied metrics; facilitator keeping decided findings open);
+  synthesis dropping pinned conflicts (suspected round-11 gate-3
+  over-suppression — round 12 scopes it); stochastic 422s (synthesis
+  checksum echo, facilitator opening-turn validation). Round-12 prompts
+  are landed but **not yet run** — next step: rebuild + t1 in chunks of
+  ≤4 cases (`--scenario`, bg-job cap ≈45 min), then JUDGE=1 once ≥1
+  case is deterministic-green (clean regressed to a single-minor blip
+  in run 24 after 3 green runs — likely stochastic).
 - Deferred Phase-8 review minors (Runbook 14 §Increment 7): env-pointer/
   version runtime cross-check; compaction checkpoint-boundary +
   genai-Content test nits; per-call summarizer client.
@@ -38,11 +40,10 @@ enrichment; broad regressions on other cases; detail in Runbook 15
 
 ### Next Steps
 
-1. Continue increment 3 from run-23 evidence (Runbook 15 §Increment 3
-   part 2): generalize severity calibration to the comments stories, fix
-   the two routing regressions, unresolvable/hidden-conflict clusters;
-   then re-run full t1, then JUDGE=1 (clean is now deterministic-green
-   and judge-eligible).
+1. Continue increment 3 from run-24 evidence (Runbook 15 §Increment 3
+   part 4): run 25 on round-12 prompts (rebuild agents first; chunks of
+   ≤4 scenarios via `--scenario` because of the bg-job runtime cap);
+   if green holds, add `JUDGE=1`.
 2. Standing note: per plan risk list, a case failing solely on
    demonstrated stochastic instability may get one documented rerun
    (both outputs kept); consider codifying in the runner or runbook
@@ -54,14 +55,13 @@ part-2 work pushed (through `4a88656`).
 
 ### Verification and Review
 
-This session (increment 3, part 2): live runs 12–23 (owner-approved
-spend) evidenced in Runbook 15 §Increment 3 part 2; story-01 ADO
-enrichment (rev 6) + re-export; prompt rounds 8–10 across all four
-agents; ADK `{identifier}` prompt-templating gotcha recorded. **t1/clean
-PASSED deterministically in the full suite (run 23)** — first
-non-trivial deterministic pass. Full suite 1/10 with regressions listed
-in Remaining Tasks. Dataset 37 passed, evaluation 104 passed, `git diff
---check` clean; no application code changed (prompts + dataset only).
+This session (increment 3, parts 3–4): run 24 (owner-approved spend,
+ full t1 + per-scenario completion; trend run-24-*/run-24b-*) — 0/10
+ but every case converged; round-11 + round-12 prompt edits; ADO
+ 57–59 AC restoration (revs 5/5/6, re-export, story MCP verified);
+ D30 arc adaptation (3 expected files + 3 manual plans). Dataset 37,
+ evaluation 104, `git diff --check` clean each step. Evidence:
+ Runbook 15 §Increment 3 parts 3–4.
 
 Prior session (increment 3, part 1): evaluation unit tests **104
 passed** (+14); live runs 6–11; delegation assertion re-based on

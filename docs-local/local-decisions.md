@@ -1172,3 +1172,26 @@ sentence pinning non-hard-bounce delivery failures to the existing email
 platform's standard handling (out of scope). Re-exported (dataset churn
 mechanical); canonical-facts clean section records the fact. Evidence:
 Runbook 15 §Increment 3 part 2, runs 19–20.
+
+## D30 — readiness-gate finalize replaces trailing acceptance turns; comment-story acceptance criteria restored (2026-09-16, owner decision)
+
+Two Phase 9 increment-3 decisions taken together:
+
+1. **Arc adaptation.** Prompt rounds 8–10 made facilitators converge on the
+   post-delegation summary turn (empty `open_issues` + `invoke=none`), which
+   the designed readiness gate (data-flow.md §2 rule 3) finalizes with
+   `po_accepted=false` — making a scripted trailing acceptance turn
+   unreachable (business-weak run 23: finalize at turn 2, then 409
+   SESSION_READ_ONLY on the acceptance POST). Owner chose to adapt the
+   dataset: `business-weak`, `engineering-weak`, and
+   `comments-clarify-business` expected files + manual plans drop the
+   acceptance step and expect gate-finalize on the summary turn
+   (conflicting/partial-resolution style). The acceptance flow (flow 3)
+   remains covered by clean and the comments-benign/complete-engineering
+   arcs.
+2. **ADO repair.** Work items 57/58/59 (stories 43–45) were authored
+   WITHOUT the acceptance criteria their spec defines — the run-23 comments
+   "severity over-escalation" cluster was grounded in genuinely missing
+   data, not prompt miscalibration. PATCHed with the spec criteria
+   (Given/when/then HTML, revs 5/5/6), re-exported, story MCP restarted.
+   Evidence: Runbook 15 §Increment 3 part 3.

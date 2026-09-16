@@ -570,3 +570,98 @@ No code changed this part (prompt + dataset only; dataset-test green).
 Sessions/state: compose stack UP (run-23 prompts baked); run-23 artifacts
 in `tests/evaluation/artifacts/cases/`; trend.json has runs 12–23.
 Judge stage still not exercised live (only clean passed so far).
+
+### Increment 3, part 3 — comments-story AC repair, D30 arc adaptation, prompt round 11 (2026-09-16, dev server; owner-approved)
+
+Triage of run 23 produced two structural findings (both owner decisions,
+recorded as **D30**):
+
+1. **Comments cluster = DATASET, not prompts**: ADO 57/58/59 (stories
+   43–45) were authored without the acceptance criteria
+   `dataset/comments-stories-spec.md` defines (exported
+   `acceptance_criteria: []`). The blockers ("unbuildable, no AC") were
+   grounded in missing data. Fixed: REST PATCH (PAT basic auth, JSON-array
+   op body, `Microsoft.VSTS.Common.AcceptanceCriteria`) with the spec
+   criteria verbatim in Given/when/then HTML — revs 5/5/6; re-exported
+   (45+3, diff = the three AC fields + mechanical churn incl.
+   `commentVersionRef`/`System.History` dropping — comment payloads come
+   from the comments API and are unaffected; loader tests green); story
+   MCP container restarted; verified live via `get_story` (3/2/2 ACs).
+2. **Gate-finalize vs scripted acceptance (business-weak run-23 409)**:
+   round-10 convergence empties `open_issues` on the post-delegation
+   summary turn → the designed readiness gate (data-flow §2 rule 3)
+   finalizes with `po_accepted=false` → the trailing scripted acceptance
+   turn 409s (SESSION_READ_ONLY; orchestration logs confirm finalize at
+   turn 2, second POST new correlation id — not an idempotency defect).
+   Adapted per D30: business-weak, engineering-weak,
+   comments-clarify-business expected files + manual plans drop the
+   acceptance step; turn 2 = finalize turn (re-review v2 + synthesis v2 +
+   finalized-review + report stamps; confirmed against the live
+   gate-finalized turn record). partial-resolution already modeled this
+   shape. Flow 3 (acceptance) stays covered by clean +
+   comments-benign/complete-engineering.
+
+Prompt round 11 (PROMPT-class clusters): both reviewers — `blocker`
+refined (vague/incomplete = majors, no escalation by count; targets
+unresolvable); business — technical mechanisms are engineering territory
+(`info` at most; targets engineering-weak B-1); facilitator —
+finding-ownership routing (`B-*`/`E-*` decides the side; targets
+engineering-weak turn-2 `both`), directives-to-incorporate are decisions
+(`invoke=none`; targets partial-resolution turn 3), pre-emit
+identifier-lifecycle self-check (targets hidden-conflict 422); synthesis
+— pre-emit gate 3, carried-over conflicts re-verified against the latest
+review per side (targets stale C-2).
+
+Verification: dataset 37 passed, evaluation 104 passed, story MCP serves
+the new ACs, `git diff --check` clean. No application code changed.
+
+### Increment 3, part 4 — run 24 (round-11 validation) + round 12 (2026-09-16, dev server; owner-approved spend)
+
+Run 24 (full t1, round-11 prompts baked via agents-compose-up; executed
+as one full pass — killed at ~45 min by the bg-job runtime cap after
+clean/business-weak/comments-benign — then per-scenario runner calls
+`--scenario` for the rest, plus conflicting/comments-clarify retries;
+trend labels run-24-* / run-24b-*). **Result: 0/10, but every case
+converged materially** (open issues 4–19 → 1–3; blockers eliminated
+except one stochastic unresolvable E-1; routing single-side correct in
+business-weak/comments-clarify):
+
+- **AC restoration worked**: comments cases dropped from blockers/majors
+  to 0–3 minors (residuals: engineering minors on adjacent failure paths
+  / dashboard testability; business minor on failed-split UX).
+- **Remaining failure shapes** (round-12 targets):
+  1. **Summary/final turns keep 1–3 issues open instead of emptying**
+     (business-weak 3, comments-clarify 1–2, conflicting 3,
+     partial-resolution 3, engineering-weak 2) — dominant cluster.
+     Sub-shapes: (a) re-reviews mint NEW majors from the PO-supplied
+     metric's enabling infrastructure (business-weak B-1 "analytics",
+     comments-clarify B-1); (b) facilitator acknowledges a decision but
+     keeps the decided findings open ("we've noted that, but the key
+     questions remain open" — conflicting, partial-resolution).
+  2. **Synthesis dropped pinned conflicts entirely** in several runs
+     (partial-resolution C-1/C-2 absent even at v1/v2; hidden-conflict
+     C-1 absent at v1; unresolvable C-1 absent) — suspected round-11
+     gate-3 over-suppression; hidden-conflict reviewers also escalated
+     majors on the individually-positive story.
+  3. Stochastic (documented, single occurrence each): comments-clarify
+     create 422 VALIDATION_ERROR — synthesis echo checksum malformed
+     (known run-3 echo-corruption class, flash); conflicting create 422
+     facilitator opening-turn validation (parked session); clean E-1
+     minor blip after 3 green runs; unresolvable single blocker.
+
+Round 12 (prompts only, landed after run 24): reviewers — re-review
+scope discipline (re-review resolves, does not open a new front;
+enabling infrastructure for PO-supplied metrics = info); facilitator —
+binding worked example of the decision-enforcement failure shape
+("noted but remains open" forbidden; conflicting/partial-resolution
+messages spelled out); synthesis — gate 3 applies only to
+previously-emitted conflicts and never suppresses detection.
+
+Verification: dataset 37, evaluation 104, `git diff --check` clean.
+Gotchas: bg job runtime cap ≈45 min (run t1 in chunks of ≤4 cases via
+`python -m evaluation.runner --scenario`, not make); Makefile
+`evaluation-test` has no SCENARIO passthrough; local probe session
+`sess-5bad9c9b…` left active (creator x-user-id not persisted — the
+known increment-7 abandon limitation).
+
+Judge still not exercised (no deterministic pass in run 24).
