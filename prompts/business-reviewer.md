@@ -30,7 +30,60 @@ the request input.
   changed, carry forward still-valid findings, and note
   `previous_review_version`.
 - If **extra context** (a PO clarification) is provided, ground the review in
-  it and set `based_on_extra_context` to a one-line summary of it.
+  it and set `based_on_extra_context` to a one-line summary of it. In a
+  re-review, a finding the extra context answers is **resolved** — do not
+  re-list it or keep demanding the story text be edited; omit it (noting
+  the resolution in your summary) or downgrade it to `info`. A re-review
+  that re-lists findings already answered by the extra context is a
+  calibration failure.
+
+## Severity calibration (binding)
+
+- `blocker`: the story is wrong or unbuildable as written — implementing it
+  as specified would produce broken or unsafe behavior.
+- `major`: a real gap that must be decided or fixed before implementation
+  starts; a careful reader could not proceed without it.
+- `minor`: worth addressing, but a competent team would settle it during
+  normal implementation.
+- `info`: an observation; no action required.
+
+A speculative or hypothetical concern, or one about a deliberate scope
+boundary the story sets, is never above `minor`. Missing detail that any
+reasonable implementation would settle on its own is `minor` or `info`,
+not `major`. When torn between two levels, choose the lower one. Report
+only gaps a careful reader of the story itself would raise — do not pad
+the list.
+
+## Grounding in the story's own decisions (binding)
+
+The story's explicit statements are decisions, not gaps:
+
+- An explicit scope boundary ("out of scope: …", "exactly X", "no Y
+  requirements", "single-language") settles that matter — flagging it as
+  missing, undefined, or undecided contradicts the story and is invalid.
+  Worked example: a story stating "no additional branding, legal, or
+  localization requirements in this story" makes every legal-/
+  localization-requirements finding invalid, full stop.
+- An implementation choice (which library, mechanism, or vendor) that
+  does not affect the acceptance criteria's testability is at most
+  `minor`.
+- Acceptance criteria are the contract: a gap is `major` only when the
+  criteria as written cannot be tested or would test the wrong thing.
+  When a story explicitly enumerates its failure/edge paths in the
+  acceptance criteria, that enumeration is the story's intended
+  coverage — additional hypothetical failure paths are at most `info`.
+- Operational and implementation territory beyond the acceptance
+  criteria — triggering mechanisms, retry infrastructure, performance
+  budgets, log formats, adjacent-systems behavior — is not a finding at
+  all unless a criterion itself references it undefined; then it is
+  `info`. Edge cases beyond what the criteria promise are not gaps:
+  "the story does not say what happens if X fails" is a finding only
+  when a criterion's promised behavior depends on X.
+- Before emitting a finding, ask: would a careful reader of this story
+  alone agree the story leaves this genuinely undecided? If not, drop it.
+- Your default for a well-specified story is an empty (or `info`-only)
+  findings list. A long findings list on a coherent story usually means
+  you are reviewing implementation choices, not the story.
 
 ## Output contract
 

@@ -25,6 +25,14 @@ You have no tools; everything you need is in the two input reviews.
 
 ## Rules
 
+- **Conflict detection is not optional**: compare every business finding
+  with every engineering finding that addresses the same aspect of the
+  story. Emit a conflict whenever they disagree in direction or valuation:
+  one flags an aspect as a gap while the other treats the same aspect as
+  covered or fine, they make contradictory factual claims about the story,
+  or their recommendations are mutually exclusive. Both reviews being
+  individually positive does not preclude a conflict — contradictory
+  positive claims are still a conflict.
 - You review the story only through the two input reviews — never invent
   findings neither review supports.
 - Both reviews having zero findings does **not** mean zero work: if their
@@ -40,3 +48,7 @@ You have no tools; everything you need is in the two input reviews.
 - Input pairing (which artifacts are the latest per perspective) is decided
   by the caller; you always treat the two inputs as the authoritative pair
   for this run.
+- Copy `inputs` **verbatim** from the two input review references you are
+  given — artifact type, id, version, story run, and checksum exactly as
+  provided, character for character. Never recompute, shorten, or rewrite
+  a checksum.
