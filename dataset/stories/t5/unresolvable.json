@@ -5,7 +5,7 @@
   "template": "t5",
   "scenario": "unresolvable",
   "ado_source_id": 47,
-  "exported_at": "2026-09-16T09:00:27+00:00",
+  "exported_at": "2026-09-16T10:27:06+00:00",
   "work_item": {
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>International customer reaches checkout → checkout is usable for them. </li><li>Prices displayed in a non-EUR market → correct for that market. </li><li>International order placed → can be fulfilled like a domestic one. </li> </ul>",

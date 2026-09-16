@@ -5,7 +5,7 @@
   "template": "t1",
   "scenario": "partial-resolution",
   "ado_source_id": 18,
-  "exported_at": "2026-09-16T09:00:27+00:00",
+  "exported_at": "2026-09-16T10:27:06+00:00",
   "work_item": {
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<p>Given a returning customer with saved payment details, when they reach checkout, then their saved method is available for selection without re-entering card details. </p><p>Given a customer who opts to save payment details, when payment completes, then the details are stored for future checkouts. </p><p>Given a saved method used at checkout, when payment completes, then the customer reaches the confirmation page. </p>",

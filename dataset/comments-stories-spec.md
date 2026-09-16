@@ -181,5 +181,14 @@ thread and come back positive (comment-completion). C-3.
   applies_across_templates: false`.
 - Manual plans: three entries in `dataset/manual-plans/` following the
   existing per-scenario format.
+
+## Phase 9 dataset repairs (2026-09-16)
+
+- The three ADO work items were authored **without the acceptance
+  criteria** this spec defines (run-23 root cause for the comments
+  severity cluster; D30). PATCHed 2026-09-16 with the criteria above,
+  verbatim in Given/when/then form (revs 5/5/6).
+- `comments-clarify-business` arc adapted per D30: no trailing acceptance
+  turn; readiness-gate finalize on the post-delegation summary turn.
 - `docs/quality/mock-data.md`: comment-scenario rows for the scenario table
   (docs commit, separate and atomic).

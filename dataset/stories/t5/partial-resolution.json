@@ -5,7 +5,7 @@
   "template": "t5",
   "scenario": "partial-resolution",
   "ado_source_id": 46,
-  "exported_at": "2026-09-16T09:00:27+00:00",
+  "exported_at": "2026-09-16T10:27:06+00:00",
   "work_item": {
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>Returning customer with saved payment details reaches checkout → saved method available for selection without re-entering card details. </li><li>Customer opts to save payment details, payment completes → details stored for future checkouts. </li><li>Saved method used at checkout, payment completes → customer reaches the confirmation page. </li> </ul>",

@@ -31,15 +31,14 @@ drive an `engineering-weak` arc.
   loyalty ledger. And yes — the PSP confirmed split payment in one checkout
   flow is supported on our plan (ticket with their support, capability
   checked last sprint)."
-- **turn 3 (`po_accepted: true`)** — no message, acceptance only.
+- (No turn 3: the readiness gate finalizes the summary turn — see D30.)
 
 ## Turn-by-turn expectations
 
 | # | What happens | Facilitator / orchestration expected | Artifacts (perspective) | Outcome | State after |
 |---|---|---|---|---|---|
 | 1 | Parallel reviews fan out; synthesis of v1+v1 | Opening turn: `invoke="none"` (by rule); engineering findings presented, business POSITIVE (comments supplied the case); no conflicts; PO asked for the split policy | review-business v1, review-engineering v1, synthesis v1 | `continue` | active |
-| 2 | PO supplies the split-payment policy | Engineering-only delegation (`invoke="engineering"`), PO message as extra context; business v1 reused (never open); readiness `needs_work` | review-engineering v2, synthesis v2 | `continue` | active |
-| 3 | PO accepts | Finalization gate passes; finalized-review with `po_accepted=true` | finalized-review (+ md report) | `finalize` | completed |
+| 2 | PO supplies the split-payment policy | Engineering-only delegation (`invoke="engineering"`), PO message as extra context; business v1 reused (never open); post-delegation summary resolves every finding (`open_issues` empty) → **readiness gate finalizes same turn** (normal readiness path, `po_accepted=false`) | review-engineering v2, synthesis v2, finalized-review + md report | `finalize` | completed |
 
 ## Expected findings (semantic)
 
@@ -57,6 +56,6 @@ drive an `engineering-weak` arc.
 
 ## Expected final
 
-- Session state: `completed` (turn 3, finalize).
-- Finalized-review: `po_accepted=true`; remaining open issues empty.
+- Session state: `completed` (turn 2, finalize via the readiness gate).
+- Finalized-review: `po_accepted=false`; remaining open issues empty.
 - Reports: `md` rendered on the finalize turn only.

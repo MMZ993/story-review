@@ -25,15 +25,13 @@ after the PO supplies the missing business case.
   sessions, and post-purchase surveys name Google Pay most often. Success =
   checkout conversion for Android users +2pp within two months of launch.
   Priority: this quarter, before the holiday peak."
-- **turn 3 (`po_accepted: true`)** — acceptance only.
 
 ## Turn-by-turn expectations
 
 | # | What happens | Facilitator / orchestration expected | Artifacts (perspective, version) | Outcome | State after |
 |---|---|---|---|---|---|
 | 1 | Parallel reviews; synthesis v1 | Opening turn: `invoke="none"`; presents business findings (value not justified/measurable), engineering positive; no conflicts; asks PO for the business case | review-business v1, review-engineering v1, synthesis v1 | `continue` | active |
-| 2 | PO message 1 (segment, metric, deadline) | Delegates **business only** with extra context (Android segment, +2pp conversion target, holiday-peak deadline); `reuse_previous=false`; `open_issues` = business gap topics; readiness needs_work | review-business v2 (gaps resolved against the supplied case); engineering v1 reused; synthesis v2 | `continue` | active |
-| 3 | PO accepts | Gate passes (no open issues, invoke none, no new synthesis); finalized-review with `po_accepted=true` | finalized-review (+ md report) | `finalize` | completed |
+| 2 | PO message 1 (segment, metric, deadline) | Delegates **business only** with extra context (Android segment, +2pp conversion target, holiday-peak deadline); `reuse_previous=false`; post-delegation summary resolves every finding (`open_issues` empty) → **readiness gate finalizes same turn** (normal readiness path, `po_accepted=false`) | review-business v2 (gaps resolved against the supplied case); engineering v1 reused; synthesis v2; finalized-review + md report | `finalize` | completed |
 
 ## Expected findings (semantic)
 
@@ -46,12 +44,14 @@ after the PO supplies the missing business case.
 
 ## Expected final
 
-- Session state: `completed` (turn 3, finalize).
-- Finalized-review: `po_accepted=true`; remaining open issues empty.
+- Session state: `completed` (turn 2, finalize via the readiness gate).
+- Finalized-review: `po_accepted=false`; remaining open issues empty.
 - Reports: `md` on the finalize turn only.
 
 ## Format-invariance note
 
 Any later rendering (T2–T6) must produce the same arc: engineering positive,
 business value gaps, single business-only delegation after the PO supplies
-the case, acceptance, finalize.
+the case, single business-only delegation after the PO supplies the case,
+readiness-gate finalize on the summary turn (no separate acceptance turn;
+see D30).

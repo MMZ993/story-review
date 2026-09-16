@@ -7,9 +7,6 @@
   "po_script": [
     {
       "message": "Retry policy from the payments team: max 3 attempts with exponential backoff (1s, 5s, 25s), every attempt carries the same PSP idempotency key per order, and the cart is held for 5 minutes from the first failure. Retries stop on success or decline as written."
-    },
-    {
-      "po_accepted": true
     }
   ],
   "expected_turns": [
@@ -41,13 +38,13 @@
     },
     {
       "turn_number": 2,
-      "outcome": "continue",
-      "state_after": "active",
+      "outcome": "finalize",
+      "state_after": "completed",
       "delegation": {
         "invoke": "engineering",
         "reuse_previous": false,
         "extra_context_expected": true,
-        "open_issues_empty": false
+        "open_issues_empty": true
       },
       "produced_artifacts": [
         {
@@ -57,16 +54,7 @@
         {
           "type": "synthesis",
           "version": 2
-        }
-      ],
-      "semantic_notes": "Engineering-only delegation with the PO-supplied retry policy as extra context (max 3 attempts, backoff 1s/5s/25s, PSP idempotency key per order, 5-minute cart hold); business v1 reused; review-engineering v2 resolves the gaps against the policy; readiness needs_work. Deterministic assertion: selected reviewer routing exactly matches this turn."
-    },
-    {
-      "turn_number": 3,
-      "outcome": "finalize",
-      "state_after": "completed",
-      "delegation": null,
-      "produced_artifacts": [
+        },
         {
           "type": "finalized-review",
           "version": 1
@@ -76,7 +64,7 @@
           "version": 1
         }
       ],
-      "semantic_notes": "PO acceptance passes the finalization gate; finalized-review with po_accepted=true."
+      "semantic_notes": "Engineering-only delegation with the PO-supplied retry policy as extra context (max 3 attempts, backoff 1s/5s/25s, PSP idempotency key per order, 5-minute cart hold); business v1 reused; review-engineering v2 resolves the gaps against the policy; readiness needs_work. Deterministic assertion: selected reviewer routing exactly matches this turn. Readiness gate finalizes same turn (normal readiness path, po_accepted=false): the post-delegation summary resolves every finding, so the session completes on this turn — no separate acceptance turn follows (gate rule: empty open_issues + invoke none)."
     }
   ],
   "expected_findings": {
@@ -117,9 +105,9 @@
   },
   "expected_final": {
     "state": "completed",
-    "final_turn_number": 3,
+    "final_turn_number": 2,
     "facilitator_turn_count": 2,
-    "po_accepted": true,
+    "po_accepted": false,
     "remaining_open_issues_empty": true,
     "reports": [
       "md"
