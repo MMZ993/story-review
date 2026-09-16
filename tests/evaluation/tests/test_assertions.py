@@ -12,7 +12,7 @@ from datetime import datetime
 
 import pytest
 
-from dataset_loader.expected import ExpectedCase
+from dataset_loader.expected import ConflictStub, ExpectedConflicts, ExpectedCase
 from evaluation.assertions import (
     assert_agent_runs,
     assert_conflicts,
@@ -200,6 +200,75 @@ def test_turn_structure_fails_on_missing_turn():
     assert "turn[2].present" in failure_details(failures)
 
 
+def _unpinned_case_and_capture():
+    """An unresolvable-style case: turn 2 artifacts unpinned (null)."""
+    case = expected_case(
+        scenario="unresolvable",
+        po_script=[{"message": "go on"}],
+        expected_turns=[
+            {
+                "turn_number": 1,
+                "outcome": "continue",
+                "state_after": "active",
+                "delegation": {"open_issues_empty": False},
+                "produced_artifacts": [
+                    {"type": "review-business", "version": 1},
+                    {"type": "review-engineering", "version": 1},
+                    {"type": "synthesis", "version": 1},
+                ],
+            },
+            {
+                "turn_number": 2,
+                "outcome": "park",
+                "state_after": "parked",
+                "delegation": {"open_issues_empty": False},
+                "produced_artifacts": None,
+            },
+        ],
+        expected_final={
+            "state": "parked",
+            "final_turn_number": 2,
+            "facilitator_turn_count": 2,
+            "finalized": False,
+            "po_accepted": False,
+            "remaining_open_issues_empty": False,
+            "reports": [],
+        },
+        requested_formats=["md"],
+    )
+    capture = passing_capture()
+    capture.turns[1] = {
+        "turn_number": 2,
+        "outcome": "park",
+        "delegation": {"invoke": "both", "open_issues": ["B-1: x"]},
+        "produced_artifacts": [
+            {"type": "review-business", "version": 2},
+            {"type": "review-engineering", "version": 2},
+            {"type": "synthesis", "version": 2},
+        ],
+    }
+    return case, capture
+
+
+def test_unpinned_artifacts_tolerated_with_version_continuity():
+    case, capture = _unpinned_case_and_capture()
+    capture.artifacts[artifact_key("review-business", 2)] = {"findings": []}
+    capture.artifacts[artifact_key("review-engineering", 2)] = {"findings": []}
+    capture.artifacts[artifact_key("synthesis", 2)] = {"conflicts": []}
+    failures = assert_turn_structure(capture, case)
+    assert failures == []
+
+
+def test_unpinned_artifacts_fail_on_version_gap():
+    case, capture = _unpinned_case_and_capture()
+    capture.turns[1]["produced_artifacts"][0] = {
+        "type": "review-business",
+        "version": 3,
+    }
+    failures = assert_turn_structure(capture, case)
+    assert "artifacts.version_continuity" in failure_details(failures)
+
+
 # --- delegation -----------------------------------------------------------
 
 
@@ -376,6 +445,30 @@ def test_conflicts_fail_when_still_open_in_latest_synthesis():
     }
     failures = assert_conflicts(capture, conflict_case())
     assert "conflict[C-1].resolved" in failure_details(failures)
+
+
+def test_later_conflict_pinning_falls_back_to_capture_synthesis():
+    """Unpinned artifact turns: the conflict is located via the observed
+    synthesis version of its first_seen turn, not the expected file."""
+    case, capture = _unpinned_case_and_capture()
+    case = case.model_copy(deep=True)
+    case.expected_conflicts = ExpectedConflicts(
+        later=[
+            ConflictStub(
+                key="C-1",
+                kind="needs_po_clarification",
+                topic="scope",
+                first_seen_turn=2,
+                resolved_at_turn=None,
+            )
+        ]
+    )
+    capture.artifacts[artifact_key("synthesis", 2)] = {
+        "conflicts": [
+            {"id": "C-1", "needs_po_clarification": True}
+        ]
+    }
+    assert assert_conflicts(capture, case) == []
 
 
 # --- final ----------------------------------------------------------------

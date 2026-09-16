@@ -93,7 +93,10 @@ class ExpectedTurn(BaseModel):
     outcome: TurnOutcome
     state_after: SessionState
     delegation: DelegationExpectation | None = None
-    produced_artifacts: list[ProducedArtifact] = Field(default_factory=list)
+    #: Pinned list = the exact (type, version) set the turn must produce
+    #: ([] asserts nothing was produced); explicit null = unpinned (the
+    #: turn's artifact set is free; version continuity is asserted instead).
+    produced_artifacts: list[ProducedArtifact] | None = Field(default_factory=list)
     semantic_notes: str = ""
 
     @model_validator(mode="after")
@@ -105,9 +108,13 @@ class ExpectedTurn(BaseModel):
         }[self.outcome]
         if self.state_after != expected_state:
             raise ValueError("state_after does not match outcome")
-        if any(
-            a.type.startswith("report-") for a in self.produced_artifacts
-        ) and self.outcome != "finalize":
+        if (
+            self.produced_artifacts is not None
+            and any(
+                a.type.startswith("report-") for a in self.produced_artifacts
+            )
+            and self.outcome != "finalize"
+        ):
             raise ValueError("reports are produced only on finalize turns")
         if self.delegation is None and self.outcome != "finalize":
             raise ValueError("delegation is required unless the turn finalizes")

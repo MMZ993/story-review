@@ -5,7 +5,7 @@
   "template": "t5",
   "scenario": "conflicting",
   "ado_source_id": 45,
-  "exported_at": "2026-09-07T21:13:32+00:00",
+  "exported_at": "2026-09-15T21:32:00+00:00",
   "work_item": {
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>Returning customer with a previously used method, checkout loads → last used method pre-selected. </li><li>Pre-selected method, customer confirms the order → payment charged with that method without a separate selection step. </li><li>Last used method no longer available, checkout loads → no method pre-selected; message explains why. </li> </ul>",

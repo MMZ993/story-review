@@ -5,7 +5,7 @@
   "template": "t3",
   "scenario": "hidden-conflict",
   "ado_source_id": 34,
-  "exported_at": "2026-09-07T21:13:32+00:00",
+  "exported_at": "2026-09-15T21:32:00+00:00",
   "work_item": {
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>When a completed order has an edit requested within 30 minutes, update the order in place with no new order created. </li><li>When an edit changes the order total, automatically charge or refund the difference. </li><li>When an edit is requested after the 30-minute window, tell the customer to contact support. </li> </ul>",

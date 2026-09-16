@@ -4,7 +4,7 @@
   "template": "context",
   "scenario": null,
   "ado_source_id": 3,
-  "exported_at": "2026-09-07T21:13:32+00:00",
+  "exported_at": "2026-09-15T21:32:00+00:00",
   "work_item": {
     "fields": {
       "Microsoft.VSTS.Common.Priority": 2,
@@ -215,6 +215,14 @@
         },
         "rel": "System.LinkTypes.Hierarchy-Reverse",
         "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/2"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/58"
       },
       {
         "attributes": {

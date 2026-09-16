@@ -231,6 +231,16 @@ def test_unresolvable_unpinned_turns_allow_partial_delegation():
     ExpectedCase.model_validate(case)  # must not raise
 
 
+def test_explicit_null_produced_artifacts_means_unpinned():
+    """`produced_artifacts: null` marks a turn's artifact set unpinned."""
+    case = json.loads((EXPECTED / "unresolvable.json").read_text())
+    case["expected_turns"][1]["produced_artifacts"] = None
+    parsed = ExpectedCase.model_validate(case)
+    assert parsed.expected_turns[1].produced_artifacts is None
+    # omission keeps the pinned-empty meaning (assert nothing produced)
+    assert parsed.expected_turns[0].produced_artifacts is not None
+
+
 def test_expansion_fails_when_scenario_has_no_story():
     stories = [s for s in load_all_stories(STORIES) if s.scenario != "clean"]
     with pytest.raises(DatasetError):

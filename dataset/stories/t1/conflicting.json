@@ -5,7 +5,7 @@
   "template": "t1",
   "scenario": "conflicting",
   "ado_source_id": 17,
-  "exported_at": "2026-09-07T21:13:32+00:00",
+  "exported_at": "2026-09-15T21:32:00+00:00",
   "work_item": {
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<p>Given a returning customer with a previously used payment method, when checkout loads, then their last used method is pre-selected. </p><p>Given a pre-selected method, when the customer confirms the order, then payment is charged with that method without a separate selection step. </p><p>Given a customer whose last used method is no longer available, when checkout loads, then no method is pre-selected and a message explains why. </p>",

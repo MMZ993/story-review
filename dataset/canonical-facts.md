@@ -34,6 +34,8 @@ gaps below are exactly the seeds each plan's arc requires.
   - top request from B2B account managers this quarter
   - order data is complete, so the work is rendering + attachment only
   - scope: invoice rendering and email attachment; out of scope: credit notes, self-service invoice re-download from the account page
+  - invoice content is exactly the order data returned by `GET /orders/{id}` (line items, unit prices, VAT rates, totals) — no additional branding, legal, or localization requirements; invoices are single-language and single-currency (EUR)
+  - parent Feature "Checkout Reliability" carries a description covering post-purchase reliability (confirmation-email pipeline, invoice delivery), complementing the epic's checkout-conversion goal (Phase 9 dataset tuning: both added so the clean story reads as genuinely aligned and complete)
 - criteria:
   - order payment succeeded → confirmation email job sends the email within 2 minutes with the invoice PDF attached
   - invoice PDF rendered from the order API response → line items with unit prices, per-item VAT rate, and gross total match `GET /orders/{id}` exactly

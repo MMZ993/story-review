@@ -4,7 +4,7 @@
   "template": "context",
   "scenario": null,
   "ado_source_id": 4,
-  "exported_at": "2026-09-07T21:13:32+00:00",
+  "exported_at": "2026-09-15T21:32:00+00:00",
   "work_item": {
     "fields": {
       "Microsoft.VSTS.Common.Priority": 2,
@@ -17,18 +17,19 @@
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
-      "System.AuthorizedDate": "2026-09-07T14:41:46.653Z",
+      "System.AuthorizedDate": "2026-09-15T21:31:58.303Z",
       "System.ChangedBy": {
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
-      "System.ChangedDate": "2026-09-07T14:41:46.653Z",
+      "System.ChangedDate": "2026-09-15T21:31:58.303Z",
       "System.CommentCount": 0,
       "System.CreatedBy": {
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
       "System.CreatedDate": "2026-09-07T14:41:46.653Z",
+      "System.Description": "<p>Keep the purchase journey dependable beyond the payment step: order confirmations, invoice delivery, and post-purchase communication must meet the same reliability bar as checkout itself. Covers the confirmation-email pipeline (delivery, retry, audit) and invoice rendering/attachment for completed orders. Success is measured via confirmation delivery rate and post-purchase support tickets, complementing the epic's checkout-conversion goal. </p>",
       "System.Id": 4,
       "System.IterationId": 6,
       "System.IterationLevel1": "story-review",
@@ -37,16 +38,18 @@
       "System.Parent": 2,
       "System.PersonId": 23602939,
       "System.Reason": "New",
-      "System.Rev": 1,
+      "System.Rev": 2,
       "System.RevisedDate": "9999-01-01T00:00:00Z",
       "System.State": "New",
       "System.TeamProject": "story-review",
       "System.Title": "Checkout Reliability",
-      "System.Watermark": 4,
+      "System.Watermark": 140,
       "System.WorkItemType": "Feature"
     },
     "id": 4,
-    "multilineFieldsFormat": {},
+    "multilineFieldsFormat": {
+      "System.Description": "html"
+    },
     "relations": [
       {
         "attributes": {
@@ -78,7 +81,23 @@
           "name": "Child"
         },
         "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/59"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
         "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/34"
+      },
+      {
+        "attributes": {
+          "isLocked": false,
+          "name": "Child"
+        },
+        "rel": "System.LinkTypes.Hierarchy-Forward",
+        "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/57"
       },
       {
         "attributes": {
@@ -201,7 +220,7 @@
         "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/20"
       }
     ],
-    "rev": 1,
+    "rev": 2,
     "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/4"
   }
 }

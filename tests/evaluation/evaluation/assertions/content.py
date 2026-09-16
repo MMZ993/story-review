@@ -62,9 +62,23 @@ def _synthesis_version_of_turn(expected, turn_number: int) -> int | None:
     """Synthesis version produced on a turn per the expected file."""
     for turn in expected.expected_turns:
         if turn.turn_number == turn_number:
+            if turn.produced_artifacts is None:
+                return None
             for artifact in turn.produced_artifacts:
                 if artifact.type == "synthesis":
                     return artifact.version
+    return None
+
+
+def _observed_synthesis_version(capture, turn_number: int) -> int | None:
+    """Synthesis version the capture shows on a turn, or on the first
+    later turn that produced one (fallback for unpinned expected turns)."""
+    for turn in sorted(capture.turns, key=lambda t: t.get("turn_number", 0)):
+        if turn.get("turn_number", 0) < turn_number:
+            continue
+        for ref in turn.get("produced_artifacts", []):
+            if ref.get("type") == "synthesis":
+                return int(ref["version"])
     return None
 
 
@@ -137,10 +151,13 @@ def assert_conflicts(capture, expected) -> list[AssertionFailure]:
         first_seen = stub.first_seen_turn or 2
         version = _synthesis_version_of_turn(expected, first_seen)
         if version is None:
+            # unpinned expected turn — locate the synthesis via the capture
+            version = _observed_synthesis_version(capture, first_seen)
+        if version is None:
             failures.append(
                 AssertionFailure(
                     f"conflict[{stub.key}].pinning",
-                    f"no synthesis artifact pinned on turn {first_seen}; "
+                    f"no synthesis artifact on or after turn {first_seen}; "
                     "cannot locate the conflict deterministically",
                 )
             )

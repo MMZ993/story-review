@@ -67,7 +67,8 @@
       "delegation": {
         "open_issues_empty": false
       },
-      "semantic_notes": "PO answer 1 (markets). Answer resolves one thread but opens new ones (which markets exactly?). Facilitator may delegate a perspective or continue dialogue — routing NOT deterministically pinned for turns 2-9; open_issues must stay nonempty; readiness needs_work."
+      "semantic_notes": "PO answer 1 (markets). Answer resolves one thread but opens new ones (which markets exactly?). Facilitator may delegate a perspective or continue dialogue — routing NOT deterministically pinned for turns 2-9; open_issues must stay nonempty; readiness needs_work. Artifact set UNPINNED on turns 2-9 (delegation on dialogue turns is a free facilitator decision): any produced set is accepted; per-type version continuity is asserted instead.",
+      "produced_artifacts": null
     },
     {
       "turn_number": 3,
@@ -76,7 +77,8 @@
       "delegation": {
         "open_issues_empty": false
       },
-      "semantic_notes": "PO answer 2 (languages). New open questions (who translates?). open_issues nonempty."
+      "semantic_notes": "PO answer 2 (languages). New open questions (who translates?). open_issues nonempty.",
+      "produced_artifacts": null
     },
     {
       "turn_number": 4,
@@ -85,7 +87,8 @@
       "delegation": {
         "open_issues_empty": false
       },
-      "semantic_notes": "PO answer 3 (currencies). New open questions (who owns FX pricing?). open_issues nonempty."
+      "semantic_notes": "PO answer 3 (currencies). New open questions (who owns FX pricing?). open_issues nonempty.",
+      "produced_artifacts": null
     },
     {
       "turn_number": 5,
@@ -94,7 +97,8 @@
       "delegation": {
         "open_issues_empty": false
       },
-      "semantic_notes": "PO answer 4 (local methods). New open questions (which PSP methods where?). open_issues nonempty."
+      "semantic_notes": "PO answer 4 (local methods). New open questions (which PSP methods where?). open_issues nonempty.",
+      "produced_artifacts": null
     },
     {
       "turn_number": 6,
@@ -103,7 +107,8 @@
       "delegation": {
         "open_issues_empty": false
       },
-      "semantic_notes": "PO answer 5 (support). Still non-convergent. open_issues nonempty."
+      "semantic_notes": "PO answer 5 (support). Still non-convergent. open_issues nonempty.",
+      "produced_artifacts": null
     },
     {
       "turn_number": 7,
@@ -112,7 +117,8 @@
       "delegation": {
         "open_issues_empty": false
       },
-      "semantic_notes": "PO answer 6 (pilot). Pilot answer CONTRADICTS the turn-2 open-ended scope — new conflict erupts. open_issues nonempty."
+      "semantic_notes": "PO answer 6 (pilot). Pilot answer CONTRADICTS the turn-2 open-ended scope — new conflict erupts. open_issues nonempty.",
+      "produced_artifacts": null
     },
     {
       "turn_number": 8,
@@ -121,7 +127,8 @@
       "delegation": {
         "open_issues_empty": false
       },
-      "semantic_notes": "PO answer 7 (pilot first, rest stays) — re-widens the scope conflict. open_issues nonempty."
+      "semantic_notes": "PO answer 7 (pilot first, rest stays) — re-widens the scope conflict. open_issues nonempty.",
+      "produced_artifacts": null
     },
     {
       "turn_number": 9,
@@ -130,7 +137,8 @@
       "delegation": {
         "open_issues_empty": false
       },
-      "semantic_notes": "PO answer 8 (open-ended confirmed). Root cause (undefined scope, no owner) now explicit; facilitator states the story cannot reach readiness in dialogue. open_issues nonempty."
+      "semantic_notes": "PO answer 8 (open-ended confirmed). Root cause (undefined scope, no owner) now explicit; facilitator states the story cannot reach readiness in dialogue. open_issues nonempty.",
+      "produced_artifacts": null
     },
     {
       "turn_number": 10,
@@ -201,7 +209,7 @@
         "deterministically_pinned": false
       }
     ],
-    "note": "Synthesis conflicts on turns 1-6 are semantic-only (multiple open questions); open_issues nonempty on every non-final turn is the deterministic invariant."
+    "note": "Conflict C-1 is located via the observed synthesis of its first-seen turn (expected artifact lists are unpinned on turns 2-9)."
   },
   "expected_final": {
     "state": "parked",
