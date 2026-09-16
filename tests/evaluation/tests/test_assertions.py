@@ -277,17 +277,25 @@ def test_delegation_passes_when_pinned_fields_match():
 
 
 def test_delegation_fails_on_wrong_invoke():
-    capture = passing_capture()
-    capture.turns[0]["delegation"]["invoke"] = "business"
-    failures = assert_delegation(capture, expected_case())
-    assert "turn[1].delegation.invoke" in failure_details(failures)
+    case, capture = delegated_case_and_capture()
+    # engineering re-ran instead of business
+    capture.turns[1]["produced_artifacts"][0] = {
+        "type": "review-engineering", "version": 2
+    }
+    capture.artifacts[artifact_key("review-engineering", 2)] = {
+        "findings": [],
+        "based_on_extra_context": "token flow details",
+    }
+    failures = assert_delegation(capture, case)
+    assert "turn[2].delegation.invoke" in failure_details(failures)
 
 
 def test_delegation_fails_on_unexpected_extra_context():
-    capture = passing_capture()
-    capture.turns[0]["delegation"]["extra_context"] = "please check payments"
-    failures = assert_delegation(capture, expected_case())
-    assert "turn[1].delegation.extra_context" in failure_details(failures)
+    case, capture = delegated_case_and_capture()
+    case = case.model_copy(deep=True)
+    case.expected_turns[1].delegation.extra_context_expected = False
+    failures = assert_delegation(capture, case)
+    assert "turn[2].delegation.extra_context" in failure_details(failures)
 
 
 def test_delegation_open_issues_emptiness_is_asserted():
@@ -639,3 +647,113 @@ def test_evaluate_case_flagpole_mutations(mutation, expected_assertion):
     capture = passing_capture()
     mutation(capture)
     assert expected_assertion in failure_details(evaluate_case(capture, expected_case()))
+
+
+# --- delegation routing from executed evidence (increment 3) --------------
+
+
+def delegated_case_and_capture():
+    """Turn 2 expects a business-only delegation with extra context; the
+    turn record carries the post-delegation summary output (invoke=none,
+    per the Item G/D21 design) while the re-review actually executed."""
+    case = expected_case(
+        expected_turns=[
+            {
+                "turn_number": 1,
+                "outcome": "continue",
+                "state_after": "active",
+                "delegation": {
+                    "invoke": "none",
+                    "reuse_previous": False,
+                    "extra_context_expected": False,
+                    "open_issues_empty": True,
+                },
+                "produced_artifacts": [
+                    {"type": "review-business", "version": 1},
+                    {"type": "review-engineering", "version": 1},
+                    {"type": "synthesis", "version": 1},
+                ],
+            },
+            {
+                "turn_number": 2,
+                "outcome": "finalize",
+                "state_after": "completed",
+                "delegation": {
+                    "invoke": "business",
+                    "reuse_previous": False,
+                    "extra_context_expected": True,
+                    "open_issues_empty": True,
+                },
+                "produced_artifacts": [
+                    {"type": "review-business", "version": 2},
+                    {"type": "synthesis", "version": 2},
+                    {"type": "finalized-review", "version": 1},
+                    {"type": "report-md", "version": 1},
+                ],
+            },
+        ]
+    )
+    capture = passing_capture()
+    capture.turns[1]["delegation"] = {
+        "invoke": "none", "reuse_previous": False,
+        "extra_context": None, "open_issues": [],
+    }
+    capture.turns[1]["produced_artifacts"] = [
+        {"type": "review-business", "version": 2},
+        {"type": "synthesis", "version": 2},
+        {"type": "finalized-review", "version": 1},
+        {"type": "report-md", "version": 1},
+    ]
+    capture.artifacts[artifact_key("review-business", 2)] = {
+        "findings": [],
+        "based_on_extra_context": "+2pp Android conversion metric",
+    }
+    capture.artifacts[artifact_key("synthesis", 2)] = {"conflicts": []}
+    return case, capture
+
+
+def test_delegation_invoke_read_from_executed_re_reviews():
+    case, capture = delegated_case_and_capture()
+    assert assert_delegation(capture, case) == []
+
+
+def test_delegation_invoke_fails_when_wrong_reviewer_ran():
+    case, capture = delegated_case_and_capture()
+    # engineering also re-ran → observed invoke "both"
+    capture.turns[1]["produced_artifacts"].insert(
+        1, {"type": "review-engineering", "version": 2}
+    )
+    failures = assert_delegation(capture, case)
+    assert "turn[2].delegation.invoke" in failure_details(failures)
+
+
+def test_delegation_invoke_fails_when_no_re_review_executed():
+    case, capture = delegated_case_and_capture()
+    capture.turns[1]["produced_artifacts"] = [
+        {"type": "finalized-review", "version": 1},
+        {"type": "report-md", "version": 1},
+    ]
+    failures = assert_delegation(capture, case)
+    assert "turn[2].delegation.invoke" in failure_details(failures)
+
+
+def test_delegation_extra_context_read_from_re_review_evidence():
+    case, capture = delegated_case_and_capture()
+    capture.artifacts[artifact_key("review-business", 2)] = {"findings": []}
+    failures = assert_delegation(capture, case)
+    assert "turn[2].delegation.extra_context" in failure_details(failures)
+
+
+def test_delegation_reuse_observed_from_synthesis_only_turn():
+    case, capture = delegated_case_and_capture()
+    case = case.model_copy(deep=True)
+    case.expected_turns[1].delegation.invoke = "none"
+    case.expected_turns[1].delegation.reuse_previous = True
+    case.expected_turns[1].delegation.extra_context_expected = False
+    case.expected_turns[1].produced_artifacts = [
+        {"type": "synthesis", "version": 2},
+    ]
+    capture.turns[1]["produced_artifacts"] = [
+        {"type": "synthesis", "version": 2},
+    ]
+    assert assert_delegation(capture, case) == []
