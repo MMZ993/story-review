@@ -5,7 +5,7 @@
   "template": "t5",
   "scenario": "engineering-weak",
   "ado_source_id": 44,
-  "exported_at": "2026-09-15T21:32:00+00:00",
+  "exported_at": "2026-09-16T09:00:27+00:00",
   "work_item": {
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>Payment failed due to PSP error (not decline) → system retries automatically without customer action. </li><li>Retried payment succeeds, or failure is a decline → retries stop immediately. </li><li>Retries exhausted and last attempt fails → customer sees the standard payment-failed page; order remains recoverable from the cart. </li><li>Any retried payment completes (success or final failure) → retry outcome visible in the existing payments dashboard. </li> </ul>",

@@ -35,6 +35,7 @@ gaps below are exactly the seeds each plan's arc requires.
   - order data is complete, so the work is rendering + attachment only
   - scope: invoice rendering and email attachment; out of scope: credit notes, self-service invoice re-download from the account page
   - invoice content is exactly the order data returned by `GET /orders/{id}` (line items, unit prices, VAT rates, totals) — no additional branding, legal, or localization requirements; invoices are single-language and single-currency (EUR)
+  - email delivery failures other than hard bounces follow the existing email platform's standard delivery-failure handling (queued retries, provider bounce handling, operational alerting) — no story-specific behavior required; out of scope (Phase 9 dataset tuning: added because reviewers repeatedly flagged soft-bounce/transient-failure behavior as a gap)
   - parent Feature "Checkout Reliability" carries a description covering post-purchase reliability (confirmation-email pipeline, invoice delivery), complementing the epic's checkout-conversion goal (Phase 9 dataset tuning: both added so the clean story reads as genuinely aligned and complete)
 - criteria:
   - order payment succeeded → confirmation email job sends the email within 2 minutes with the invoice PDF attached
