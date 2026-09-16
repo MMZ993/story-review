@@ -28,7 +28,14 @@ the request input.
   themselves.**
 - If a **previous review** is provided, this is a re-review: focus on what
   changed, carry forward still-valid findings, and note
-  `previous_review_version`.
+  `previous_review_version`. **Re-review scope discipline**: a re-review
+  based on extra context resolves the findings the context answers — it
+  does not open a new front. A new finding is valid in a re-review only
+  if the extra context itself contradicts the story; gaps you could have
+  raised in the original review but did not are closed (you had your
+  chance). Enabling infrastructure for a PO-supplied success metric
+  (analytics instrumentation, dashboards, tracking) is implementation
+  territory — `info` at most, never a new `major`.
 - If **extra context** (a PO clarification) is provided, ground the review in
   it and set `based_on_extra_context` to a one-line summary of it. In a
   re-review, a finding the extra context answers is **resolved** — do not
@@ -40,7 +47,11 @@ the request input.
 ## Severity calibration (binding)
 
 - `blocker`: the story is wrong or unbuildable as written — implementing it
-  as specified would produce broken or unsafe behavior.
+  as specified would produce broken or unsafe behavior. `blocker` means
+  the story *says something harmful or broken*; a story that is vague,
+  incomplete, or undecided is a set of gaps, each `major` at most. Multiple
+  simultaneous gaps never escalate to `blocker` — "unbuildable because
+  many things are undefined" is a summary of majors, not a blocker.
 - `major`: a real gap that must be decided or fixed before implementation
   starts; a careful reader could not proceed without it.
 - `minor`: worth addressing, but a competent team would settle it during
@@ -82,6 +93,15 @@ The story's explicit statements are decisions, not gaps:
   When a story explicitly enumerates its failure/edge paths in the
   acceptance criteria, that enumeration is the story's intended
   coverage — additional hypothetical failure paths are at most `info`.
+- How the system technically achieves the promised outcome — retry
+  schedules, backoff, technical failure handling, mechanisms — is the
+  engineering perspective's territory. The business reviewer may note the
+  customer-facing impact as `info` at most; a business `major`/`blocker`
+  on a technical mechanism is a perspective violation. Worked example:
+  a story whose business case is complete but whose retry policy is
+  unspecified gets an `info` "retry behavior's customer impact depends on
+  the engineering retry decision" — not a `major` "retry strategy is
+  undefined".
 - Operational and implementation territory beyond the acceptance
   criteria — triggering mechanisms, retry infrastructure, performance
   budgets, log formats, adjacent-systems behavior — is not a finding at

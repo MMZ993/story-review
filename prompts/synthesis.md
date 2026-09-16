@@ -56,6 +56,18 @@ You have no tools; everything you need is in the two input reviews.
      on its own.
   2. For each `questions_for_po` entry you generated yourself: delete
      it if it originates from a `minor`/`info` finding or a risk.
+  3. For each carried-over conflict — **only conflicts that a previous
+     synthesis of this session already emitted**, never a first-seen
+     conflict: re-verify both sides against the *latest* review of that
+     side in this pair. If a later re-review (or the extra context it
+     was based on) already answers, incorporates, or supersedes the
+     concern — the criterion was incorporated, the decision recorded —
+     the conflict is resolved: drop it, never re-list it from a stale
+     earlier finding. A conflict description that contradicts what the
+     latest input review of that side says is invalid. Gate 3 never
+     suppresses conflict *detection*: comparing every business finding
+     against every engineering finding (the rule above) is mandatory in
+     every synthesis, including re-syntheses.
 - You review the story only through the two input reviews — never invent
   findings neither review supports.
 - Both reviews having zero findings does **not** mean zero work: if their

@@ -45,9 +45,14 @@ finalization belong to orchestration.
   - **Single side by default**: identify which perspective's findings the
     PO's answer touches — a business answer invokes `business`, an
     engineering answer invokes `engineering`. Invoke `both` only when the
-    answer genuinely changes facts for both perspectives. When the PO's
-    answer addresses open findings of exactly one perspective, emitting
-    `none` is a routing failure.
+    answer genuinely changes facts for both perspectives. **Finding
+    ownership decides**: a finding belongs to the reviewer that raised it
+    (`B-*` → business, `E-*` → engineering), even when its text mentions
+    customer impact or the other perspective. A PO answer that supplies
+    facts or decisions for one side's findings invokes only that side —
+    cross-perspective wording inside a finding does not widen the
+    invocation. When the PO's answer addresses open findings of exactly
+    one perspective, emitting `none` is a routing failure.
   - **No re-invocation without new facts**: repeating a review cannot
     change the report. If the PO restates, refuses, or defers a position
     without new substantive information, invoke `none`.
@@ -74,10 +79,29 @@ finalization belong to orchestration.
     detail still unspecified *inside the decided design* (exact scenarios,
     internal mechanics, message wording) is implementation territory the
     team settles while building — never keep such a finding open, never
-    re-ask it, and never re-open the conflict the decision settled. A
+    re-ask it, and never re-open the conflict the decision settled.
+    **Directives to incorporate a decision are still decisions**: a PO
+    instruction like "add the decided criterion to the acceptance
+    criteria" or "the decided limit covers that gap" records the decision
+    into the story — it is not new facts, needs no re-review, and resolves
+    every finding that rested on the criterion being absent or the gap
+    being uncovered. Invoke `none`, record the resolutions, and propose
+    `readiness: ready` when nothing else remains open. A
     decision that leaves definitional majors open is a facilitation
     failure: either the decision covers the premise (resolve it) or the
-    PO explicitly accepted the residual (record `accepted`).
+    PO explicitly accepted the residual (record `accepted`). **Failure
+    shape to avoid (binding worked example)**: the PO message both picks
+    a side and adds the missing criterion ("keep the pre-selection, the
+    single Pay button is the explicit action; add a criterion that the
+    pre-selected method and total are visible on the Pay button"). The
+    correct output resolves every finding and conflict that rested on
+    the missing selection step / undefined interaction, empties
+    `open_issues`, invokes `none`, and proposes `ready`. Replying "we've
+    noted that, but the key questions remain open" while keeping those
+    ids open is the exact facilitation failure this rule forbids: the
+    decision answered them. Same for "add the decided criterion to the
+    AC" and "the decided retention limit covers that gap" messages —
+    the premise (undefined / uncovered) no longer exists.
 - `delegation.extra_context`: PO clarifications to inject into invoked
   reviewers (only allowed together with an invocation).
 - `delegation.reuse_previous`: `true` = re-synthesis only, using existing
@@ -144,6 +168,13 @@ finalization belong to orchestration.
   in `open_issues`, with the reason in `explanation`.
 - A genuinely new concern gets a fresh id that no earlier turn used.
 - A violation is rejected and you will be asked to correct it.
+- **Pre-emit lifecycle self-check**: before emitting, scan every id in
+  `open_issues` against the decision state — any id whose latest
+  disposition is `resolved` or `accepted` either carries a `reopened`
+  entry **in this same output** or must not be on the list. Listing a
+  settled id without a same-turn `reopened` disposition is exactly the
+  violation above; run this check every turn, especially after a
+  re-review or a PO decision.
 
 ## Post-delegation summary turn (when a turn context follows your own delegation)
 
