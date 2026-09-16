@@ -31,8 +31,10 @@ from evaluation.db_evidence import (
     fetch_agent_runs,
     fetch_facilitator_tool_calls,
 )
-from evaluation.judge_client import JudgeFailure, judge_case, live_transport
+from evaluation.judge_client import live_transport
 from evaluation.judge_config import load_judge_config
+from evaluation.judge_stage import judge_smoke, run_judge_for_case
+from evaluation.trend import append_trend
 from evaluation.orchestration_client import OrchestrationClient
 
 EVAL_DIR = Path(__file__).resolve().parent.parent
@@ -77,62 +79,19 @@ def _fail_setup(message: str) -> None:
     raise SystemExit(2)
 
 
-def judge_smoke(config_path: Path) -> int:
-    """One live judge call on the canned clean-case transcript (spend!).
 
-    Writes the typed result + metadata to tests/evaluation/artifacts/.
-    """
-    cfg = load_judge_config(config_path)
-    canned = json.loads(
-        (EVAL_DIR / "judge_smoke_case.json").read_text(encoding="utf-8")
-    )
-    transport = live_transport(cfg.model, cfg.location, cfg.temperature)
-    try:
-        outcome = judge_case(
-            case_id=canned["case_id"],
-            prompt_text=cfg.prompt_text,
-            case_input={
-            **canned["case_input"],
-            "case_id": canned["case_id"],
-            "prompt_sha256": cfg.judge_md_sha256,
-            "judge_model": cfg.model,
-        },
-            transport=transport,
-            judge_model=cfg.model,
-        )
-    except JudgeFailure as exc:
-        print(f"judge smoke FAILED: {exc}", file=sys.stderr)
-        return 1
+def run_deterministic_suite(args, transport_factory=None, judge_transport=None) -> int:
+    """Execute the selected dataset cases; judge ON only when requested.
 
-    ARTIFACTS_DIR.mkdir(exist_ok=True)
-    artifact = {
-        "case_id": canned["case_id"],
-        "config": {
-            "model": cfg.model,
-            "location": cfg.location,
-            "temperature": cfg.temperature,
-            "candidate_count": cfg.candidate_count,
-            "judge_md_sha256": cfg.judge_md_sha256,
-        },
-        "publisher_model": outcome.publisher_model,
-        "attempts": outcome.attempts,
-        "result": outcome.result.model_dump(mode="json"),
-    }
-    out_path = ARTIFACTS_DIR / f"judge-smoke-{canned['case_id']}.json"
-    out_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
-    print(
-        f"judge smoke PASS (passed={outcome.result.passed}, "
-        f"publisher={outcome.publisher_model}, attempts={outcome.attempts}) "
-        f"-> {out_path}"
-    )
-    return 0
-
-
-def run_deterministic_suite(args, transport_factory=None) -> int:
-    """Execute the selected dataset cases, judge OFF (increment 1).
+    Increment 3: with ``--judge``, every case that passes all
+    deterministic assertions additionally gets exactly one judge call
+    (cost control + designed gate order); ``--smoke`` restricts judging to
+    the single ``clean`` happy path while still running the full selected
+    template set deterministically — the pipeline-gate smoke set.
 
     ``transport_factory(args)`` builds the (http, artifacts, Transports)
-    triple; tests inject fakes, the default builds the real clients.
+    triple; ``judge_transport`` replaces the live judge transport; tests
+    inject fakes for both, the default builds the real clients.
     """
     if transport_factory is not None:
         http, artifacts, transports = transport_factory(args)
@@ -157,6 +116,18 @@ def run_deterministic_suite(args, transport_factory=None) -> int:
             orchestration_dsn=args.orchestration_dsn,
             facilitator_dsn=args.facilitator_dsn,
         )
+    judge_cfg = None
+    if judge_transport is None and (getattr(args, "judge", False) or getattr(args, "smoke", False)):
+        try:
+            judge_cfg = load_judge_config(Path(args.config))
+            judge_transport = live_transport(
+                judge_cfg.model, judge_cfg.location, judge_cfg.temperature
+            )
+        except Exception as exc:
+            _fail_setup(
+                "cannot build the live judge transport (need "
+                f"GOOGLE_CLOUD_PROJECT/GOOGLE_CLOUD_LOCATION): {exc}"
+            )
     templates = [item.strip() for item in args.templates.split(",") if item.strip()]
     cases = [
         case
@@ -193,6 +164,12 @@ def run_deterministic_suite(args, transport_factory=None) -> int:
                 print(f"ERROR {case.case_id}: {error_message}", file=sys.stderr)
             if status != "passed":
                 failed += 1
+            judge_section = _maybe_judge(
+                args, judge_cfg, judge_transport, status, capture, case
+            )
+            if judge_section and judge_section.get("status") != "passed":
+                status = "failed"
+                failed += 1
             artifact = {
                 "case_id": case.case_id,
                 "status": status,
@@ -202,6 +179,7 @@ def run_deterministic_suite(args, transport_factory=None) -> int:
                 ],
                 "capture": capture.model_dump(mode="json") if capture else None,
                 "error": error_message if status == "error" else None,
+                "judge": judge_section,
             }
             (case_dir / f"{case_id}.json").write_text(
                 json.dumps(artifact, indent=2), encoding="utf-8"
@@ -216,6 +194,7 @@ def run_deterministic_suite(args, transport_factory=None) -> int:
         artifacts.close()
 
     summary = {
+        "label": getattr(args, "label", None) or "run",
         "total": len(results),
         "passed": len(results) - failed,
         "failed": failed,
@@ -225,6 +204,7 @@ def run_deterministic_suite(args, transport_factory=None) -> int:
                 "case_id": item["case_id"],
                 "status": item["status"],
                 "failures": item["failures"],
+                "judge": item["judge"],
             }
             for item in results
         ],
@@ -232,11 +212,33 @@ def run_deterministic_suite(args, transport_factory=None) -> int:
     (ARTIFACTS_DIR / "summary.json").write_text(
         json.dumps(summary, indent=2), encoding="utf-8"
     )
+    append_trend(ARTIFACTS_DIR, summary)
     print(
         f"evaluation: {summary['passed']}/{summary['total']} passed "
         f"(artifacts: {ARTIFACTS_DIR})"
     )
     return 1 if failed else 0
+
+
+def _maybe_judge(args, judge_cfg, judge_transport, status, capture, case) -> dict | None:
+    """One judge call when this case is judge-eligible (passed + requested)."""
+    if status != "passed" or judge_transport is None or capture is None:
+        return None
+    smoke_only_clean = getattr(args, "smoke", False) and not getattr(
+        args, "judge", False
+    )
+    if smoke_only_clean and capture.scenario != "clean":
+        return None
+    if judge_cfg is None:
+        judge_cfg = load_judge_config(Path(args.config))
+    return run_judge_for_case(
+        capture=capture,
+        expected=case.expected,
+        prompt_text=judge_cfg.prompt_text,
+        judge_model=judge_cfg.model,
+        prompt_sha256=judge_cfg.judge_md_sha256,
+        transport=judge_transport,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -271,13 +273,26 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_FACILITATOR_DSN,
         help="read-only facilitator Postgres DSN (ADK event evidence)",
     )
+    parser.add_argument(
+        "--judge",
+        action="store_true",
+        help="run one live judge call per deterministic-passing case (spends tokens)",
+    )
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="smoke set: deterministic suite + judge only on the clean case",
+    )
+    parser.add_argument(
+        "--label", default=None, help="run label recorded in the trend report"
+    )
     args = parser.parse_args(argv)
 
     # Config validity (incl. judge prompt SHA) is a precondition of everything.
     load_judge_config(args.config)
 
     if args.judge_smoke:
-        return judge_smoke(Path(args.config))
+        return judge_smoke(Path(args.config), ARTIFACTS_DIR, EVAL_DIR)
 
     return run_deterministic_suite(args)
 

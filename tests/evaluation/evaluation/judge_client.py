@@ -43,6 +43,20 @@ class Transport(Protocol):
     def __call__(self, contents: str) -> JudgeTransportReply: ...
 
 
+class JudgeCaseFn(Protocol):
+    """The judge-call entry point (injectable for the judge stage)."""
+
+    def __call__(
+        self,
+        *,
+        case_id: str,
+        prompt_text: str,
+        case_input: dict,
+        transport: Transport,
+        judge_model: str,
+    ) -> "JudgeCallOutcome": ...
+
+
 @dataclass(frozen=True)
 class JudgeCallOutcome:
     """A successful judge call: typed verdict + recorded metadata."""

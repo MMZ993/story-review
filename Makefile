@@ -378,18 +378,24 @@ evaluation-unit-test: ## Phase 9: evaluation package unit tests (no stack, no mo
 	uv run --no-project --with-requirements requirements.lock \
 		python -m pytest tests -q
 
-evaluation-test: ## Phase 9: deterministic evaluation suite over compose (needs agents-compose-up; TEMPLATES=t1 default)
+evaluation-test: ## Phase 9: evaluation suite over compose (needs agents-compose-up; TEMPLATES=t1 default; JUDGE=1 adds judged stage)
 	cd tests/evaluation && \
+	GOOGLE_CLOUD_PROJECT=$${GOOGLE_CLOUD_PROJECT:-$$PROJECT_ID} \
+	GOOGLE_CLOUD_LOCATION=$${GOOGLE_CLOUD_LOCATION:-$${REGION:-europe-west4}} \
 	uv run --no-project --with-requirements requirements.lock \
 		python -m evaluation.runner --base-url $${EVAL_BASE_URL:-http://127.0.0.1:8130} \
-		--templates $${TEMPLATES:-t1} \
+		--templates $${TEMPLATES:-t1} $${JUDGE:+--judge} \
 		--orchestration-dsn postgresql://facilitator:facilitator@127.0.0.1:$${POSTGRES_HOST_PORT:-15432}/orchestration \
 		--facilitator-dsn postgresql://facilitator:facilitator@127.0.0.1:$${POSTGRES_HOST_PORT:-15432}/facilitator
 
-evaluation-smoke: ## Phase 9: judge smoke — ONE live Vertex judge call on a canned case (spends tokens)
+evaluation-smoke: ## Phase 9: smoke set — t1 deterministic suite + ONE judged clean case (spends tokens)
 	cd tests/evaluation && \
+	GOOGLE_CLOUD_PROJECT=$${GOOGLE_CLOUD_PROJECT:-$$PROJECT_ID} \
+	GOOGLE_CLOUD_LOCATION=$${GOOGLE_CLOUD_LOCATION:-$${REGION:-europe-west4}} \
 	uv run --no-project --with-requirements requirements.lock \
-		python -m evaluation.runner --judge-smoke
+		python -m evaluation.runner --smoke --label smoke \
+		--orchestration-dsn postgresql://facilitator:facilitator@127.0.0.1:$${POSTGRES_HOST_PORT:-15432}/orchestration \
+		--facilitator-dsn postgresql://facilitator:facilitator@127.0.0.1:$${POSTGRES_HOST_PORT:-15432}/facilitator
 
 # Phase 4 increment 5: Cloud Run deploys + smoke.
 # _mcp_url is a shell command (run via $(...) in recipes) reading the
