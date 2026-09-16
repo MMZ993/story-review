@@ -1137,3 +1137,27 @@ Mechanism (shared/agent_kit/compaction.py):
 
 Plan: `docs-local/plans/phase-9-evaluation.md`; development-plan Phase 9
 scope/exit criteria updated accordingly.
+
+## D13 amendment 2 — evaluation-driven model bump: reviewers + facilitator on gemini-2.5-pro (2026-09-16, owner decision)
+
+Phase 9 increment 3 evidence (Runbook 15 §Increment 3, runs 6–11):
+after two targeted prompt rounds, `gemini-2.5-flash` plateaued on
+severity calibration, delegation routing, and open-issues convergence
+while the same rounds' MCP-evidence fix landed — an instruction-following
+limit, not a prompt-wording gap. Owner approved the experiment "pro on
+reviewers + facilitator"; the improvement was decisive and the change
+stays: business-reviewer, engineering-reviewer, facilitator
+`config.yaml` → `gemini-2.5-pro` (synthesis remains flash). Config files
+carry the amendment note. Cost consequence: reviewer/facilitator tokens
+bill at pro rates (local + dev).
+
+## D13 amendment 3 context — delegation assertions read executed evidence (2026-09-16)
+
+Not a model change: the evaluation suite's delegation assertion now
+derives routing from what executed in the turn (review versions ≥ 2,
+`based_on_extra_context`) instead of `TurnRecord.delegation`, because
+the recorded field is by design (Item G/D21) the post-delegation
+summary output whose invocation is a next-turn intent. Suite-side
+reading of evaluation-tests.md ("selected reviewer routing exactly
+matches the scripted PO clarification"); no schema or orchestration
+change, expected files unchanged.

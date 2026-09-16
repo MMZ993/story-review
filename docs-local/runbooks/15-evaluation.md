@@ -398,3 +398,85 @@ Gotchas recorded:
   this machine.
 - **Standing instruction from the owner: the DB stays RUNNING — do not
   pause it until explicitly asked.**
+
+## Increment 3 — judged stage + prompt tuning loop (2026-09-16, dev server; IN PROGRESS)
+
+### Code (all test-first; evaluation 90 → 104 unit tests)
+
+- `evaluation/judge_stage.py` — builds the judge case input (capture +
+  expected file as ground truth; `prompt_sha256`/`judge_model` injected,
+  echoed per increment-0 identity rule) and runs exactly one judge call
+  via `judge_client.judge_case`; `judge_smoke` moved here from runner
+  (file-size rule). `judge_client` gained the `JudgeCaseFn` protocol for
+  injection.
+- `evaluation/trend.py` — every run appends one timestamped entry to
+  `artifacts/trend.json` and re-renders `trend.md` (per-run deterministic
+  + judged pass rates, per-case judge scores, failure lists).
+- `runner.py` — `--judge` (one judge call per **deterministic-passing**
+  case only — cost control + gate order), `--smoke` (t1 deterministic
+  suite + judge only on `clean` — the designed pipeline-gate smoke set),
+  `--label`; judge-stage errors mark the case failed; live-transport
+  build failure (missing `GOOGLE_CLOUD_PROJECT`) = clean exit 2.
+- `Makefile` — `evaluation-test` gains `JUDGE=1`; `evaluation-smoke` is
+  now the smoke set above (the old canned single-call smoke remains
+  available as `python -m evaluation.runner --judge-smoke`).
+- **Delegation assertion re-based on executed evidence** (CODE-class
+  suite fix, root-caused at run 8): `TurnRecord.delegation` is by design
+  (schemas.md §FacilitatorTurnOutput, Item G/D21) the *post-delegation
+  summary* output — whose own invocation is a next-turn intent — so the
+  old assertion read the wrong field and reported `expected business,
+  observed none` on every correctly-delegated turn.
+  `assert_delegation` now derives routing from what *executed*: review
+  versions ≥ 2 produced that turn (single side / both / none), reuse =
+  synthesis-only later turn, extra-context presence from the re-review's
+  `based_on_extra_context`; `open_issues` stays on the recorded final
+  output (gate-authoritative). Matches evaluation-tests.md "selected
+  reviewer routing exactly matches the scripted PO clarification".
+  Recorded as D13 amendment 3 context in local-decisions (suite-side
+  reading; expected files unchanged).
+
+### Model bump (D13 amendment 2, owner-approved experiment)
+
+Run 6 (flash, prompt round 1) showed severity/delegation/open-issues
+unchanged after targeted prompt edits while the MCP fix landed —
+flash's instruction-following was the plateau. Owner chose "try pro on
+reviewers + facilitator": `agents/{business-reviewer,
+engineering-reviewer,facilitator}/config.yaml` → `gemini-2.5-pro`
+(synthesis stays flash). Run 8 (pro, same prompts): large improvement
+(clean open issues 12→6; conflicts detected + resolved on `conflicting`;
+business-weak delegation — which pro had done correctly all along, see
+the assertion fix above — passes).
+
+### Prompt tuning rounds (all in `prompts/*.md`, evidence = run N artifacts)
+
+- Round 1 (run 6): reviewer severity-calibration rubric; facilitator
+  single-side-default delegation, no-re-invocation-without-new-facts,
+  open-issues convergence, mandatory `get_story` on the opening turn.
+  Landed: **MCP evidence fixed** (facilitator story-MCP tool calls now
+  present on comment scenarios).
+- Round 2 (run 7): reviewer scope-echo/grounding rules; facilitator
+  no-conversational-resolution + minor/info never open. Marginal.
+- Round 5 (run 9): worked scope-boundary example; operational-territory
+  rule; decision-vs-new-facts distinction; acceptance-settles rule.
+  `conflicting` turn 2 now routes correctly (no re-review on a decision).
+- Round 6 (run 10): enumerated-failure-paths rule; decision resolves
+  every resting finding.
+- Round 7 (run 11): re-review-must-resolve-answered-findings;
+  platform-facility rule; pre-reply re-grade self-check; summary-turn
+  resolution discipline.
+
+Latest subset state (run 11, clean/business-weak/conflicting):
+- **clean**: 4 failures — engineering severity (E-1/E-2 major stochastic
+  across runs: order-API fetch failure / audit-log+alerting deps) +
+  downstream open issues.
+- **business-weak**: 2 failures — engineering down to 2 minors (ceiling
+  info) + 2 remaining open at final.
+- **conflicting**: 4 failures — turn-2 routing correct, but 3 issues
+  still open at the decision turn (facilitator resolves the ones it
+  acknowledges, keeps definitional majors open) → no readiness → no
+  finalize.
+
+Sessions/state: compose stack UP with pro reviewers+facilitator;
+run-11 artifacts in `tests/evaluation/artifacts/cases/` (trend.json has
+runs 7–11 labels); judge stage wired but **not yet exercised live** (no
+deterministic-passing case yet).
