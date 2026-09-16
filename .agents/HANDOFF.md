@@ -94,6 +94,19 @@ Evidence: Runbook 13 §Mobile picker fix.
 
 ## Previous Session Summary
 
+**Phase 9 increment 3, parts 3–4 (2026-09-16, dev server; detail:
+Runbook 15 §Increment 3 parts 3–4):** two structural root causes found
+and fixed — (1) comments cluster was DATASET: ADO 57–59 authored without
+acceptance criteria, PATCHed with the spec criteria (revs 5/5/6,
+re-export, story MCP verified); (2) gate-finalize vs scripted acceptance
+arcs (business-weak run-23 409) → D30 adaptation of three expected
+files + manual plans. Prompt rounds 11–12. Run 24 (owner-approved):
+**0/10 but every case converged** (open issues 4–19 → 1–3, blockers
+eliminated, single-side routing correct); dominant residual = summary
+turns keeping 1–3 decided/minted issues open + synthesis dropping
+pinned conflicts — both targeted by round 12 (landed, not yet run).
+Commits `0784e59`, `27fa8ff`, `60e03a0`. Judge still not exercised.
+
 **Phase 9 increment 3, part 2 (2026-09-16, dev server; detail: Runbook 15
 §Increment 3 part 2):** prompt rounds 8–10 (engineering severity
 procedure consolidation + few-shot calibration, synthesis conflict
