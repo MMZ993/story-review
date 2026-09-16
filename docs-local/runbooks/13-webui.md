@@ -1022,3 +1022,33 @@ so comment `created_at` timestamps no longer cause invalid-payload 503s.
 Gotcha: the first `make orchestration-test` attempt hit the known throwaway
 Postgres startup race (`database system is starting up`) before tests began;
 the unchanged target passed on its next run.
+
+## Mobile picker fix — floating confirm button (2026-09-16, dev server; owner-approved "please run it")
+
+Owner-reported defect carried in the HANDOFF: on phones the story list sits
+below the fold (open/past session lists above it) while the confirm button is
+at the top, forcing a scroll-down-then-up dance. Owner chose the minimal fix
+(floating button only; no list reorder).
+
+Change: `webui/static/app.css` mobile media query (`max-width: 36rem`) only —
+`#confirm-story` becomes `position: fixed` bottom-right with a shadow;
+`#picker-view` gains bottom padding so the button never covers content. No
+HTML/JS changes, so no new test applies (jsdom cannot assert visual position;
+all behavior unchanged and covered).
+
+Commands run:
+
+    make webui-test   # pytest 25 + vitest 89 passed
+    git diff --check  # clean
+    git add webui/static/app.css
+    git commit -m "fix: float story confirm button on mobile pickers"   # 05592e8
+    bash deploy/cloud-run/webui/deploy.sh
+    curl -o /dev/null -w "%{http_code}\n" https://story-review.mmz.sh/health
+    # 200
+    curl https://story-review.mmz.sh/app.css | tail   # new fixed-position rules served live
+
+Deploy evidence: image `20260916-0511-05592e8` (tag maps to commit
+`05592e8`), Cloud Run revision `webui-00003-bhv`, 100% traffic, public
+domain healthy with the new CSS. Local compose stack still serves the
+previous baked image (`make agents-compose-up` needed to preview there).
+Owner pushes main.
