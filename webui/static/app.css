@@ -280,8 +280,21 @@ summary {
 @media (max-width: 36rem) {
   .page { width: min(100% - 1rem, 72rem); padding-top: 1rem; }
   .view { padding: 1rem; }
+  /* Floating confirm button: the story list sits below the fold on phones,
+     so keep the primary action reachable at the bottom of the viewport
+     while scrolling. `hidden` on #picker-view (display: none) also hides
+     this fixed-position descendant outside the picker. */
+  #confirm-story {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 10;
+    margin-left: 0;
+    padding: 0.5rem 1rem;
+    box-shadow: 0 0.375rem 1rem rgba(1, 4, 9, 0.5);
+  }
+  #picker-view { padding-bottom: 4.5rem; }
   .site-header { align-items: flex-start; flex-direction: column; gap: 0.25rem; }
-  #confirm-story { margin-left: 0; }
   .composer { flex-direction: column; }
   .composer button { align-self: stretch; }
   .message-user,
