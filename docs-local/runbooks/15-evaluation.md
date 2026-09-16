@@ -480,3 +480,93 @@ Sessions/state: compose stack UP with pro reviewers+facilitator;
 run-11 artifacts in `tests/evaluation/artifacts/cases/` (trend.json has
 runs 7–11 labels); judge stage wired but **not yet exercised live** (no
 deterministic-passing case yet).
+
+### Increment 3, part 2 — prompt rounds 8–10 + story-01 enrichment + first full-suite pass (2026-09-16, dev server)
+
+All runs owner-approved spend, compose stack, pro reviewers + facilitator
+(flash synthesis), temperature 0.0 throughout.
+
+#### Story-01 ADO enrichment (D-b pattern, owner-approved)
+
+Persistent minor "email delivery failures other than hard bounces are
+undefined" (AC3) survived 3 prompt rules + a worked example — pro believes
+it a genuine story gap. Owner chose data-level fix: PATCH ADO id 5 → rev 6,
+Scope sentence added ("email delivery failures other than hard bounces
+follow the existing email platform's standard delivery-failure handling …
+out of scope"). Re-exported (45 stories + 3 context; diff = story-01
+description + mechanical churn); canonical-facts clean section records it;
+story MCP container restarted (bind mount). Enrichment cleared the
+open-issues cluster on clean.
+
+#### Prompt changes (rounds 8–10, all in prompts/*.md)
+
+- **engineering-reviewer.md**: scope-by-reference rule (referenced
+  endpoint = the specification, its schema/failures info at most);
+  implementation-territory rule (idempotency/concurrency/identifier
+  sourcing/debug storage/info); general-failure-path-covers-subcases rule
+  with worked examples (rendering failure ⊃ fetch failure; hard-bounce
+  retry settles that path); re-grade gate extended from major-only to
+  minor+; SLA-feasibility → risks; **grounding section consolidated from
+  a ~25-bullet wall into an ordered 3-step severity decision procedure**
+  (story-settles → implementation-territory → real-gap gate) + few-shot
+  calibration example ("well-specified story ⇒ info-only list").
+- **business-reviewer.md**: report-rendering details (filename,
+  formatting) info at most; few-shot calibration example.
+- **synthesis.md**: conflict materiality (minor/info gap-vs-positive-
+  summary asymmetry is not a conflict; risks/questions are observations,
+  never conflict sides); no self-minted questions_for_po from minor/info
+  findings; pre-emit gates 1–2.
+- **facilitator.md**: decision-resolves-definitional-findings (definition
+  now exists; detail inside the decided design = implementation
+  territory, never re-asked); acceptance-turn open_issues always empty;
+  opening-turn filter (only major/blocker + needs_po_clarification may be
+  open; minor/info resolved same turn; synthesis questions on minor/info
+  findings not relayed).
+
+#### Gotcha: prompt `{id}` braces vs ADK templating
+
+Adding "`GET /orders/{id}`" verbatim to a prompt broke the reviewer with
+`model call failed: 'Context variable not found: id'` (503,
+reproducible): ADK substitutes `{identifier}` placeholders in agent
+instructions against session state. Multi-char/quoted braces (e.g. JSON
+examples in facilitator prompt) don't match. Prompt text must avoid
+single-identifier braces.
+
+#### Runs 12–23 (trend.json labels run-12…run-23-full-t1)
+
+- Runs 12–19 (clean only): each round fixed its targeted cluster; every
+  run one *different* rotating stochastic blip remained (new minor/major
+  framings: idempotency, large orders, SLA feasibility, hard-bounce
+  detection mechanism, PDF filename, invoice-content legal compliance —
+  the last contradicting both story text and its prompt's worked
+  example). Rounds 9–10 (consolidated procedure + few-shot calibration)
+  produced the first fully green clean severity list (run 22 engineering:
+  info-only, calibration followed exactly).
+- Run 20: post-enrichment — open-issues green; new minors per reviewer.
+- Run 22: severity green; synthesis minted C-1 from info-vs-summary
+  (pre-emit gates added after).
+- **Run 23 (full t1, 1/10): t1/clean PASSED** — first deterministic
+  pass of a non-trivially-green case in the full suite. Regressions
+  elsewhere:
+  - comments-benign/clarify-business/complete-engineering: blocker/major
+    escalations (ceiling info/major) + open issues — the story-01-targeted
+    calibration did not generalize to comments stories.
+  - engineering-weak turn 2: invoke `both` instead of `engineering`
+    (single-side routing regression).
+  - partial-resolution turn 3: invoke `both` + extra_context instead of
+    `none` (decision-vs-new-facts regression); C-1/C-2 unresolved in
+    synthesis v3.
+  - unresolvable: blockers over major ceiling; synthesis v2 conflicts []
+    (C-1 expected present).
+  - hidden-conflict: 422 DELEGATION_VALIDATION — facilitator re-listed
+    C-1 on open_issues without a `reopened` disposition (identifier
+    lifecycle rule violated; 2 corrective re-prompts exhausted).
+
+#### Verification
+
+Dataset 37 passed; evaluation unit 104 passed; `git diff --check` clean.
+No code changed this part (prompt + dataset only; dataset-test green).
+
+Sessions/state: compose stack UP (run-23 prompts baked); run-23 artifacts
+in `tests/evaluation/artifacts/cases/`; trend.json has runs 12–23.
+Judge stage still not exercised live (only clean passed so far).

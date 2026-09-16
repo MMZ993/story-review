@@ -9,21 +9,25 @@ of what was executed), `docs-local/local-decisions.md` (D1–D29),
 git history (the session log). Do not let this file grow back into an archive.
 
 Last updated: 2026-09-16 (dev server; Phase 9 increment 3 in progress —
-judge wired, D13 model bump, 6 prompt-tuning rounds; detail in Runbook 15
-§Increment 3).
+clean PASSES in full suite (run 23) after rounds 8–10 + story-01
+enrichment; broad regressions on other cases; detail in Runbook 15
+§Increment 3 part 2).
 
 ## Next Session
 
 ### Remaining Tasks
 
-- **Phase 9 increment 3 (continue)**: get t1 deterministic-green, then
-  first live judged run + `evaluation-smoke`; remaining clusters after
-  run 11 (Runbook 15 §Increment 3): engineering-reviewer severity on
-  `clean` (stochastic majors: order-API fetch failure, audit-log/alerting
-  deps), `business-weak` engineering minors (ceiling info) + 2 open at
-  final, `conflicting` facilitator keeps definitional majors open after
-  the PO decision → no finalize. Then increments 4 (dev-mode run) and 5
-  (close) per `docs-local/plans/phase-9-evaluation.md`.
+- **Phase 9 increment 3 (continue)**: t1 is 1/10 (run 23): clean
+  green; next clusters, in evidence order — (1) comments-scenario
+  severity over-escalation (blockers/majors on ceiling-info stories —
+  calibration did not generalize beyond story-01); (2) routing
+  regressions on engineering-weak turn 2 (`both` instead of
+  `engineering`) and partial-resolution turn 3 (`both`+extra_context
+  instead of `none` on a decision turn); (3) unresolvable blocker
+  over-escalation + synthesis v2 dropping C-1; (4) hidden-conflict 422
+  (facilitator re-listed C-1 without `reopened`); (5) conflicting
+  finalize cluster (unchanged). Then judge (`JUDGE=1`) once ≥1 case
+  deterministic-green (clean now qualifies).
 - Deferred Phase-8 review minors (Runbook 14 §Increment 7): env-pointer/
   version runtime cross-check; compaction checkpoint-boundary +
   genai-Content test nits; per-call summarizer client.
@@ -34,24 +38,34 @@ judge wired, D13 model bump, 6 prompt-tuning rounds; detail in Runbook 15
 
 ### Next Steps
 
-1. Continue increment 3 prompt loop from run-11 evidence (Runbook 15
-   §Increment 3); re-run the 3-case subset, then full t1, then JUDGE=1.
+1. Continue increment 3 from run-23 evidence (Runbook 15 §Increment 3
+   part 2): generalize severity calibration to the comments stories, fix
+   the two routing regressions, unresolvable/hidden-conflict clusters;
+   then re-run full t1, then JUDGE=1 (clean is now deterministic-green
+   and judge-eligible).
+2. Standing note: per plan risk list, a case failing solely on
+   demonstrated stochastic instability may get one documented rerun
+   (both outputs kept); consider codifying in the runner or runbook
+   practice if blips persist.
 
 Standing notes: dev Cloud SQL RUNNING (owner request — leave up); local
-compose stack intentionally up (serves pre-mobile-fix webui image;
-`make agents-compose-up` to refresh). Owner pushes main (`05592e8` mobile
-fix + wrap-up commit pending push).
+compose stack intentionally up (run-23 prompt images); owner pushes
+main (`05592e8` mobile fix + wrap-up commit pending push).
 
 ### Verification and Review
 
-This session (increment 3, in progress): evaluation unit tests **104
-passed** (+14: judge stage, trend, judge wiring, evidence-based
-delegation assertion); dataset **37 passed**; `git diff --check` clean;
-no orchestration changes. Live runs 6–11 (owner-approved spend)
-evidenced in Runbook 15 §Increment 3; compose stack UP with pro
-reviewers+facilitator (D13 amendment 2); delegation assertion re-based
-on executed evidence (D13 amendment 3 context). Judge stage wired but
-not yet exercised live.
+This session (increment 3, part 2): live runs 12–23 (owner-approved
+spend) evidenced in Runbook 15 §Increment 3 part 2; story-01 ADO
+enrichment (rev 6) + re-export; prompt rounds 8–10 across all four
+agents; ADK `{identifier}` prompt-templating gotcha recorded. **t1/clean
+PASSED deterministically in the full suite (run 23)** — first
+non-trivial deterministic pass. Full suite 1/10 with regressions listed
+in Remaining Tasks. Dataset 37 passed, evaluation 104 passed, `git diff
+--check` clean; no application code changed (prompts + dataset only).
+
+Prior session (increment 3, part 1): evaluation unit tests **104
+passed** (+14); live runs 6–11; delegation assertion re-based on
+executed evidence (D13 amendment 3 context).
 
 Prior session (webui mobile fix): `make webui-test` pytest **25** + vitest
 **89**; deployed image `20260916-0511-05592e8`; public domain verified.
@@ -80,19 +94,22 @@ Evidence: Runbook 13 §Mobile picker fix.
 
 ## Previous Session Summary
 
-**Phase 9 increment 3, part 1 (2026-09-16, dev server; detail: Runbook 15
-§Increment 3):** judge stage wired into the runner (one call per
-deterministic-passing case; trend report; `--judge`/`--smoke`/`--label`;
-`make evaluation-test JUDGE=1`; `evaluation-smoke` = t1 + judged clean).
-Root-caused a suite CODE bug: delegation assertions read
-`TurnRecord.delegation` (by design the post-summary next-turn intent) —
-re-based on executed evidence (review versions ≥2 +
-`based_on_extra_context`); business-weak delegation now passes. Owner-
-approved model bump (D13 amd 2): reviewers + facilitator on
-gemini-2.5-pro. Six prompt-tuning rounds: MCP evidence fixed, conflicts
-detected+resolved on `conflicting`, severities/open-issues much reduced;
-remaining: engineering severity on `clean` (stochastic),
-`business-weak` minors, `conflicting` finalize. Judge stage not yet live.
+**Phase 9 increment 3, part 2 (2026-09-16, dev server; detail: Runbook 15
+§Increment 3 part 2):** prompt rounds 8–10 (engineering severity
+procedure consolidation + few-shot calibration, synthesis conflict
+materiality + pre-emit gates, facilitator decision/acceptance rules);
+story-01 ADO enrichment (email-failure scope, rev 6); ADK `{id}`
+prompt-templating gotcha. Runs 12–23: clean reached the stochastic noise
+floor and **PASSED in the full suite**; run 23 = 1/10 with regressions
+on comments scenarios, two routing clusters, unresolvable, and a
+hidden-conflict 422. Judge still not exercised.
+
+**Phase 9 increment 3, part 1 (2026-09-16, dev server):** judge stage
+wired (one call per deterministic-passing case; trend; `--judge`/
+`--smoke`/`--label`). Suite delegation assertion re-based on executed
+evidence. Owner-approved model bump (D13 amd 2): reviewers +
+facilitator on gemini-2.5-pro. Six prompt rounds; 3-case subset
+near-green.
 
 **Webui mobile fix + HANDOFF condensation (2026-09-16):** CSS-only fix
 (`05592e8`), deployed, public domain verified. Detail: Runbook 13

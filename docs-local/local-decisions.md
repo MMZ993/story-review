@@ -1161,3 +1161,14 @@ summary output whose invocation is a next-turn intent. Suite-side
 reading of evaluation-tests.md ("selected reviewer routing exactly
 matches the scripted PO clarification"); no schema or orchestration
 change, expected files unchanged.
+
+## D13 amendment 4 context — story-01 second enrichment: email-failure scope (2026-09-16, owner decision)
+
+Run-19 plateau: gemini-2.5-pro persistently graded "email delivery
+failures other than hard bounces undefined" (AC3) as a `minor` story gap
+despite a prompt rule, a worked example, and temperature 0.0. Owner chose
+the D-b pattern over further prompt rounds: ADO id 5 PATCH → rev 6, Scope
+sentence pinning non-hard-bounce delivery failures to the existing email
+platform's standard handling (out of scope). Re-exported (dataset churn
+mechanical); canonical-facts clean section records the fact. Evidence:
+Runbook 15 §Increment 3 part 2, runs 19–20.
