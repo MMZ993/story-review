@@ -8,30 +8,22 @@ of what was executed), `docs-local/local-decisions.md` (D1–D29),
 `docs-local/plans/`, `docs-local/development-plan.md`, and this file's own
 git history (the session log). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-17 (dev server; README authored — live demo
-https://story-review.mmz.sh, high-level architecture, design notes;
-small docs-only session). Phase 9 increment 3 still in progress —
-run 24 (round-11 validation): 0/10 but every case converged (open issues
-4–19 → 1–3, blockers eliminated); round-12 prompts landed (re-review
-scope discipline, decision-enforcement worked example, synthesis gate-3
-scope fix). Comments-story ACs restored (D30); gate-finalize arcs
-adapted (D30). Detail: Runbook 15 §Increment 3 part 4.
+Last updated: 2026-09-17 (dev server; run 25: round-12 reviewer edits
+regressed severity (0/9, clean failed twice); A/B isolated causation;
+round-12b validated (round-11 reviewers + round-12 facilitator/synthesis,
+clean PASS) and committed (D31); GCP agents redeployed from round-12b.
+Judge still not exercised. Detail: Runbook 15 §Increment 3 part 5.
 
 ## Next Session
 
 ### Remaining Tasks
 
-- **Phase 9 increment 3 (continue)**: run-24 evidence (Runbook 15
-  §Increment 3 part 4): dominant residual cluster = summary/final turns
-  keeping 1–3 issues open (re-reviews minting new majors from
-  PO-supplied metrics; facilitator keeping decided findings open);
-  synthesis dropping pinned conflicts (suspected round-11 gate-3
-  over-suppression — round 12 scopes it); stochastic 422s (synthesis
-  checksum echo, facilitator opening-turn validation). Round-12 prompts
-  are landed but **not yet run** — next step: rebuild + t1 in chunks of
-  ≤4 cases (`--scenario`, bg-job cap ≈45 min), then JUDGE=1 once ≥1
-  case is deterministic-green (clean regressed to a single-minor blip
-  in run 24 after 3 green runs — likely stochastic).
+- **Phase 9 increment 3 (continue)**: run 25 evidence recorded
+  (Runbook 15 §Increment 3 part 5; D31): round-12b is the validated
+  prompt state and the committed/deployed baseline. Remaining: full t1
+  suite on round-12b in chunks of ≤4 scenarios; if green holds, add
+  `JUDGE=1`; re-attempt reviewer re-review-scope discipline as a
+  smaller additive edit (without the severity rewording).
 - Deferred Phase-8 review minors (Runbook 14 §Increment 7): env-pointer/
   version runtime cross-check; compaction checkpoint-boundary +
   genai-Content test nits; per-call summarizer client.
@@ -42,10 +34,9 @@ adapted (D30). Detail: Runbook 15 §Increment 3 part 4.
 
 ### Next Steps
 
-1. Continue increment 3 from run-24 evidence (Runbook 15 §Increment 3
-   part 4): run 25 on round-12 prompts (rebuild agents first; chunks of
-   ≤4 scenarios via `--scenario` because of the bg-job runtime cap);
-   if green holds, add `JUDGE=1`.
+1. Continue increment 3 on round-12b: full t1 suite in chunks of ≤4
+   scenarios via `bash tmp/run25-chunk.sh <scenario>` (bg-job cap
+   ≈45 min); if green holds, add `JUDGE=1`.
 2. Standing note: per plan risk list, a case failing solely on
    demonstrated stochastic instability may get one documented rerun
    (both outputs kept); consider codifying in the runner or runbook
@@ -57,13 +48,14 @@ part-2 work pushed (through `4a88656`).
 
 ### Verification and Review
 
-This session (increment 3, parts 3–4): run 24 (owner-approved spend,
- full t1 + per-scenario completion; trend run-24-*/run-24b-*) — 0/10
- but every case converged; round-11 + round-12 prompt edits; ADO
- 57–59 AC restoration (revs 5/5/6, re-export, story MCP verified);
- D30 arc adaptation (3 expected files + 3 manual plans). Dataset 37,
- evaluation 104, `git diff --check` clean each step. Evidence:
- Runbook 15 §Increment 3 parts 3–4.
+This session (run 25): round-12 prompts baked + validated — **0/9,
+systematic regression**: clean failed twice consecutively with minted
+v1 majors; major-minting worse than run 24 across all cases. A/B test
+(reviewers reverted to round-11, one clean run) PASSED — causation
+confirmed. Round-12b (round-11 reviewers + round-12 facilitator/
+synthesis) validated: clean PASS. D31; reviewer revert committed;
+GCP agents redeployed from round-12b commit. Evidence: Runbook 15
+§Increment 3 part 5.
 
 Prior session (increment 3, part 1): evaluation unit tests **104
 passed** (+14); live runs 6–11; delegation assertion re-based on
@@ -96,18 +88,9 @@ Evidence: Runbook 13 §Mobile picker fix.
 
 ## Previous Session Summary
 
-**Phase 9 increment 3, parts 3–4 (2026-09-16, dev server; detail:
-Runbook 15 §Increment 3 parts 3–4):** two structural root causes found
-and fixed — (1) comments cluster was DATASET: ADO 57–59 authored without
-acceptance criteria, PATCHed with the spec criteria (revs 5/5/6,
-re-export, story MCP verified); (2) gate-finalize vs scripted acceptance
-arcs (business-weak run-23 409) → D30 adaptation of three expected
-files + manual plans. Prompt rounds 11–12. Run 24 (owner-approved):
-**0/10 but every case converged** (open issues 4–19 → 1–3, blockers
-eliminated, single-side routing correct); dominant residual = summary
-turns keeping 1–3 decided/minted issues open + synthesis dropping
-pinned conflicts — both targeted by round 12 (landed, not yet run).
-Commits `0784e59`, `27fa8ff`, `60e03a0`. Judge still not exercised.
+**Phase 9 increment 3, part 5 — run 25 regression + round-12b (2026-09-17,
+dev server; detail: Runbook 15 §Increment 3 part 5):** see above. Earlier
+increment-3 parts and sessions: git history of this file.
 
 **Phase 9 increment 3, part 2 (2026-09-16, dev server; detail: Runbook 15
 §Increment 3 part 2):** prompt rounds 8–10 (engineering severity

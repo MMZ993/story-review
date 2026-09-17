@@ -665,3 +665,60 @@ Gotchas: bg job runtime cap ≈45 min (run t1 in chunks of ≤4 cases via
 known increment-7 abandon limitation).
 
 Judge still not exercised (no deterministic pass in run 24).
+
+### Increment 3, part 5 — run 25 (round-12 validation): regression found, isolated to round-12 reviewer edits, reverted to round-12b (2026-09-17, dev server; owner-approved spend)
+
+Round-12 prompts baked via `agents-compose-up` (image md5 verified
+against repo `prompts/`). Run 25 executed per-scenario
+(`python -m evaluation.runner --scenario`, labels `run-25-*`) in two
+chunks; chunk 3 (partial-resolution, unresolvable) was **not run** —
+chunk 2 evidence made the diagnosis clear first.
+
+**Result: 0/9 — a systematic regression, not the run-24 residuals:**
+
+- **Chunk 1** (clean, business-weak, comments-benign,
+  comments-clarify-business): 0/4. Clean failed with minted v1 majors
+  (B-1 formal-invoice legal info, E-1 cancelled-order hypothetical path,
+  E-2 zero-total) — direct violations of binding severity rules that
+  held in three green runs on rounds 10–11.
+- **Chunk 2** (clean rerun + comments-complete-engineering, conflicting,
+  engineering-weak, hidden-conflict): 0/5. Clean rerun also failed
+  (2 open, E-1/E-2 minors) — clean now failed twice consecutively vs
+  3 greens + 1 stochastic blip before; not stochastic-only. Major-minting
+  worse than run 24 everywhere (engineering-weak B-1/B-2 majors;
+  hidden-conflict 3+3 majors); synthesis still dropped pinned conflicts
+  (conflicting C-1, hidden-conflict C-1); facilitator still kept decided
+  issues open.
+
+**Diagnosis (A/B, owner-approved):** working-tree reviewers reverted to
+round-11 (`git show 27fa8ff^:prompts/*`), adapters rebuilt, one clean
+run — **PASS** (`run-25-clean-r11ab`). Causation confirmed: the
+round-12 reviewer edits regressed severity calibration. The v1-time
+failure point rules out the re-review-scope text; prime suspect is the
+shared severity-calibration rewording (the `blocker` disambiguation
+shifted the model's notion of what a `major` is). Facilitator
+(decision-enforcement worked example) and synthesis (gate-3 scoping)
+edits were not implicated at v1.
+
+**Round 12b (validated configuration):** reviewers at round-11,
+facilitator + synthesis at round-12 → clean **PASS**
+(`run-25-clean-r12b`). This is the committed state going forward (D31).
+Reviewer re-review-scope discipline to be re-attempted later as a
+smaller additive edit without the severity rewording, tested on
+business-weak / comments-clarify-business.
+
+Verification: trend labels `run-25-clean`, `-business-weak`,
+`-comments-benign`, `-comments-clarify-business`, `-clean2`,
+`-comments-complete-engineering`, `-conflicting`, `-engineering-weak`,
+`-hidden-conflict`, `-clean-r11ab`, `-clean-r12b`; per-case artifacts
+under `tests/evaluation/artifacts/cases/` (last run per case wins;
+trend + this entry carry the history). Judge still not exercised
+(run-25 clean passes came from un-labeled chunks; next deterministic
+suite pass should add `JUDGE=1`).
+
+Gotchas: (1) per-case artifact JSONs are overwritten per run — the
+trend file is the durable per-run record; (2) A/B rebuild takes ~1 min
+per adapter image, no stack restart side effects observed; (3) GCP live
+agents predate round 12 entirely (facilitator `747d9d1`, others
+`7d1b9bd`) — see Runbook 14 increment 7; round-12b must be deployed
+there (this session, part 6).

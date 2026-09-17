@@ -1195,3 +1195,20 @@ Two Phase 9 increment-3 decisions taken together:
    data, not prompt miscalibration. PATCHed with the spec criteria
    (Given/when/then HTML, revs 5/5/6), re-exported, story MCP restarted.
    Evidence: Runbook 15 §Increment 3 part 3.
+
+## D31 — round-12 reviewer severity rewording regressed; round-12b = round-11 reviewers + round-12 facilitator/synthesis (2026-09-17, owner decision)
+
+Run 25 (0/9) showed the round-12 (`27fa8ff`) reviewer prompt edits —
+specifically the shared severity-calibration rewording — undid the
+rounds-10/11 severity calibration: clean failed twice consecutively
+with minted v1 majors (vs 3 greens + 1 stochastic blip before), and
+major-minting worsened across all cases. An A/B rebuild (reviewers at
+`27fa8ff^`, one clean run) PASSED, confirming causation.
+
+Decision: commit **round-12b** — both reviewer prompts reverted to
+round-11; facilitator (decision-enforcement worked example) and
+synthesis (gate-3 scoping) keep their round-12 edits (validated: clean
+PASS on the combined configuration, `run-25-clean-r12b`). The
+re-review-scope discipline for reviewers is deferred until re-attempted
+as a smaller additive edit, tested on business-weak /
+comments-clarify-business. Evidence: Runbook 15 §Increment 3 part 5.
