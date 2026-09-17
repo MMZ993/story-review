@@ -35,6 +35,7 @@ from review_schemas.records import (
 )
 from review_schemas.review import StoryDetail
 from review_schemas.synthesis import ArtifactReference
+from .ae_turn_validation import TurnInvalid, validate_opening_turn
 
 from . import app_events, idempotency, records_store
 from .agent_clients import (
@@ -441,7 +442,7 @@ async def _initial_pipeline(
     except (AgentTransportError, AgentDeadlineExceeded) as exc:
         raise _upstream("facilitator invocation failed", correlation_id, "facilitator") from exc
 
-    _assert_opening_turn(facilitator.output, correlation_id)
+    _assert_opening_turn(facilitator.output, synthesis.report, correlation_id)
     turn = await records_store.create_turn_or_get(
         pool,
         TurnRecord(
@@ -523,22 +524,24 @@ async def _get_story(
         raise _upstream("story MCP unavailable", correlation_id) from failure
 
 
-def _assert_opening_turn(output, correlation_id: str) -> None:
-    """Turn-1 invariants beyond schema validation (schemas.md): invoke =
-    none and no resolution updates; a violation is structured 422, never
-    an unenveloped response-construction failure."""
-    if output.delegation.invoke != "none" or output.resolutions:
+def _assert_opening_turn(output, synthesis, correlation_id: str) -> None:
+    """Turn-1 backstop (schemas.md, D34): invoke = none + the severity
+    fence, enforced through the shared turn-validation mirror so the
+    backstop cannot drift from the AE-side loop; a violation is a
+    structured 422, never an unenveloped response-construction failure."""
+    try:
+        validate_opening_turn(output, synthesis)
+    except TurnInvalid as exc:
         raise ApiError(
             422,
             make_error(
                 "DELEGATION_VALIDATION",
-                "the opening facilitator turn must emit invoke=none and no "
-                "resolution updates",
+                f"the opening facilitator turn is invalid: {exc}",
                 correlation_id,
                 retryable=False,
                 agent="facilitator",
             ),
-        )
+        ) from exc
 
 
 async def _fan_out_reviewers(agents: AgentSet, story: StoryDetail, deadline: float):

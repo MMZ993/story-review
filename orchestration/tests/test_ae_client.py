@@ -32,6 +32,7 @@ from orchestration.agent_clients import (
 )
 
 from .fakes import review_report, story_detail
+from review_schemas import DelegationDecision, FacilitatorTurnOutput
 
 RESOURCE = "projects/p/locations/europe-west4/reasoningEngines/123"
 SESSION_ID = "sess-aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
@@ -163,6 +164,29 @@ def test_recovered_reply_none_when_last_own_turn_has_no_reply_yet():
     assert recovered_turn_reply(events, 2) is None
 
 
+def test_recovered_reply_after_corrective_exchange():
+    """D34: the corrective re-prompt carries the turn marker, so a
+    corrective exchange (turn message -> invalid reply -> corrective
+    message -> corrected reply) still attributes the final reply to the
+    invocation for reconciliation."""
+    from .fakes import opening_turn_output
+
+    from orchestration.ae_turn_validation import corrective_message
+
+    output = opening_turn_output()
+    events = [
+        {"author": "user", "content": {"parts": [
+            {"text": "... This is turn 2."}]}},
+        {"author": "facilitator", "content": {"parts": [
+            {"text": "{\"bad\": true}"}]}},
+        {"author": "user", "content": {"parts": [
+            {"text": corrective_message("invalid", turn_number=2)}]}},
+        {"author": "facilitator", "content": {"parts": [
+            {"text": output.model_dump_json()}]}},
+    ]
+    assert recovered_turn_reply(events, 2) == output.model_dump_json()
+
+
 def test_recovered_reply_none_for_foreign_turn():
     from .fakes import opening_turn_output
 
@@ -261,7 +285,14 @@ def facilitator_invocation(turn_number: int = 1, po_message=None):
                 "description": "The story misses an important case.",
                 "severity": "minor",
                 "category": "completeness",
-            }
+            },
+            {
+                "id": "E-1",
+                "title": "Load unknown",
+                "description": "Expected load is not stated.",
+                "severity": "major",
+                "category": "capacity",
+            },
         ],
         conflicts=[],
         questions_for_po=["Which rate limit applies?"],
@@ -295,6 +326,25 @@ def facilitator_invocation(turn_number: int = 1, po_message=None):
         po_message=po_message,
         synthesis_report=synthesis,
         synthesis_reference=reference,
+    )
+
+
+def turn_output_factory(**overrides) -> FacilitatorTurnOutput:
+    """A schema-valid facilitator turn with overridable delegation fields
+    and raw resolution dicts (fixture for the corrective-loop tests)."""
+    from review_schemas.facilitator import ResolutionDraft
+
+    resolutions = [
+        ResolutionDraft.model_validate(r) for r in overrides.pop("resolutions", [])
+    ]
+    return FacilitatorTurnOutput(
+        reply="Here is the synthesis.",
+        delegation=DelegationDecision(
+            invoke=overrides.get("invoke", "none"),
+            open_issues=overrides.get("open_issues", ["B-1"]),
+            readiness="needs_work",
+        ),
+        resolutions=resolutions,
     )
 
 

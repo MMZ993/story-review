@@ -19,8 +19,9 @@ Audit fields in AE mode (D25 amendment): `agent_version` is the engine's
 deploy label (e.g. ``business-reviewer-7d1b9bd``) and `prompt_sha256`` is
 the SHA-256 of the rendered user message (an invocation input fingerprint
 — the system prompt is baked inside the engine, invisible here).
-`corrective_reprompts` is always 0: the corrective loop runs inside the
-deployed agent and its counter is not surfaced on the wire.
+`corrective_reprompts` reports the orchestration-side corrective re-prompt
+count (D34): turn-context validation and the bounded loop (≤2) run here, mirroring
+the local adapter.
 
 Facilitator sessions: one AE session per review session, mapped without
 persistence by ``user_id = <review session_id>`` (list-or-create on each
@@ -54,6 +55,12 @@ from .ae_messages import (
     render_facilitator_message,
     render_reviewer_message,
     render_synthesis_message,
+)
+from .ae_turn_validation import (
+    CORRECTIVE_MAX,
+    TurnInvalid,
+    corrective_message,
+    validate_facilitator_turn,
 )
 from .agent_clients import (
     AgentCallFailure,
@@ -519,13 +526,107 @@ class AeFacilitatorClient(_HttpAgentClient):
                 raise last_error
             raise AgentTransportError(str(last_error))
         output = _validated_reply(FacilitatorTurnOutput, json.dumps(body["output"]))
+        output, corrections = await self._turn_with_corrections(
+            output, request, ae_session, deadline_at
+        )
         return FacilitatorResult(
             output=output,
             agent_version=body.get("agent_version", self._version),
             prompt_sha256=body.get("prompt_sha256", _fingerprint(message)),
-            corrective_reprompts=body.get("corrective_reprompts", 0),
+            corrective_reprompts=corrections,
             transport_attempts=attempts,
         )
+
+    async def _corrective_turn(
+        self, ae_session: str, request: FacilitatorInvocation, reasons: str,
+        deadline_at: float,
+    ) -> str:
+        """One corrective round trip: send the re-prompt, return the model's
+        final reply text. On a transport/envelope failure the exchange is
+        ambiguous: the caller reconciles against the AE session events
+        (the corrective message carries the turn marker, so a completed
+        corrective reply is recoverable) before propagating."""
+        status, body = await self._post(
+            self._url,
+            {
+                "classMethod": "async_stream_query",
+                "input": {
+                    "user_id": request.session_id,
+                    "message": corrective_message(reasons, request.turn_number),
+                    "session_id": ae_session,
+                },
+            },
+            self._clamped_timeout(deadline_at),
+        )
+        if status != 200:
+            error = self._error_body(status, body)
+            raise AgentCallFailure(error)
+        reply = final_model_reply(body["events"])
+        if not reply.strip():
+            raise AgentTransportError("AE corrective stream ended without a reply")
+        return reply
+
+    async def _recovered_output(
+        self, request: FacilitatorInvocation
+    ) -> FacilitatorTurnOutput | None:
+        """Reconciliation reuse of a recorded reply for this turn (best
+        effort — any read or parse failure means no recovery)."""
+        recovered = await self._recover(request)
+        if recovered is None:
+            return None
+        return FacilitatorTurnOutput.model_validate_json(
+            json.dumps(recovered["output"])
+        )
+
+    async def _turn_with_corrections(
+        self, output: FacilitatorTurnOutput, request: FacilitatorInvocation,
+        ae_session: str, deadline_at: float,
+    ) -> tuple[FacilitatorTurnOutput, int]:
+        """Mirror of the adapter's `turn_with_corrections` (D34): validate the
+        turn-context rules, re-prompt on violation at most CORRECTIVE_MAX
+        times, exhaustion → DELEGATION_VALIDATION (non-retryable)."""
+        corrections = 0
+        reason: str | None = None
+        while True:
+            if output is not None:
+                try:
+                    validate_facilitator_turn(output, request)
+                    return output, corrections
+                except TurnInvalid as exc:
+                    reason = str(exc)
+            if corrections >= CORRECTIVE_MAX:
+                raise AgentCallFailure(
+                    ErrorBody(
+                        code="DELEGATION_VALIDATION",
+                        message=(
+                            f"no valid turn output after {CORRECTIVE_MAX} "
+                            f"corrective re-prompts: {reason}"
+                        ),
+                        correlation_id=uuid.uuid4(),
+                        retryable=False,
+                    )
+                )
+            corrections += 1
+            try:
+                reply = await self._corrective_turn(
+                    ae_session, request, reason or "", deadline_at
+                )
+                try:
+                    output = FacilitatorTurnOutput.model_validate_json(reply)
+                except ValidationError as exc:
+                    # a schema-invalid corrective reply re-enters the loop
+                    # (one attempt consumed), like the local adapter
+                    output = None
+                    reason = f"reply is not valid FacilitatorTurnOutput JSON: {exc}"
+            except (AgentTransportError, AgentCallFailure):
+                # ambiguous corrective exchange: reconcile against the AE
+                # session events (the corrective message carries the turn
+                # marker, so a completed corrective reply is recoverable)
+                # before propagating the failure
+                recovered = await self._recovered_output(request)
+                if recovered is None:
+                    raise
+                output = recovered
 
 
 def ae_agent_set(settings: Settings) -> AgentSet:

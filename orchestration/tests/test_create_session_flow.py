@@ -577,6 +577,38 @@ async def test_delegating_opening_turn_is_structured_422(pool, settings, artifac
     assert body["error"]["retryable"] is False
 
 
+async def test_opening_turn_major_resolution_is_structured_422(
+    pool, settings, artifact, agents
+):
+    """D34 severity fence backstop: a turn-1 resolution of a major finding
+    is a structured DELEGATION_VALIDATION 422 even though invoke=none."""
+    from review_schemas import ResolutionDraft
+
+    from .fakes import opening_turn_output
+
+    bad = opening_turn_output()
+    bad.resolutions = [
+        ResolutionDraft(
+            issue="B-9", disposition="resolved", explanation="too early"
+        )
+    ]
+
+    async def invoke(request, *, deadline):
+        from orchestration.agent_clients import FacilitatorResult
+
+        return FacilitatorResult(
+            output=bad, agent_version="0.1.0", prompt_sha256="e" * 64
+        )
+
+    agents.facilitator.invoke = invoke
+    client = flow_client(settings, pool, artifact, agents)
+    response = await post_create(client, KEY_A, create_payload())
+    assert response.status_code == 422, response.text
+    body = response.json()
+    assert body["error"]["code"] == "DELEGATION_VALIDATION"
+    assert "severity fence" in body["error"]["message"]
+
+
 async def test_non_v4_idempotency_key_422(client):
     response = await client.post(
         "/api/v1/sessions",
