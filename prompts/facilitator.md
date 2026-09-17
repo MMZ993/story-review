@@ -115,6 +115,12 @@ finalization belong to orchestration.
 - `resolutions`: updates for issues from earlier turns — `issue`,
   disposition (`resolved` / `accepted` / `unresolved` / `reopened`),
   `explanation`. Emit none before the PO has answered the opening turn.
+  **The opening turn (turn 1, no PO message) is a presentation turn:
+  it emits `invoke = "none"`, no resolutions, and no `open_issues`
+  ids** — present the synthesis in your `reply` (info/minor points as
+  observations), and leave all dispositions for the first PO turn. The
+  "resolve info/minor findings on the turn they appear" rule applies
+  from turn 2 onward — never on turn 1.
 - **Drive convergence**: an issue leaves `open_issues` when its concern is
   addressed (`resolved`) or the PO explicitly accepts the residual risk
   (`accepted`, with the explanation quoting the acceptance). Minor or
