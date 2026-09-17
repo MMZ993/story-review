@@ -8,39 +8,41 @@ of what was executed), `docs-local/local-decisions.md` (D1–D29),
 `docs-local/plans/`, `docs-local/development-plan.md`, and this file's own
 git history (the session log). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-17 (dev server; run 25: round-12 reviewer edits
-regressed severity (0/9, clean failed twice); A/B isolated causation;
-round-12b validated locally and committed (D31). GCP round-12b/12c deploy
-found the AE runtime lacks the facilitator corrective loop (opening-turn
-resolutions, live 422s); live rolled back to facilitator-747d9d1 (D32,
-mixed live stack, session creation verified 201). Judge still not
-exercised. Detail: Runbook 15 §Increment 3 parts 5–6.
+Last updated: 2026-09-18 (dev server; D32 resolved by design change D34:
+P1 unified facilitator behavior — turn-1 resolutions severity-fenced to
+info/minor instead of positionally forbidden — plus an orchestration-side
+bounded corrective loop for the AE facilitator path. Implemented + tested
+locally; not yet deployed. Detail: docs-local/local-decisions.md D34.
 
 ## Next Session
 
 ### Remaining Tasks
 
-- **Phase 9 increment 3 (continue)**: run 25 + deploy evidence recorded
-  (Runbook 15 §Increment 3 parts 5–6; D31/D32). Round-12b is the
-  locally-validated prompt state; live is a MIXED stack (D32).
-  Remaining: full t1 suite on round-12b locally (chunks of ≤4 scenarios);
-  `JUDGE=1` when green; re-attempt reviewer re-review-scope discipline as
-  a smaller additive edit; **design decision for AE-side turn-context
-  validation + corrective loop (D32)** before re-deploying the round-12
-  facilitator.
+- **D34 follow-through (next)**: deploy the round-12b+P1 facilitator
+  prompt + the updated orchestration to GCP, probe-verify the
+  opening-turn contract on live (`tmp/probe_ae_facilitator.py`), and
+  converge live off the mixed stack. Then full t1 suite locally
+  (round-12b+P1, chunks of ≤4 via `bash tmp/run25-chunk.sh <scenario>`);
+  `JUDGE=1` when green.
+- Re-attempt reviewer re-review-scope discipline as a smaller additive
+  edit (round-12 regression follow-up).
 - Deferred Phase-8 review minors (Runbook 14 §Increment 7): env-pointer/
   version runtime cross-check; compaction checkpoint-boundary +
   genai-Content test nits; per-call summarizer client.
+- Pre-existing failing test (flagged 2026-09-18): `agents/facilitator
+  tests/test_agent.py::test_config_is_pinned_and_immutable` expects
+  gemini-2.5-flash but config is pro (stale since the D13 amd-2 bump).
 - One live test session (`sess-8031e95b…`, story-09) left active on dev —
   its x-user-id wasn't persisted, cannot be abandoned from here (carry-over
   from increment 7).
-- D5 engine prune (owner-run) — remaining Phase-8 cleanup.
+- D5 engine prune (owner-run) — remaining Phase-8 cleanup; grows with the
+  superseded AE engines from the run-25 session.
 
 ### Next Steps
 
-1. Decide the D32 AE-runtime fix design (docs review first), then:
-   full t1 suite locally on round-12b in chunks of ≤4 scenarios via
-   `bash tmp/run25-chunk.sh <scenario>`; if green holds, add `JUDGE=1`.
+1. Deploy D34 (facilitator engine rebuild with the P1 prompt; orchestration
+   image with the corrective loop), probe-verify live opening turns, then
+   run the full t1 suite; if green holds, add `JUDGE=1`.
 2. Standing note: per plan risk list, a case failing solely on
    demonstrated stochastic instability may get one documented rerun
    (both outputs kept); consider codifying in the runner or runbook
@@ -104,6 +106,27 @@ Evidence: Runbook 13 §Mobile picker fix.
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+**D32 → D34 design decision + local implementation (2026-09-18, dev
+server):** with the owner, reframed the D32 root cause as a prompt-rule
+collision (round-12 resolve-info/minor vs positional no-turn-1-
+resolutions) and adopted design change **D34** (P1): turn-1 resolutions
+are now severity-fenced (resolved info/minor synthesis findings only,
+mentioned to the PO) instead of forbidden — docs touched
+(`agents.md`, `schemas.md`), facilitator prompt simplified,
+`validate_turn_output` reimplemented (`_validate_opening_fence`). AE-side
+corrective loop = orchestration (option C, D25 amendment): new
+`orchestration/orchestration/ae_turn_validation.py` mirror +
+bounded loop in `AeFacilitatorClient.invoke` (≤2, exhaustion →
+DELEGATION_VALIDATION 422, `corrective_reprompts` surfaced; corrective
+messages carry the turn marker so D25 reconciliation stays attributable);
+`flows._assert_opening_turn` backstop reuses the mirror. Independent
+read-only review addressed (corrective-failure reconciliation, third-copy
+fence removal, schema-invalid corrective replies fold into the loop, test
+gaps). Verification: `make agent-kit-test` 165 passed, `make
+orchestration-test` 218 passed, `make evaluation-unit-test` 104 passed;
+pre-existing facilitator skeleton test failure flagged (see Remaining).
+**Nothing deployed yet.**
 
 **Phase 9 increment 3, parts 5–6 — run 25 regression, round-12b, GCP
 deploy + AE corrective-loop gap (2026-09-17, dev server; detail:

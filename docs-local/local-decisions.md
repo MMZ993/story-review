@@ -1245,3 +1245,48 @@ kept locally, gitignored, and its git history purged with
 `docs/index.md` now notes both files as local-only instead of linking to
 them. Historical mentions in `docs-local/` plans and runbooks are left as
 records.
+
+## D34 — P1 unified facilitator behavior + orchestration-side corrective loop (2026-09-18, owner decision)
+
+Resolves the D32 design gap. Root cause reframed with the owner: the
+round-12 "resolve info/minor findings on the turn they appear" prompt
+rule collided with the positional "no resolutions on turn 1" turn-context
+rule — two competing instructions where the loudly repeated one wins
+stochastically, and the AE path had no deterministic corrective loop to
+catch it. The fix is a behavior change, not more prompt fencing:
+
+1. **P1 (docs change, `docs/design/agents.md` + `schemas.md`)**:
+   resolution behavior is now unconditional across turns. Turn-1
+   resolutions are allowed but severity-fenced — only `resolved`
+   dispositions for `info`/`minor` synthesis findings (mentioned to the
+   PO as observations); conflicts and `major`/`blocker` findings, and
+   PO-dependent dispositions (`accepted` quotes PO acceptance), wait for
+   a PO turn. `invoke="none"` on the opening turn stays (structural
+   fence). The facilitator prompt drops the "never on turn 1" exception.
+   Implemented in `agent_kit.facilitator_input.validate_turn_output`
+   (`_validate_opening_fence`).
+2. **Corrective loop on AE = orchestration-side (option C, D25
+   amendment)**: `orchestration/orchestration/ae_turn_validation.py`
+   mirrors the turn-context validation (duck-typed, drift-guarded by
+   `shared/agent_kit/tests/test_ae_turn_rule_mirrors.py`, same pattern
+   as the renderer mirrors), and `AeFacilitatorClient.invoke` runs the
+   bounded corrective re-prompt loop (≤2) sending `corrective_message`
+   to the same AE session; exhaustion raises `DELEGATION_VALIDATION`
+   (422, non-retryable). The mirror's corrective message embeds the
+   "This is turn <n>" marker so `recovered_turn_reply` reconciliation
+   still attributes corrective exchanges to the invocation.
+   `corrective_reprompts` is now surfaced on the AE wire (previously
+   hardcoded 0). The D25 note "the corrective loop runs inside the
+   deployed agent" is thereby amended: it runs in orchestration; the
+   custom-agent (option B) design was evaluated and deliberately not
+   chosen.
+
+The custom-agent option (B) was rejected: AE's serving runtime leaves no
+application code around the call, callbacks cannot re-run the model, and
+the loop would require a custom root agent + sub-agent re-architecture;
+orchestration already mirrors the renderers and owns retry/reconciliation,
+making the caller-side loop the smaller, testable seam.
+
+Not yet done at decision time: redeploy the round-12b+P1 facilitator to
+AE, probe-verify the opening-turn contract on live, converge live off
+the mixed stack (D32).
