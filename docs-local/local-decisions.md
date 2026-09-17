@@ -1212,3 +1212,24 @@ PASS on the combined configuration, `run-25-clean-r12b`). The
 re-review-scope discipline for reviewers is deferred until re-attempted
 as a smaller additive edit, tested on business-weak /
 comments-clarify-business. Evidence: Runbook 15 §Increment 3 part 5.
+
+## D32 — AE facilitator runtime lacks the corrective loop; live rolled back to facilitator-747d9d1 until the gap is closed (2026-09-17, owner decision)
+
+The Agent Engine facilitator deployment
+(`agent_kit.ae_runtime.build_facilitator_root_agent`) exposes the raw
+`LlmAgent`; the `validate_turn_output` + `turn_with_corrections`
+corrective loop exists only in the local HTTP adapter. With the round-12
+facilitator prompt (resolve info/minor findings on the turn they appear),
+the AE model reproducibly emits opening-turn resolutions (4/4 live 422s;
+probe-verified), while the local adapter self-corrects. Round-12c (prompt
+override, `5452be1`) binds locally but not on the AE serving path.
+
+Owner decision: roll live back to the increment-7-proven
+`facilitator-747d9d1` (revision `orchestration-00036-jnp`, live 201
+verified). Live runs a mixed stack (reviewers/synthesis round-12b,
+facilitator pre-round-12). The round-12 facilitator prompt improvements
+stay local-only until turn-context validation + corrective re-prompting
+exist in the AE runtime — candidate designs (deterministic turn-1
+boundary repair vs porting the full loop as a custom agent) to be decided
+with the owner; a design-level review against `docs/` precedes
+implementation. Evidence: Runbook 15 §Increment 3 part 6.

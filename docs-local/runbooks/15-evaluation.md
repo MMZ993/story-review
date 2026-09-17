@@ -722,3 +722,60 @@ per adapter image, no stack restart side effects observed; (3) GCP live
 agents predate round 12 entirely (facilitator `747d9d1`, others
 `7d1b9bd`) — see Runbook 14 increment 7; round-12b must be deployed
 there (this session, part 6).
+
+### Increment 3, part 6 — GCP round-12b/12c deploy, AE corrective-loop gap found, live rollback to facilitator-747d9d1 (2026-09-17, dev server; owner-approved "commit, push and redeploy" + "rollback live now")
+
+1. **Deploy round-12b** (`6a73636`, pushed): four new engines
+   `business-reviewer-6a73636` (`6967464447728156672`),
+   `engineering-reviewer-6a73636` (`5962317305894404096`),
+   `synthesis-6a73636` (`1202856924693921792`),
+   `facilitator-6a73636` (`6618435476606943232`); all SMOKE PASS;
+   orchestration → revision `orchestration-00034-zxf` (env verified).
+2. **Live session creation 422** (DELEGATION_VALIDATION, opening turn):
+   `the opening facilitator turn must emit invoke=none and no resolution
+   updates` — 4/4 deterministic. Meanwhile the local compose stack passed
+   the same flow.
+3. **Found and fixed a stale live dataset**: the GCS story dataset bucket
+   was uploaded 2026-09-09 (pre story-01 rev-6 enrichment, pre D30
+   comments ACs). `gsutil -m rsync -r -c dataset/stories
+   gs://…-story-dataset/stories` (48 objects) + `mcp-story` rolled to a
+   new revision of the same image (`mcp-story-00007-vbb`; the mock source
+   loads the dataset at startup). Live story-01 description then matched
+   local (1041 chars). Necessary hygiene, but NOT the 422 cause.
+4. **Root cause (probe-verified)**: replaying the exact opening-turn
+   message against the AE engine reproduces `invoke=none` + 5 opening-turn
+   `resolutions` (info findings "resolved"); the local adapter on the same
+   message emits none. The **AE runtime path
+   (`build_facilitator_root_agent`) exposes the raw LlmAgent — it has no
+   `validate_turn_output` / `turn_with_corrections` corrective loop** that
+   the local HTTP adapter applies. The round-12 facilitator prompt's
+   resolve-info-findings rule makes the model resolve at turn 1; the
+   round-12c prompt override ("never on turn 1", `5452be1`, committed +
+   deployed as `facilitator-5452be1` = engine `732230763633704960`,
+   SMOKE PASS) binds locally but is ignored on the AE serving path — the
+   422 persisted.
+5. **Owner decision — rollback live**: orchestration pointer back to
+   `facilitator-747d9d1` (`6251392106976247808`) → revision
+   `orchestration-00036-jnp`; live flow-1 create on story-01 → **201**
+   (`sess-135fa2a8…`, left active; creator user id persisted this time).
+   Live is a MIXED stack: reviewers/synthesis `6a73636` (round-12b) +
+   facilitator `747d9d1` (pre-round-12) — not the locally-validated
+   round-12b combo (D32).
+
+Open design work (D32): bring turn-context validation + corrective
+re-prompting to the AE runtime (candidate (a): deterministic turn-1
+boundary repair via model callback + telemetry; candidate (b): port the
+full corrective loop as a custom agent) — decision with the owner; until
+then the facilitator round-12 prompt improvements stay local-only.
+Probe tooling: `tmp/probe_facilitator.py` (message render from a stored
+capture), `tmp/probe_ae_facilitator.py` (AE impersonated replay),
+`tmp/probe_local_facilitator.py` (local adapter same-message A/B).
+
+Verification: engine env on revisions 00034/00035/00036 verified via
+Cloud Run v2 API; live 201 on the public domain; local compose clean
+PASS with round-12c prompt. Gotchas: (1) `gcloud run services deploy`
+does not exist in this gcloud — use `update` (v1 surface); (2) the GCS
+dataset bucket does not auto-sync with `dataset/` — any dataset repair
+must re-run the rsync + mcp-story revision roll; (3) smoke.py's
+facilitator opening turn uses a synthetic story — it does NOT guard the
+real-story opening-turn contract.

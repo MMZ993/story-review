@@ -10,20 +10,24 @@ git history (the session log). Do not let this file grow back into an archive.
 
 Last updated: 2026-09-17 (dev server; run 25: round-12 reviewer edits
 regressed severity (0/9, clean failed twice); A/B isolated causation;
-round-12b validated (round-11 reviewers + round-12 facilitator/synthesis,
-clean PASS) and committed (D31); GCP agents redeployed from round-12b.
-Judge still not exercised. Detail: Runbook 15 §Increment 3 part 5.
+round-12b validated locally and committed (D31). GCP round-12b/12c deploy
+found the AE runtime lacks the facilitator corrective loop (opening-turn
+resolutions, live 422s); live rolled back to facilitator-747d9d1 (D32,
+mixed live stack, session creation verified 201). Judge still not
+exercised. Detail: Runbook 15 §Increment 3 parts 5–6.
 
 ## Next Session
 
 ### Remaining Tasks
 
-- **Phase 9 increment 3 (continue)**: run 25 evidence recorded
-  (Runbook 15 §Increment 3 part 5; D31): round-12b is the validated
-  prompt state and the committed/deployed baseline. Remaining: full t1
-  suite on round-12b in chunks of ≤4 scenarios; if green holds, add
-  `JUDGE=1`; re-attempt reviewer re-review-scope discipline as a
-  smaller additive edit (without the severity rewording).
+- **Phase 9 increment 3 (continue)**: run 25 + deploy evidence recorded
+  (Runbook 15 §Increment 3 parts 5–6; D31/D32). Round-12b is the
+  locally-validated prompt state; live is a MIXED stack (D32).
+  Remaining: full t1 suite on round-12b locally (chunks of ≤4 scenarios);
+  `JUDGE=1` when green; re-attempt reviewer re-review-scope discipline as
+  a smaller additive edit; **design decision for AE-side turn-context
+  validation + corrective loop (D32)** before re-deploying the round-12
+  facilitator.
 - Deferred Phase-8 review minors (Runbook 14 §Increment 7): env-pointer/
   version runtime cross-check; compaction checkpoint-boundary +
   genai-Content test nits; per-call summarizer client.
@@ -34,9 +38,9 @@ Judge still not exercised. Detail: Runbook 15 §Increment 3 part 5.
 
 ### Next Steps
 
-1. Continue increment 3 on round-12b: full t1 suite in chunks of ≤4
-   scenarios via `bash tmp/run25-chunk.sh <scenario>` (bg-job cap
-   ≈45 min); if green holds, add `JUDGE=1`.
+1. Decide the D32 AE-runtime fix design (docs review first), then:
+   full t1 suite locally on round-12b in chunks of ≤4 scenarios via
+   `bash tmp/run25-chunk.sh <scenario>`; if green holds, add `JUDGE=1`.
 2. Standing note: per plan risk list, a case failing solely on
    demonstrated stochastic instability may get one documented rerun
    (both outputs kept); consider codifying in the runner or runbook
@@ -48,14 +52,14 @@ part-2 work pushed (through `4a88656`).
 
 ### Verification and Review
 
-This session (run 25): round-12 prompts baked + validated — **0/9,
-systematic regression**: clean failed twice consecutively with minted
-v1 majors; major-minting worse than run 24 across all cases. A/B test
-(reviewers reverted to round-11, one clean run) PASSED — causation
-confirmed. Round-12b (round-11 reviewers + round-12 facilitator/
-synthesis) validated: clean PASS. D31; reviewer revert committed;
-GCP agents redeployed from round-12b commit. Evidence: Runbook 15
-§Increment 3 part 5.
+This session (run 25 + GCP deploys): round-12 prompts baked + validated —
+**0/9, systematic reviewer regression**; A/B (reviewers back to round-11)
+PASS; round-12b validated (clean PASS) and committed. GCP: four `6a73636`
+engines + orchestration deployed; stale GCS story dataset synced +
+mcp-story rolled; **AE facilitator opening-turn 422s found — AE runtime
+lacks the corrective loop** (probe-verified; round-12c prompt deployed,
+did not bind on AE); live rolled back to `facilitator-747d9d1` (D32,
+live 201 verified). Evidence: Runbook 15 §Increment 3 parts 5–6.
 
 Prior session (increment 3, part 1): evaluation unit tests **104
 passed** (+14); live runs 6–11; delegation assertion re-based on
@@ -88,9 +92,10 @@ Evidence: Runbook 13 §Mobile picker fix.
 
 ## Previous Session Summary
 
-**Phase 9 increment 3, part 5 — run 25 regression + round-12b (2026-09-17,
-dev server; detail: Runbook 15 §Increment 3 part 5):** see above. Earlier
-increment-3 parts and sessions: git history of this file.
+**Phase 9 increment 3, parts 5–6 — run 25 regression, round-12b, GCP
+deploy + AE corrective-loop gap (2026-09-17, dev server; detail:
+Runbook 15 §Increment 3 parts 5–6):** see above. Earlier increment-3
+parts and sessions: git history of this file.
 
 **Phase 9 increment 3, part 2 (2026-09-16, dev server; detail: Runbook 15
 §Increment 3 part 2):** prompt rounds 8–10 (engineering severity
