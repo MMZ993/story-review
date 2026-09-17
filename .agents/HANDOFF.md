@@ -46,9 +46,15 @@ exercised. Detail: Runbook 15 §Increment 3 parts 5–6.
    (both outputs kept); consider codifying in the runner or runbook
    practice if blips persist.
 
-Standing notes: dev Cloud SQL RUNNING (owner request — leave up); local
-compose stack intentionally up (run-23 prompt images); all increment-3
-part-2 work pushed (through `4a88656`).
+Standing notes: dev Cloud SQL RUNNING (owner request — leave up; check
+`make db-pause` at next wrap-up if not needed); local compose stack
+intentionally up (round-12c facilitator + round-12b reviewer/synthesis
+images — matches HEAD `8bd58a7`); everything through `8bd58a7` pushed.
+Live probe sessions left active: `sess-135fa2a8…` (creator user id in
+/tmp/r12b-verify-user.txt, abandonable) and the known increment-7
+`sess-8031e95b…`; failed-create attempts leave no sessions. Superseded
+AE engines from this session (6618…, 5962…, 1202… facilitator 6618…+7322…)
+are retained — fold into the D5 prune list when the D32 fix lands.
 
 ### Verification and Review
 
