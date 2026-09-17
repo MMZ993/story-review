@@ -260,7 +260,21 @@ class TestValidateTurnOutput:
         with pytest.raises(FacilitatorTurnInvalid, match="opening turn"):
             validate_turn_output(output, request(turn_number=1))
 
-    def test_opening_turn_forbids_resolutions(self) -> None:
+    def test_opening_turn_resolves_minor_finding(self) -> None:
+        from review_schemas import ResolutionDraft
+
+        output = FacilitatorTurnOutput(
+            reply="r",
+            delegation={"invoke": "none", "open_issues": ["C-1"]},  # type: ignore[arg-type]
+            resolutions=[
+                ResolutionDraft(
+                    issue="B-2", disposition="resolved", explanation="informational"
+                )
+            ],
+        )
+        validate_turn_output(output, request(turn_number=1))
+
+    def test_opening_turn_forbids_conflict_resolutions(self) -> None:
         from review_schemas import ResolutionDraft
 
         output = FacilitatorTurnOutput(
@@ -272,7 +286,46 @@ class TestValidateTurnOutput:
                 )
             ],
         )
-        with pytest.raises(FacilitatorTurnInvalid, match="resolution"):
+        with pytest.raises(FacilitatorTurnInvalid, match="severity fence"):
+            validate_turn_output(output, request(turn_number=1))
+
+    def test_opening_turn_forbids_major_finding_resolutions(self) -> None:
+        from review_schemas import ResolutionDraft
+
+        report = synth_report().model_copy(deep=True)
+        report.merged_findings[0].severity = "major"
+        req = FacilitatorRequest(
+            session_id=SESSION,
+            turn_number=1,
+            invocation_id=uuid.uuid4(),
+            synthesis_report=report,
+            synthesis_reference=synth_reference(),
+        )
+        output = FacilitatorTurnOutput(
+            reply="r",
+            delegation={"invoke": "none", "open_issues": []},  # type: ignore[arg-type]
+            resolutions=[
+                ResolutionDraft(
+                    issue="B-2", disposition="resolved", explanation="too early"
+                )
+            ],
+        )
+        with pytest.raises(FacilitatorTurnInvalid, match="severity fence"):
+            validate_turn_output(output, req)
+
+    def test_opening_turn_forbids_accepted_dispositions(self) -> None:
+        from review_schemas import ResolutionDraft
+
+        output = FacilitatorTurnOutput(
+            reply="r",
+            delegation={"invoke": "none", "open_issues": ["C-1"]},  # type: ignore[arg-type]
+            resolutions=[
+                ResolutionDraft(
+                    issue="B-2", disposition="accepted", explanation="no PO yet"
+                )
+            ],
+        )
+        with pytest.raises(FacilitatorTurnInvalid, match="severity fence"):
             validate_turn_output(output, request(turn_number=1))
 
     def test_valid_later_turn_passes(self) -> None:

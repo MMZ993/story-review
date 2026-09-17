@@ -7,7 +7,8 @@ invocation contract (plan appendix): a session-scoped turn request holding
 synthesis report plus its `ArtifactReference`, and the lineage-scoped
 `ArtifactReference` values available for evidence reads. Also defines the
 turn-context rules the adapter enforces beyond the strict shared model
-(opening turn = `invoke=none` and no resolutions) — a violation is
+(opening turn: `invoke=none` + the D34 severity fence — turn-1
+resolutions only for `info`/`minor` synthesis findings) — a violation is
 malformed delegation output and enters the bounded corrective re-prompt
 loop (D13-3), not the normal structured-error path.
 
@@ -186,16 +187,21 @@ def validate_turn_output(
     output: FacilitatorTurnOutput, request: FacilitatorRequest
 ) -> None:
     """Enforce the turn-context rules beyond the strict model; raises
-    `FacilitatorTurnInvalid` (corrective re-prompt path)."""
+    `FacilitatorTurnInvalid` (corrective re-prompt path).
+
+    Opening turn (D34): `invoke` must be `none`; resolutions are allowed
+    only as severity-fenced housekeeping — `resolved` dispositions for
+    synthesis findings of severity `info`/`minor` (mentioned to the PO as
+    observations). Conflicts, `major`/`blocker` findings, minted ids, and
+    PO-dependent dispositions (`accepted`, `reopened`, `unresolved`)
+    need a PO turn first.
+    """
     if request.turn_number == 1:
         if output.delegation.invoke != "none":
             raise FacilitatorTurnInvalid(
                 "the opening turn must emit delegation.invoke = none"
             )
-        if output.resolutions:
-            raise FacilitatorTurnInvalid(
-                "the opening turn must not emit resolution updates"
-            )
+        _validate_opening_fence(output, request)
     if request.decision_state is not None:
         reopened = {
             draft.issue
@@ -230,6 +236,27 @@ def validate_turn_output(
                 "issue; either drop it from open_issues or re-open it later"
             )
     _validate_issue_descriptors(output, request)
+
+
+def _validate_opening_fence(
+    output: FacilitatorTurnOutput, request: FacilitatorRequest
+) -> None:
+    """D34 severity fence for turn-1 resolutions: only `resolved`
+    dispositions for `info`/`minor` synthesis findings pass."""
+    fenceable = {
+        finding.id
+        for finding in request.synthesis_report.merged_findings
+        if finding.severity in ("info", "minor")
+    }
+    for draft in output.resolutions:
+        if draft.disposition != "resolved" or draft.issue not in fenceable:
+            raise FacilitatorTurnInvalid(
+                f"opening-turn severity fence: issue {draft.issue} with "
+                f"disposition {draft.disposition!r} may not be resolved on "
+                "turn 1 — only info/minor synthesis findings with a "
+                "`resolved` disposition may be settled before the PO's "
+                "first answer; leave it for a later turn"
+            )
 
 
 def _synthesis_issue_ids(request: FacilitatorRequest) -> set[str]:

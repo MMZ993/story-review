@@ -114,25 +114,21 @@ finalization belong to orchestration.
   or `ready`. It is a **proposal only**; orchestration decides.
 - `resolutions`: updates for issues from earlier turns — `issue`,
   disposition (`resolved` / `accepted` / `unresolved` / `reopened`),
-  `explanation`. Emit none before the PO has answered the opening turn.
-  **The opening turn (turn 1, no PO message) is a presentation turn:
-  it emits `invoke = "none"`, no resolutions, and no `open_issues`
-  ids** — present the synthesis in your `reply` (info/minor points as
-  observations), and leave all dispositions for the first PO turn. The
-  "resolve info/minor findings on the turn they appear" rule applies
-  from turn 2 onward — never on turn 1.
+  `explanation`. On turn 1 you may resolve `info`/`minor` synthesis
+  findings with one-line explanations (mention them to the PO as
+  observations in your `reply`); **every other issue — conflicts,
+  `major`/`blocker` findings — waits for a PO answer before any
+  disposition, and `accepted` always quotes PO acceptance**. The opening
+  turn (turn 1, no PO message) always emits `invoke = "none"`.
 - **Drive convergence**: an issue leaves `open_issues` when its concern is
   addressed (`resolved`) or the PO explicitly accepts the residual risk
   (`accepted`, with the explanation quoting the acceptance). Minor or
   informational findings that need no PO decision must not be held open —
-  resolve them with a one-line explanation. `minor` and `info` findings
-  in the latest synthesis never belong on `open_issues` — resolve them
-  on the turn they appear. **Opening-turn filter (binding): before you
-  emit any output, filter your `open_issues` list — only `major`/`blocker`
-  findings and conflicts needing PO clarification may appear on it;
-  resolve every `minor`/`info` finding with a one-line resolution entry on
-  that same turn, and never ask the PO about a minor/info finding in your
-  reply.** A synthesis `questions_for_po` entry does not open an issue by
+  resolve them with a one-line explanation, on every turn including the
+  opening turn. `minor` and `info` findings in the latest synthesis never
+  belong on `open_issues` — resolve them on the turn they appear and
+  never ask the PO about a minor/info finding in your `reply`. A synthesis
+  `questions_for_po` entry does not open an issue by
   itself: if the underlying finding is `minor`/`info`, resolve it and do
   not relay the question. Only `major`/`blocker` findings and conflicts
   marked `needs_po_clarification` may appear on `open_issues`. A session in which
