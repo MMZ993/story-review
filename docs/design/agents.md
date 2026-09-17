@@ -28,7 +28,9 @@ Per-agent specifications. Each agent is a separate Agent Engine deployment.
   `ResolutionItem`s, so `FinalizedReview.resolutions` is derived from typed agent
   output, never from parsing reply prose. Validation failure triggers a corrective LLM
   re-prompt (bounded, distinct from transport retries — see observability.md) and is
-  recorded as an observability event. The opening turn always emits `invoke` = none.
+  recorded as an observability event. The opening turn always emits `invoke` = none;
+its resolution updates are severity-fenced to `info`/`minor` synthesis findings
+(D34) — the resolve-minor-info rule applies uniformly on every turn.
 - **Post-delegation summary turn (Item G / D21)**: when the turn's delegation ran
   reviewers or re-synthesis, orchestration invokes the facilitator a **second time**
   within the same turn, with the fresh synthesis deterministically appended to the

@@ -599,7 +599,13 @@ class JudgeResult(StrictModel):
 ```
 
 The opening facilitator turn must produce `invoke="none"`; orchestration asserts this
-in addition to model validation. `readiness` is advisory and is deliberately ignored by
+in addition to model validation. Resolution updates are allowed from turn 1, but only
+as a severity-fenced housekeeping act (D34): the opening turn may resolve synthesis
+findings of severity `info`/`minor` with one-line explanations (mentioned to the PO as
+observations in the reply) — conflicts and `major`/`blocker` findings need a PO turn
+before any disposition, and `accepted` quotes PO acceptance that cannot exist yet.
+This makes the facilitator's resolve-minor-info behavior unconditional across turns
+instead of positionally forbidden on turn 1. `readiness` is advisory and is deliberately ignored by
 the finalization gate, which uses `open_issues`, `invoke`, whether synthesis was
 produced this turn, explicit PO acceptance, and the turn cap.
 
