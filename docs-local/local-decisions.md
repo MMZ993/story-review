@@ -1233,3 +1233,15 @@ exist in the AE runtime — candidate designs (deterministic turn-1
 boundary repair vs porting the full loop as a custom agent) to be decided
 with the owner; a design-level review against `docs/` precedes
 implementation. Evidence: Runbook 15 §Increment 3 part 6.
+
+## D33 — requirements-coverage is local-only; purged from git alongside docs/source (2026-09-18, owner decision)
+
+`docs/quality/requirements-coverage.md` traces every requirement of the
+capstone evaluation source (itself local-only per D26), so it restates
+source-derived content and stays out of git for the same reason. The file is
+kept locally, gitignored, and its git history purged with
+`git filter-repo --invert-paths --path docs/source --path docs/quality/requirements-coverage.md`
+(run 2026-09-18 over all local refs; followed by the owner's force push).
+`docs/index.md` now notes both files as local-only instead of linking to
+them. Historical mentions in `docs-local/` plans and runbooks are left as
+records.

@@ -149,7 +149,8 @@ extension.**
 
 ### Motivation
 
-`docs/source/evaluation.md` requires callbacks for a chosen purpose. The
+The (local-only) capstone evaluation source requires callbacks for a chosen
+purpose. The
 implemented facilitator has one ADK `before_tool_callback`: it prevents
 out-of-lineage artifact reads and orchestration-only story-source overrides.
 The broader callback design in `docs/design/observability.md` remains

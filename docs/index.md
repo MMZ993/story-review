@@ -6,9 +6,10 @@ findings, and resolving conflicts with the Product Owner in the loop.
 
 ## Reading order
 
-1. **Source material** (given input)
-   - [Topic](source/topic.md) — problem context and project task
-   - [Evaluation](source/evaluation.md) — evaluation steps, design patterns, technical requirements
+1. **Source material** (given input) — kept local-only, outside git (see
+   `docs-local/local-decisions.md` D26): topic (problem context and project
+   task) and evaluation (evaluation steps, design patterns, technical
+   requirements)
 2. **Decisions**
    - [Pattern decisions](decisions/pattern-decisions.md) — workflow patterns and how they are fulfilled
    - [Tech stack](decisions/tech-stack.md) — technologies, environment, MCP strategy, CI/CD decisions
@@ -24,7 +25,8 @@ findings, and resolving conflicts with the Product Owner in the loop.
 4. **Quality**
    - [Evaluation tests](quality/evaluation-tests.md) — LLM-as-judge regression suite
    - [Mock data](quality/mock-data.md) — dataset, scenarios, expected outcomes
-   - [Requirements coverage](quality/requirements-coverage.md) — traceability matrix
+   - Requirements coverage (traceability matrix) — kept local-only, outside git
+     (D33)
 5. **Operations**
    - [Deployment](operations/deployment.md) — GCP layout, versioning, CI/CD pipelines
    - [Connectivity & identity](operations/connectivity-identity.md) — Cloud SQL access,

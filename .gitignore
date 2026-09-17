@@ -32,6 +32,7 @@ node_modules/
 
 # capstone source docs - stay local only
 docs/source/
+docs/quality/requirements-coverage.md
 
 # evaluation run artifacts (kept locally, never committed)
 tests/evaluation/artifacts/
