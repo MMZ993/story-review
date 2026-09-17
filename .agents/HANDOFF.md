@@ -8,7 +8,9 @@ of what was executed), `docs-local/local-decisions.md` (D1–D29),
 `docs-local/plans/`, `docs-local/development-plan.md`, and this file's own
 git history (the session log). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-16 (dev server; Phase 9 increment 3 in progress —
+Last updated: 2026-09-17 (dev server; README authored — live demo
+https://story-review.mmz.sh, high-level architecture, design notes;
+small docs-only session). Phase 9 increment 3 still in progress —
 run 24 (round-11 validation): 0/10 but every case converged (open issues
 4–19 → 1–3, blockers eliminated); round-12 prompts landed (re-review
 scope discipline, decision-enforcement worked example, synthesis gate-3
