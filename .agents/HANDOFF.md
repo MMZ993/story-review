@@ -65,7 +65,14 @@ engines + orchestration deployed; stale GCS story dataset synced +
 mcp-story rolled; **AE facilitator opening-turn 422s found — AE runtime
 lacks the corrective loop** (probe-verified; round-12c prompt deployed,
 did not bind on AE); live rolled back to `facilitator-747d9d1` (D32,
-live 201 verified). Evidence: Runbook 15 §Increment 3 parts 5–6.
+live 201 verified). Owner demo walkthrough (story-01, live mixed stack):
+opening turn stochastically minted B-1 major + C-1 conflict (reviewer
+calibration drift, same class as run-24/25 — severity is nowhere
+hard-validated); one PO scope-fence clarification resolved them; info
+findings (B-3/E-*) needed a second explicit-decision PO turn — the
+pre-round-12 facilitator keeping info findings open, as expected (D32
+gap). Clean story demo today = story-01 + 1–2 PO turns. Evidence:
+Runbook 15 §Increment 3 parts 5–6.
 
 Prior session (increment 3, part 1): evaluation unit tests **104
 passed** (+14); live runs 6–11; delegation assertion re-based on
