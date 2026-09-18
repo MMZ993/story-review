@@ -46,3 +46,14 @@ def test_render_trend_md_summarizes_latest_and_progress(tmp_path):
     assert "conflict[C-1].present" in markdown
     # aggregate: latest run deterministic pass rate + judged pass rate
     assert "1/2" in markdown
+
+
+def test_render_trend_md_marks_tolerated_entries(tmp_path):
+    run = make_run("run-8")
+    run["results"][0]["tolerated"] = [
+        "findings[review-business].max_severity: ceiling info exceeded by: "
+        "[('B-1', 'minor')]"
+    ]
+    append_trend(tmp_path, run)
+    markdown = render_trend_md(load_trend(tmp_path))
+    assert "(tolerated) t1/clean: findings[review-business].max_severity" in markdown

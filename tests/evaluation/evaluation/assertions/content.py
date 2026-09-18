@@ -8,7 +8,50 @@ a case run) and are asserted set-based against synthesis versions.
 
 from __future__ import annotations
 
+import re
+
 from evaluation.assertions._core import AssertionFailure, severity_rank
+
+#: Matches ``findings[<view>].max_severity`` failure assertion ids.
+_MAX_SEVERITY_RE = re.compile(r"^findings\[(?P<view>[^]]+)\]\.max_severity$")
+
+
+def reclassify_minor_over_info(
+    capture, expected, failures: list[AssertionFailure]
+) -> tuple[list[AssertionFailure], list[str]]:
+    """Split failures into (remaining, tolerated) under D35 tolerance.
+
+    A ``findings[<view>].max_severity`` failure is tolerated when the view's
+    expected ceiling is ``info`` and every exceeding finding is exactly
+    ``minor`` — the known residual stochastic minor mint rate. Everything
+    else (major/blocker exceedances, minor over a non-info ceiling, any
+    other assertion) stays a failure. The ceiling and exceedances are
+    re-derived structurally from (capture, expected); no message parsing.
+    """
+    remaining: list[AssertionFailure] = []
+    tolerated: list[str] = []
+    for failure in failures:
+        match = _MAX_SEVERITY_RE.match(failure.assertion)
+        view = (
+            expected.expected_findings.get(match.group("view"))
+            if match is not None
+            else None
+        )
+        if view is not None and view.max_severity == "info":
+            findings = _review_findings(capture.artifacts, match.group("view"))
+            over = [
+                finding
+                for finding in findings
+                if severity_rank(finding.get("severity", ""))
+                > severity_rank("info")
+            ]
+            if over and all(
+                finding.get("severity") == "minor" for finding in over
+            ):
+                tolerated.append(f"{failure.assertion}: {failure.detail}")
+                continue
+        remaining.append(failure)
+    return remaining, tolerated
 
 
 def _review_findings(artifacts: dict[str, dict], review_type: str) -> list[dict]:

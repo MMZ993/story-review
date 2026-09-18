@@ -88,5 +88,9 @@ def render_trend_md(runs: list[dict]) -> str:
                     f"- {r['case_id']}: {failure['assertion']}: "
                     f"{failure['detail']}"
                 )
+            for tolerated in r.get("tolerated", []):
+                lines.append(
+                    f"- (tolerated) {r['case_id']}: {tolerated}"
+                )
         lines.append("")
     return "\n".join(lines)

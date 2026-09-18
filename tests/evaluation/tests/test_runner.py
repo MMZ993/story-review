@@ -13,6 +13,7 @@ import httpx
 import pytest
 
 from evaluation import runner as runner_module
+from evaluation.assertions import AssertionFailure
 from evaluation.runner import run_deterministic_suite
 
 SESSION_ID = "sess-00000000-0000-0000-0000-000000000000"
@@ -126,3 +127,103 @@ def test_unknown_template_fails_setup(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as excinfo:
         run_suite(tmp_path, monkeypatch, templates="t99")
     assert excinfo.value.code == 2
+
+
+# --- D35 severity tolerance (--tolerance) --------------------------------
+
+
+class FakeCapture:
+    """Just enough capture surface for the tolerance reclassification."""
+
+    def __init__(self, severity):
+        self.artifacts = {
+            "review-business#v1": {
+                "findings": [{"id": "B-1", "severity": severity}]
+            }
+        }
+
+    def model_dump(self, mode="json"):
+        return {"artifacts": self.artifacts}
+
+
+def run_tolerant_suite(tmp_path, monkeypatch, tolerance, severity="minor"):
+    """One t1/clean case whose only deterministic failure is a severity
+    ceiling exceedance (severity configurable) — the tolerance flag decides
+    whether it fails the case or is recorded as tolerated."""
+    monkeypatch.setattr(
+        runner_module,
+        "run_case",
+        lambda case, transports: FakeCapture(severity),
+    )
+    monkeypatch.setattr(
+        runner_module,
+        "evaluate_case",
+        lambda capture, expected: [
+            AssertionFailure(
+                "findings[review-business].max_severity",
+                f"ceiling info exceeded by: [('B-1', '{severity}')]",
+            )
+        ],
+    )
+    args = type(
+        "Args",
+        (),
+        {
+            "templates": "t1",
+            "scenario": "clean",
+            "base_url": "http://x",
+            "artifact_url": "http://x",
+            "orchestration_dsn": "dsn",
+            "facilitator_dsn": "dsn",
+            "tolerance": tolerance,
+        },
+    )()
+    artifacts_dir = tmp_path / "artifacts"
+    monkeypatch.setattr(runner_module, "ARTIFACTS_DIR", artifacts_dir)
+    exit_code = run_deterministic_suite(
+        args, transport_factory=make_factory()
+    )
+    return exit_code, artifacts_dir
+
+
+def test_tolerance_none_keeps_ceiling_failure(tmp_path, monkeypatch):
+    exit_code, artifacts_dir = run_tolerant_suite(
+        tmp_path, monkeypatch, tolerance="none"
+    )
+    case = json.loads(
+        (artifacts_dir / "cases" / "t1_clean.json").read_text()
+    )
+    assert exit_code == 1
+    assert case["status"] == "failed"
+    assert case["failures"][0]["assertion"] == "findings[review-business].max_severity"
+    assert case["tolerated"] == []
+
+
+def test_tolerance_minor_over_info_records_tolerated_and_passes(tmp_path, monkeypatch):
+    exit_code, artifacts_dir = run_tolerant_suite(
+        tmp_path, monkeypatch, tolerance="minor-over-info"
+    )
+    case = json.loads(
+        (artifacts_dir / "cases" / "t1_clean.json").read_text()
+    )
+    summary = json.loads((artifacts_dir / "summary.json").read_text())
+    assert exit_code == 0
+    assert case["status"] == "passed"
+    assert case["failures"] == []
+    assert "findings[review-business].max_severity" in case["tolerated"][0]
+    assert summary["results"][0]["tolerated"] == case["tolerated"]
+    # the trend report shows the tolerated entry too — visible, not hidden
+    trend_md = (artifacts_dir / "trend.md").read_text()
+    assert "(tolerated) t1/clean: findings[review-business].max_severity" in trend_md
+
+
+def test_tolerance_does_not_reclassify_major(tmp_path, monkeypatch):
+    exit_code, artifacts_dir = run_tolerant_suite(
+        tmp_path, monkeypatch, tolerance="minor-over-info", severity="major"
+    )
+    case = json.loads(
+        (artifacts_dir / "cases" / "t1_clean.json").read_text()
+    )
+    assert exit_code == 1
+    assert case["status"] == "failed"
+    assert case["tolerated"] == []

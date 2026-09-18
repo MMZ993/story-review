@@ -23,6 +23,7 @@ from evaluation.assertions import (
     assert_persistence,
     assert_turn_structure,
     evaluate_case,
+    reclassify_minor_over_info,
 )
 from evaluation.capture import (
     AgentRunEvidence,
@@ -345,6 +346,71 @@ def test_findings_ceiling_fails_when_no_review_content():
     capture.artifacts.pop(artifact_key("review-engineering", 1))
     failures = assert_findings_ceiling(capture, expected_case())
     assert "findings[review-engineering].present" in failure_details(failures)
+
+
+# --- D35 severity tolerance (minor over info) ----------------------------
+
+
+def minor_exceedance_capture(severities=("minor",), ceiling="info"):
+    """A capture whose review-business findings exceed the pinned ceiling."""
+    capture = passing_capture()
+    capture.artifacts[artifact_key("review-business", 1)] = {
+        "findings": [
+            {"id": f"B-{i}", "severity": severity}
+            for i, severity in enumerate(severities, start=1)
+        ]
+    }
+    case = expected_case(
+        expected_findings={
+            "review-business": {"max_severity": ceiling, "required": []},
+            "review-engineering": {"max_severity": "info", "required": []},
+        }
+    )
+    return capture, case
+
+
+def test_tolerance_reclassifies_pure_minor_over_info():
+    capture, case = minor_exceedance_capture(("minor", "minor"))
+    failures = assert_findings_ceiling(capture, case)
+    remaining, tolerated = reclassify_minor_over_info(capture, case, failures)
+    assert remaining == []
+    assert len(tolerated) == 1
+    assert "findings[review-business].max_severity" in tolerated[0]
+
+
+def test_tolerance_keeps_major_exceedance():
+    capture, case = minor_exceedance_capture(("minor", "major"))
+    failures = assert_findings_ceiling(capture, case)
+    remaining, tolerated = reclassify_minor_over_info(capture, case, failures)
+    assert failure_details(remaining) == ["findings[review-business].max_severity"]
+    assert tolerated == []
+
+
+def test_tolerance_keeps_blocker_exceedance():
+    capture, case = minor_exceedance_capture(("blocker",))
+    failures = assert_findings_ceiling(capture, case)
+    remaining, tolerated = reclassify_minor_over_info(capture, case, failures)
+    assert failure_details(remaining) == ["findings[review-business].max_severity"]
+    assert tolerated == []
+
+
+def test_tolerance_only_applies_over_info_ceiling():
+    capture, case = minor_exceedance_capture(("major",), ceiling="minor")
+    failures = assert_findings_ceiling(capture, case)
+    remaining, tolerated = reclassify_minor_over_info(capture, case, failures)
+    assert failure_details(remaining) == ["findings[review-business].max_severity"]
+    assert tolerated == []
+
+
+def test_tolerance_never_touches_other_assertions():
+    capture = passing_capture()
+    capture.turns[1]["outcome"] = "continue"
+    failures = evaluate_case(capture, expected_case())
+    remaining, tolerated = reclassify_minor_over_info(
+        capture, expected_case(), failures
+    )
+    assert remaining == failures
+    assert tolerated == []
 
 
 # --- conflicts ------------------------------------------------------------

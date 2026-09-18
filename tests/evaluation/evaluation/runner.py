@@ -25,7 +25,7 @@ import httpx
 
 from dataset_loader.dataset import expand_cases, load_all_stories, load_expected
 from evaluation.artifact_client import ArtifactClient, ArtifactClientError
-from evaluation.assertions import evaluate_case
+from evaluation.assertions import evaluate_case, reclassify_minor_over_info
 from evaluation.case_runner import CaseFailure, Transports, run_case
 from evaluation.db_evidence import (
     fetch_agent_runs,
@@ -150,9 +150,14 @@ def run_deterministic_suite(args, transport_factory=None, judge_transport=None) 
         for case in cases:
             case_id = case.case_id.replace("/", "_")
             error_message = None
+            tolerated: list[str] = []
             try:
                 capture = run_case(case, transports)
                 failures = evaluate_case(capture, case.expected)
+                if getattr(args, "tolerance", "none") == "minor-over-info":
+                    failures, tolerated = reclassify_minor_over_info(
+                        capture, case.expected, failures
+                    )
                 status = "failed" if failures else "passed"
             except CaseFailure as exc:
                 capture, failures, status = None, [], "error"
@@ -179,6 +184,7 @@ def run_deterministic_suite(args, transport_factory=None, judge_transport=None) 
                 ],
                 "capture": capture.model_dump(mode="json") if capture else None,
                 "error": error_message if status == "error" else None,
+                "tolerated": tolerated,
                 "judge": judge_section,
             }
             (case_dir / f"{case_id}.json").write_text(
@@ -188,6 +194,8 @@ def run_deterministic_suite(args, transport_factory=None, judge_transport=None) 
             print(f"{marker} {case.case_id}")
             for failure in failures:
                 print(f"  FAIL {failure.assertion}: {failure.detail}")
+            for entry in tolerated:
+                print(f"  TOLERATED {entry}")
             results.append(artifact)
     finally:
         http.close()
@@ -204,6 +212,7 @@ def run_deterministic_suite(args, transport_factory=None, judge_transport=None) 
                 "case_id": item["case_id"],
                 "status": item["status"],
                 "failures": item["failures"],
+                "tolerated": item["tolerated"],
                 "judge": item["judge"],
             }
             for item in results
@@ -282,6 +291,13 @@ def main(argv: list[str] | None = None) -> int:
         "--smoke",
         action="store_true",
         help="smoke set: deterministic suite + judge only on the clean case",
+    )
+    parser.add_argument(
+        "--tolerance",
+        choices=["none", "minor-over-info"],
+        default="none",
+        help="D35: reclassify minor-over-info severity-ceiling failures as "
+        "tolerated warnings (default: strict)",
     )
     parser.add_argument(
         "--label", default=None, help="run label recorded in the trend report"

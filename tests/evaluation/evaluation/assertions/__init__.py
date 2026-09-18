@@ -10,7 +10,11 @@ Pure functions over (CaseCapture, ExpectedCase); no model calls.
 from __future__ import annotations
 
 from evaluation.assertions._core import AssertionFailure
-from evaluation.assertions.content import assert_conflicts, assert_findings_ceiling
+from evaluation.assertions.content import (
+    assert_conflicts,
+    assert_findings_ceiling,
+    reclassify_minor_over_info,
+)
 from evaluation.assertions.evidence import (
     assert_agent_runs,
     assert_final,
@@ -26,6 +30,7 @@ __all__ = [
     "assert_turn_structure",
     "assert_delegation",
     "assert_findings_ceiling",
+    "reclassify_minor_over_info",
     "assert_conflicts",
     "assert_final",
     "assert_agent_runs",
