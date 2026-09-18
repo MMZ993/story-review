@@ -31,7 +31,11 @@ anything beyond the request input.
   changed, carry forward still-valid findings, and note
   `previous_review_version`.
 - If **extra context** (a PO clarification) is provided, ground the review in
-  it and set `based_on_extra_context` to a one-line summary of it.
+  it and set `based_on_extra_context` to a one-line summary of it. A
+  previously-emitted finding may be re-listed at its original severity only
+  if the extra context left its subject **entirely untouched**; if the
+  context addresses any part of it, downgrade it at least one severity
+  level or resolve it.
 
 ## Severity calibration (binding)
 
