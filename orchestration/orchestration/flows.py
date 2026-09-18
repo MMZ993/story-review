@@ -18,6 +18,7 @@ in-progress claim converges to the stored canonical response.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import hashlib
 import json
 import time
@@ -47,11 +48,13 @@ from .agent_clients import (
     PerspectivePair,
     ReviewerInvocation,
     SynthesisInvocation,
+    TimedResult,
     timed_invoke,
 )
 from .api_errors import ApiError, make_error
 from .config import Settings
 from .errors import ConstraintViolation, IdempotencyKeyReused
+from .reviewer_output_fence import apply_fence, story_plain_text
 from .mcp_client import (
     DeadlineExceededError,
     McpCallFailure,
@@ -340,7 +343,9 @@ async def _initial_pipeline(
     )
 
     try:
-        reviews = await _fan_out_reviewers(agents, story, deadline)
+        reviews = await _fan_out_reviewers(
+            agents, story, deadline, correlation_id=correlation_id
+        )
     except Exception as exc:
         raise _agent_failure(exc, correlation_id, "reviewer") from exc
     business_review, engineering_review = reviews
@@ -544,9 +549,15 @@ def _assert_opening_turn(output, synthesis, correlation_id: str) -> None:
         ) from exc
 
 
-async def _fan_out_reviewers(agents: AgentSet, story: StoryDetail, deadline: float):
+async def _fan_out_reviewers(
+    agents: AgentSet, story: StoryDetail, deadline: float, *, correlation_id: str
+):
     """Parallel single-turn reviewer invocations; on the first failure the
-    sibling attempt is cancelled (no orphaned model cost)."""
+    sibling attempt is cancelled (no orphaned model cost). Each raw report
+    passes the D35 reviewer output fence (turn-1: story scope rules only)
+    before it is returned for persistence."""
+    story_text = story_plain_text(story)
+    perspectives = ("business", "engineering")
     request = ReviewerInvocation(story=story)
     tasks = [
         asyncio.create_task(
@@ -557,12 +568,42 @@ async def _fan_out_reviewers(agents: AgentSet, story: StoryDetail, deadline: flo
         ),
     ]
     try:
-        return await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
     except BaseException:
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         raise
+    return [
+        _fence_result(result, perspective, story_text, correlation_id=correlation_id)
+        for perspective, result in zip(perspectives, results)
+    ]
+
+
+def _fence_result(
+    result, perspective: str, story_text: str, *, correlation_id: str, **fence_inputs
+):
+    """Apply the D35 fence to one reviewer result and emit its audit
+    events; the persisted artifact is the post-fence report, while the
+    audit metadata (prompt_sha256, ...) is kept intact."""
+    fenced, events = apply_fence(result.report, story_text=story_text, **fence_inputs)
+    for event in events:
+        app_events.log_app_event(
+            "reviewer_output_fence",
+            correlation_id=correlation_id,
+            perspective=perspective,
+            finding_id=event.finding_id,
+            rule=event.rule,
+            reference=event.reference,
+            similarity=event.similarity,
+        )
+    if not events:
+        return result
+    if isinstance(result, TimedResult):
+        return dataclasses.replace(
+            result, result=dataclasses.replace(result.result, report=fenced)
+        )
+    return dataclasses.replace(result, report=fenced)
 
 
 async def _record_agent_runs(

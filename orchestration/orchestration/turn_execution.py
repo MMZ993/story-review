@@ -28,6 +28,7 @@ from .agent_clients import (
     timed_invoke,
 )
 from .mcp_client import McpClient
+from .reviewer_output_fence import story_plain_text
 
 
 def _now() -> datetime:
@@ -92,6 +93,18 @@ async def execute_delegation(
             task.cancel()
         await asyncio.gather(*tasks.values(), return_exceptions=True)
         raise flows._agent_failure(exc, correlation_id, "reviewer") from exc
+
+    story_text = story_plain_text(story)
+    for perspective, result in results.items():
+        request = requests[perspective]
+        results[perspective] = flows._fence_result(
+            result,
+            perspective,
+            story_text,
+            correlation_id=correlation_id,
+            previous_review=request.previous_review,
+            extra_context=request.extra_context,
+        )
 
     new_references = []
     for perspective, result in results.items():

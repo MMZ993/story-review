@@ -1,0 +1,62 @@
+{
+ "story": {
+  "story_id": "story-03",
+  "title": "Automatic payment retry on PSP failure",
+  "status": "New",
+  "description": "  Context:  A temporary PSP outage (timeout, 5xx) fails the order outright today: customer sees an error, cart is abandoned, support tickets follow. The order service already distinguishes PSP decline from PSP error, so a legitimate retry is identifiable.    Reason:  Payment errors were 38% of abandoned carts last quarter; the payments team estimates roughly a fifth are transient PSP failures. Support receives ~120 payment-failure tickets/month; halving that saves about 2 agent-days per month.    Scope:  Automatic retry for PSP errors only. Out of scope: retries for declines, changes to the decline messaging, native apps.  ",
+  "acceptance_criteria": [
+   "Given a payment that failed due to a PSP error (not a decline), when the failure is handled, then the system retries the payment automatically without customer action.",
+   "Given a retried payment that succeeds or a failure that is a decline, when the outcome is known, then retries stop immediately.",
+   "Given retries exhausted, when the last attempt fails, then the customer sees the standard payment-failed page and the order remains recoverable from the cart.",
+   "Given any retried payment, when it completes (success or final failure), then the retry outcome is visible in the existing payments dashboard."
+  ],
+  "epic_context": "Checkout Reliability (fixture placeholder)",
+  "roadmap_context": "Growth roadmap (fixture placeholder)",
+  "comments": [],
+  "context_stories": []
+ },
+ "previous": {
+  "perspective": "engineering",
+  "story_id": "story-03",
+  "summary": "s",
+  "findings": [
+   {
+    "id": "E-1",
+    "title": "Retry Policy (Count and Delay) is Undefined",
+    "description": "The acceptance criteria mention retries can be exhausted but do not specify the number of retries, the delay between them, or the backoff strategy.",
+    "severity": "major",
+    "category": "completeness"
+   },
+   {
+    "id": "E-2",
+    "title": "User Experience During In-Flight Retries is Unspecified",
+    "description": "The story does not define what the customer sees while automatic retries are in progress; the total wait time may exceed thirty seconds with no feedback.",
+    "severity": "major",
+    "category": "completeness"
+   }
+  ]
+ },
+ "current": {
+  "perspective": "engineering",
+  "story_id": "story-03",
+  "summary": "s",
+  "based_on_extra_context": "Retry policy from the payments team: max 3 attempts with exponential backoff (1s, 5s, 25s), every attempt carries the same PSP idempotency key per order, and the cart is held for 5 minutes from the first failure. Retries stop on success or decline as written.",
+  "findings": [
+   {
+    "id": "E-1",
+    "title": "User Experience During In-Flight Retries is Unspecified",
+    "description": "The previous review raised the risk of a user manually re-submitting payment during an automatic retry. The provided context defines the backend retry policy (max 3 attempts, exponential backoff, ~31s total) and use of an idempotency key, but the user experience during these in-flight retries is still unspecified.",
+    "severity": "major",
+    "category": "completeness"
+   },
+   {
+    "id": "E-3",
+    "title": "Data Requirements for Payments Dashboard are Vague",
+    "description": "AC4 requires the retry outcome visible in the existing payments dashboard but does not specify what data constitutes the outcome.",
+    "severity": "minor",
+    "category": "completeness"
+   }
+  ]
+ },
+ "extra_context": "Retry policy from the payments team: max 3 attempts with exponential backoff (1s, 5s, 25s), every attempt carries the same PSP idempotency key per order, and the cart is held for 5 minutes from the first failure. Retries stop on success or decline as written."
+}

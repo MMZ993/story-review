@@ -1,0 +1,32 @@
+{
+ "story": {
+  "story_id": "story-01",
+  "title": "Invoice PDF in order confirmation email",
+  "status": "New",
+  "description": "  Context:  Customers receive a plain-text order confirmation with no price breakdown. The order service already returns complete invoice data (GET /orders/{id}: line items, unit prices, VAT rates, totals).    Reason:  B2B customers and expense claims require a formal invoice document. Top request from B2B account managers this quarter; order data is complete, so this is rendering + attachment only.    Scope:  This story adds invoice rendering and email attachment. Out of scope: credit notes, self-service invoice re-download from the account page. Invoice content is exactly the order data returned by GET /orders/{id} (line items, unit prices, VAT rates, totals) \u2014 no additional branding, legal, or localization requirements in this story; invoices are single-language and single-currency (EUR). Email delivery failures other than hard bounces follow the existing email platform's standard delivery-failure handling (queued retries, provider bounce handling, and operational alerting) \u2014 no story-specific behavior is required; out of scope here.  \n",
+  "acceptance_criteria": [
+   "Given an order whose payment succeeded, when the confirmation email job runs, then the email is sent within 2 minutes with the invoice PDF attached.",
+   "Given the order API response, when the invoice PDF is rendered, then line items with unit prices, per-item VAT rate, and gross total match GET /orders/{id} exactly.",
+   "Given a hard-bouncing recipient address, when the confirmation email is sent, then it is retried once after 5 minutes and then written to the mail audit log (no silent loss).",
+   "Given an invoice rendering failure, when the confirmation email job runs, then the email is still sent without the attachment and the failure appears on the alerting dashboard (no customer-visible error)."
+  ],
+  "epic_context": "Checkout Reliability (fixture placeholder)",
+  "roadmap_context": "Growth roadmap (fixture placeholder)",
+  "comments": [],
+  "context_stories": []
+ },
+ "review": {
+  "perspective": "business",
+  "story_id": "story-01",
+  "summary": "s",
+  "findings": [
+   {
+    "id": "B-1",
+    "title": "Assumption that order data alone creates a sufficient B2B invoice",
+    "description": "The story's value rests on the assumption that an invoice containing only the data from the GET /orders/{id} endpoint will satisfy B2B customers' needs for expense claims. The story explicitly excludes additional branding, legal, or localization requirements, so the gap between order data and real-world invoice requirements remains unaddressed and unverified.",
+    "severity": "minor",
+    "category": "user-value"
+   }
+  ]
+ }
+}
