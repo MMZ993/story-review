@@ -84,6 +84,15 @@ due to demonstrated model-service instability (quota/5xx evidence in the trace) 
 one documented rerun with raw outputs of both attempts retained as artifacts — never a
 best-of selection.
 
+Severity tolerance (D35): with the runner flag `--tolerance minor-over-info`, a
+severity-ceiling assertion failure whose exceedances are **all** `minor` over an
+`info` ceiling is reclassified as a warning — recorded in the summary and trend
+with a `tolerated` marker, never hidden — and no longer fails the case. Any
+`major`/`blocker` exceedance, or any other assertion, still fails. Default is
+strict (no tolerance). This documents the known residual stochastic `minor`
+mint rate of the reviewer models instead of gating on it; it never overrides
+structural, routing, conflict, or final-state assertions.
+
 ## Execution modes
 
 1. **Local (preferred)**: docker compose starts FastAPI, MCP services, PostgreSQL and

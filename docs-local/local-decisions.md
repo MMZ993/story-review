@@ -1290,3 +1290,36 @@ making the caller-side loop the smaller, testable seam.
 Not yet done at decision time: redeploy the round-12b+P1 facilitator to
 AE, probe-verify the opening-turn contract on live, converge live off
 the mixed stack (D32).
+
+## D35 — deterministic reviewer severity fence + documented suite tolerance (2026-09-18)
+
+Evidence: runs 24–27 (Runbook 15 §Increment 3 parts 5–8). Seven prompt
+rounds and two story-refinement passes (D-b pattern, five ADO enrichments)
+shift the severity distribution but cannot zero the stochastic mint rate:
+clean-story findings that contradict explicit story scope-outs, re-reviews
+re-listing extra-context-answered findings at unchanged severity, and
+(partial-resolution, run-27) under-severization of a designed blocker —
+calibration drifts in both directions. Decision (owner, "both"):
+
+1. **Fence (design: docs/design/data-flow.md §Reviewer output fence)**:
+   orchestration applies two mechanical rules to each ReviewReport before
+   persist/synthesis — scope-settlement invalidation (drop findings that
+   materially overlap an explicit story scope-out sentence) and re-review
+   downgrade clamp (carried findings addressed by extra context are
+   clamped one level below their previous severity). Pure function, no
+   model calls; every action emits a structured `reviewer_output_fence`
+   event. Clamp-only v1 — a bounded corrective re-prompt loop (as D34
+   option C) is deliberately deferred until the clamp is shown too blunt.
+2. **Tolerance (design: docs/quality/evaluation-tests.md §severity
+   tolerance)**: runner flag `--tolerance minor-over-info` reclassifies
+   pure minor-over-info ceiling failures as visible warnings; default
+   strict.
+
+Dataset corrections adopted with D35 (run-27 evidence): unresolvable
+expected ceilings raised to `blocker` (the story explicitly declares
+itself unbuildable — matches the prompt's binding blocker definition);
+unresolvable C-1 kind changed `recurring` → `needs_po_clarification`
+(`recurring` was structurally unsatisfiable: the assertion maps observed
+kinds to needs_po_clarification/resolvable only). Five t1 ADO enrichments
+(ids 10, 17, 57, 58, 59) recorded in canonical-facts.md and
+comments-stories-spec.md as Phase 9 tuning.

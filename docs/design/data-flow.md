@@ -848,3 +848,32 @@ Sequence diagram (ASCII):
 - All structured application payloads are Pydantic-validated; validation failure is an
   observability event. Binary report downloads are validated by artifact identity,
   content type, and checksum rather than Pydantic.
+
+### Reviewer output fence (D35)
+
+Reviewer severity is prompt-calibrated but stochastically drifting (Phase 9
+runs 24–27: mints of `major`/`blocker` on clean stories that directly
+contradict explicit story scope-outs, and re-reviews re-listing
+extra-context-answered findings at unchanged severity). The fence makes
+two such failure classes deterministic instead of prompt-dependent. It is
+a pure function over the reviewer's `ReviewReport` plus the invocation
+inputs (story text, previous review, extra context) — no model calls —
+applied at both reviewer invocation points (flow-1 fan-out and the
+dialogue-loop re-review) before the report is persisted or synthesized.
+
+1. **Scope-settlement invalidation**: a finding whose text materially
+   overlaps a sentence in the story (description, acceptance criteria, or
+   comments) that explicitly settles a matter — recognized by markers such
+   as "out of scope", "no additional", "exactly", "handled by the existing"
+   — is invalid and is dropped.
+2. **Re-review downgrade clamp**: in a re-review made with extra context,
+   a finding that matches a finding of the previous review *and* overlaps
+   the extra context is clamped to one severity level below its previous
+   severity (an already-`info` match is dropped).
+
+Overlap is token-set similarity over content words (lower-cased
+alphanumeric tokens minus stopwords) with a fixed threshold; thresholds
+and markers are unit-tested against recorded evaluation captures. Every
+fence action emits a structured `reviewer_output_fence` event (finding id,
+rule, clause/previous-finding reference, similarity) so clamps and drops
+are auditable; the persisted review artifact is the post-fence report.
