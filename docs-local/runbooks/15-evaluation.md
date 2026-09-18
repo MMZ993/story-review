@@ -838,3 +838,83 @@ real-story opening-turn contract.
    Chunk logs: `/tmp/run26-chunkB.log`, `/tmp/run26-chunkC.log`.
    Conclusion: reviewer severity calibration is now the single blocker
    to a green suite (tuning session next).
+
+### Increment 3, part 8 — D35: triage, story enrichments, prompt round 13, reviewer severity fence + suite tolerance (2026-09-18, dev server; owner-approved "proceed looks good" / "both")
+
+1. **Run-26 triage** (owner: "explain, then triage"): extracted every
+   minted finding from the run-26 case artifacts
+   (`/tmp/triage-findings.txt`) vs the expected files. Verdict: 3
+   clear-cut story-edit candidates, 2 secondary, 4 unfixable-by-story
+   (stochastic mint, cross-perspective duplication, re-review
+   re-listing, designed-contradiction inflation), 1 expected-file
+   question (unresolvable blockers arguably correct).
+2. **Dataset corrections** (owner decisions: raise unresolvable ceiling
+   to `blocker`; C-1 kind `recurring` → `needs_po_clarification` —
+   `recurring` was structurally unsatisfiable, the assertion maps
+   observed kinds to needs_po_clarification/resolvable only).
+3. **Five ADO enrichments (D-b pattern)**: ids 10 (explicit no-success-
+   metric + default button presentation), 17 (step budget: one
+   interaction after page load), 57/58/59 (comment #4 each: order-API
+   failure out of scope; gift-card remove + existing failure UX; 4xx
+   terminal → DLQ). REST PATCH (PAT basic auth, JSON-patch array body,
+   **Content-Type `application/json-patch+json`** — plain
+   `application/json` → HTTP 400); comments via POST
+   `wit/workItems/{id}/comments?api-version=7.1-preview.4` (plain 7.1 →
+   preview-version error). ids 507000–507002; revs 5/3. Re-exported
+   (45+3); diff = the five changes + mechanical churn; loader tests 37
+   passed; recorded in canonical-facts.md + comments-stories-spec.md.
+4. **Prompt round 13**: business-reviewer perspective-discipline rule
+   (technical behavior = engineering territory, ≤ info from business
+   view) + re-review severity discipline (re-list unchanged only if
+   context left subject entirely untouched); engineering-reviewer
+   mirrored re-review rule.
+5. **Run 27** (round 13 + enriched stories, label run-27-*): 0/10 but
+   amplitude dropped broadly (clean major→minor; engineering-weak B
+   major→minor; unresolvable down to 1 assertion; comments-complete-
+   engineering down to 1). Proof of the whack-a-mole conclusion: every
+   fix kills one mint and a different one appears; partial-resolution
+   drifted the *other* way (designed E-1 blocker came out major → C-1
+   never formed). Owner decision: **D35 = hard fence + suite tolerance
+   (both)**.
+6. **D35 implementation**: design added to `docs/design/data-flow.md`
+   (§Reviewer output fence) + `docs/quality/evaluation-tests.md`
+   (§severity tolerance); decision recorded in local-decisions.md.
+   - `orchestration/orchestration/reviewer_output_fence.py`: pure
+     deterministic fence — Rule 1 scope-settlement drop (finding
+     overlapping ≥ 0.35 overlap-coefficient with a settling clause:
+     markers "out of scope", "no additional", "exactly", …), Rule 2
+     re-review clamp (match ≥ 0.35 to a previous finding + ≥ 0.20
+     overlap with extra context → one level below previous severity;
+     previous info → drop). Thresholds empirically calibrated on run-27
+     captures (plain Jaccard 0.3 does not fire; overlap coefficient
+     does; context threshold 0.25→0.20 documented deviation). Wired at
+     both choke points (`flows._fan_out_reviewers`, `turn_execution`
+     re-review); structured `reviewer_output_fence` events; persisted
+     artifact = post-fence report.
+   - Runner `--tolerance minor-over-info`: pure minor-over-info ceiling
+     failures reclassified to visible `tolerated` entries (case
+     artifact, summary, trend); default strict.
+   - Bug found live and fixed: `_fence_result` on the re-review path
+     hit `TimedResult` wrappers → 500 (`dataclasses.replace` got
+     `report` kwarg); fix rebuilds the inner result; regression test
+     added. Capture-regression tests re-pinned to committed fixtures
+     (`orchestration/tests/fixtures/d35_*.json`) because artifacts/
+     captures are overwritten every run.
+   - Verification: `make orchestration-test` **231 passed** (+13),
+     evaluation unit tests **113 passed** (+9), dataset loader 37.
+7. **Run 28** (D35 fence + tolerance, label run-28-*): **2/10 — t1/clean
+   and t1/comments-benign PASS** (first time; clean had never passed
+   outside a rerun). Remaining 8, by class:
+   - *synthesis conflict emission* (unresolvable 1 fail: C-1 missing in
+     v2; partial-resolution C-1/C-2 never emitted; hidden-conflict C-1
+     missing v1) — synthesis gate/detection variance, NOT severity.
+   - *routing drift*: engineering-weak invoke both; comments-clarify
+     invoke none (finalized without the designed delegation);
+     hidden-conflict invoke engineering.
+   - *unfenced minor keeps issues open*: comments-complete-engineering
+     (severity tolerated but the minor's open issue blocked the
+     readiness finalize).
+   - hidden-conflict severity inflation persists (blocker/major on the
+     designed contradiction — correctly NOT fenced: the story must stay
+     contradictory; this remains prompt/calibration territory).
+   Chunk evidence: trend.md run-28-* entries; runner output in session.

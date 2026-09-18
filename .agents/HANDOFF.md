@@ -8,23 +8,32 @@ of what was executed), `docs-local/local-decisions.md` (D1–D29),
 `docs-local/plans/`, `docs-local/development-plan.md`, and this file's own
 git history (the session log). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-17 (dev server; **D34 DEPLOYED + live-verified**:
-facilitator `4c81133` (engine `2601224608992460800`) + orchestration
-revision `orchestration-00037-m4c`; live story-01 flow-1 → 201 with the
-P1 opening-turn contract; run-26 t1 chunk A 0/4 on the known reviewer
-severity drift, documented clean rerun PASS. Detail: Runbook 15
-§Increment 3 part 7; design: docs-local/local-decisions.md D34.
+Last updated: 2026-09-18 (**D35 shipped**: reviewer severity fence +
+suite tolerance; run-28 t1 = **2/10 with clean + comments-benign
+passing for the first time**; remaining failures are non-severity
+classes. Detail: Runbook 15 §Increment 3 part 8; design: data-flow.md
+§Reviewer output fence, evaluation-tests.md §severity tolerance,
+local-decisions D35.)
 
 ## Next Session
 
 ### Remaining Tasks
 
-- **Reviewer severity calibration (top remaining failure class)**:
-  reviewers stochastically mint `major`/conflicts on clean stories
-  (run-24/25/26: B-1 + C-1), severity nowhere hard-validated; the D34
-  fence then correctly keeps them open. Fix via prompt round (smaller
-  additive re-review-scope discipline edit) or hard validation of
-  severity provenance.
+- **Synthesis conflict-emission variance** (top remaining failure
+  class after D35): designed conflicts C-1/C-2 not emitted
+  (partial-resolution, hidden-conflict) or dropped mid-arc
+  (unresolvable v2/v3) — synthesis prompt/gate tuning, not severity.
+- **Facilitator routing drift**: invoke `both`/`none` instead of the
+  single designed perspective (engineering-weak, comments-clarify,
+  hidden-conflict, partial-resolution turn 3).
+- **Unfenced minors keep open issues**: a tolerated minor still blocks
+  the readiness finalize (comments-complete-engineering) — candidate:
+  extend the D34 opening fence / readiness gate to auto-resolve
+  minor-only open issues.
+- hidden-conflict severity inflation persists by design (the story must
+  stay contradictory) — prompt calibration territory only.
+- D35 live deployment: round-13 reviewer prompts + fence run locally
+  only; AE engines + orchestration revision NOT yet redeployed.
 - Deferred Phase-8 review minors (Runbook 14 §Increment 7): env-pointer/
   version runtime cross-check; compaction checkpoint-boundary +
   genai-Content test nits; per-call summarizer client.
@@ -39,17 +48,20 @@ severity drift, documented clean rerun PASS. Detail: Runbook 15
 
 ### Next Steps
 
-1. Tackle reviewer severity calibration (see Remaining), then re-run the
-   full t1 suite (`bash tmp/run25-chunk.sh <scenario>`, chunks of ≤4);
-   if green holds, add `JUDGE=1`.
-2. Standing note: the plan's documented stochastic-instability rerun was
-   applied in run-26 (Runbook 15 §part 7); codify in the runner if blips
-   persist.
+1. Tackle synthesis conflict emission (prompt/gate tuning), then
+   facilitator routing drift; rerun t1 (`bash tmp/run28-chunk.sh
+   <scenario>` — includes `--tolerance minor-over-info`).
+2. When t1 stabilizes: redeploy round-13 reviewer engines + the fence
+   orchestration revision to live (D35 deployment), then consider
+   `JUDGE=1`.
+3. Standing note: the plan's documented stochastic-instability rerun
+   remains valid for blips.
 
 Standing notes: dev Cloud SQL RUNNING (owner request — leave up; check
 `make db-pause` at next wrap-up if not needed); local compose stack
-rebuilt to HEAD `4c81133` (matches live); everything through `4c81133`
-pushed except this session's runbook/HANDOFF edit (uncommitted).
+rebuilt with D35 fence + round-13 prompts (ahead of live — live still
+on `4c81133`); everything through `4c81133` pushed except this
+session's changes (uncommitted).
 Live probe sessions left active: `sess-06fdb260…` (D34 verify, user id
 in /tmp/d34-verify-user.txt, abandonable), `sess-135fa2a8…` (user id in
 /tmp/r12b-verify-user.txt, abandonable) and the known increment-7
@@ -109,6 +121,23 @@ Evidence: Runbook 13 §Mobile picker fix.
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+**D35 severity fence + dataset round (2026-09-18, dev server; detail:
+Runbook 15 §Increment 3 part 8):** run-26 triage → five ADO story
+enrichments (ids 10/17/57/58/59, comment ids 507000–2, revs 5/3;
+canonical-facts + comments-spec updated), unresolvable expected ceiling
+→ blocker + C-1 kind fixed to schema-expressible, prompt round 13
+(perspective discipline + re-review downgrade rule). Run 27 proved the
+whack-a-mole conclusion; owner chose "both": **D35** — orchestration
+`reviewer_output_fence.py` (scope-settlement drop + re-review clamp,
+overlap-coefficient thresholds calibrated on real captures, structured
+events, both invocation choke points) + runner `--tolerance
+minor-over-info`. Fixed a live TimedResult 500 in the fence wiring;
+pinned capture regressions as committed fixtures. Tests: orchestration
+**231**, evaluation unit **113**, loader 37. **Run 28 = 2/10: t1/clean
+and t1/comments-benign pass for the first time.** Remaining: synthesis
+conflict emission, routing drift, unfenced-minor open issues. Local
+stack ahead of live (D35 + round-13 not yet deployed).
 
 **D34 deploy + run-26 (2026-09-17, dev server; detail: Runbook 15
 §Increment 3 part 7):** deployed `facilitator-4c81133` (engine
