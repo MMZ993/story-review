@@ -61,6 +61,11 @@ Q&A that must NOT change the verdict (comment-invariance). C-1.
      (tracked separately)."
   3. "Note: legal confirmed there is no mandated VAT layout for
      transactional email; the template team's standard table is fine."
+  4. "Note: any failure of the order API itself (timeout, 5xx, network
+     error) follows the existing confirmation-email job's standard failure
+     handling (retry, ops alerting) — out of scope; only per-item VAT-data
+     gaps are handled by this story." (Phase 9 dataset tuning: reviewers
+     minted the whole-API failure as `major` over the info ceiling)
 - expected verdict: BOTH reviews positive (max info); readiness `ready` at
   turn 1; arc identical to `clean` (accept at turn 2). Expected file =
   clean arc with a comment-invariance note.
@@ -101,6 +106,12 @@ confirmation) and drive the arc exactly like `engineering-weak`. C-2.
      Q3."
   3. "Success criterion: cut the partial-balance checkout abandonment (18%
      baseline) by half within two quarters of release."
+  4. "UX follow-up: an applied gift card can be removed again before the
+     customer confirms the order (standard remove control, full amount back
+     on the card step). Any payment failure shows the existing
+     payment-failure page — no new failure UX in this story." (Phase 9
+     dataset tuning: kills business-side `minor` mints; engineering
+     findings E-1/E-2 stay — transactional/refund semantics untouched)
 - expected verdict: business review POSITIVE (max info — the comments
   supply segment, demand, rationale, criterion); engineering review carries
   the findings: E-1 (major) split-ordering rule unspecified — which
@@ -152,6 +163,11 @@ thread and come back positive (comment-completion). C-3.
      event-id dedup makes replays safe (already verified)."
   3. "DLQ threshold: move to dead-letter after attempt 5; dashboard: new
      'webhook redeliveries' counter on the existing integrations board."
+  4. "Terminal client errors: HTTP 4xx responses from the webhook endpoint
+     are not retried — they land on the dead-letter queue flagged
+     'terminal-client-error' for investigation, same as exhausted
+     redeliveries." (Phase 9 dataset tuning: reviewers minted 4xx handling
+     as `minor` over the info ceiling)
 - expected verdict: engineering review POSITIVE (max info — policy,
   idempotency, DLQ, monitoring all present via comments); business review
   positive (quantified case in the description). Arc identical to `clean`

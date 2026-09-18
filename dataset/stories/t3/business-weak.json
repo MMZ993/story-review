@@ -5,7 +5,7 @@
   "template": "t3",
   "scenario": "business-weak",
   "ado_source_id": 29,
-  "exported_at": "2026-09-16T10:27:06+00:00",
+  "exported_at": "2026-09-18T07:17:13+00:00",
   "work_item": {
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>When the PSP SDK reports Google Pay availability in a browser, show the button when the payment step renders; hide it otherwise. </li><li>When a customer selects Google Pay, create a payment intent with method `google_pay`; complete the existing payment flow and leave the order state machine unchanged. </li><li>For a failed or cancelled intent, return the flow to the payment-list step, clear the previous selection, make no order state change, and log the failure with the PSP correlation ID. </li><li>When the method is enabled, the checkout e2e suite and accessibility checks pass, and the button is keyboard-accessible. </li> </ul>",

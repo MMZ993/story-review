@@ -53,6 +53,13 @@ gaps below are exactly the seeds each plan's arc requires.
   - the web checkout can render the button via the PSP's JS SDK
   - the checkout payment-list flow is the existing integration point
   - justification: competitors have it and customers keep asking for more payment options at checkout
+  - no adoption target or success metric is set; no demand data beyond
+    anecdotal requests, success reviewed informally after launch (Phase 9
+    dataset tuning, t1 only: stated explicitly because reviewers rated the
+    implicit vagueness `info` instead of the intended `major` gap)
+  - the Google Pay button uses the PSP SDK's default presentation, no
+    custom styling or branding work (Phase 9 dataset tuning, t1 only:
+    settles presentation territory)
   - scope: add the method to the existing checkout payment-list flow; out of scope: other payment methods, native apps
 - criteria:
   - PSP SDK reports Google Pay availability in a browser → button shown when the payment step renders; hidden otherwise
@@ -91,6 +98,10 @@ gaps below are exactly the seeds each plan's arc requires.
 - facts:
   - checkout currently shows all available payment methods with no default; returning customers re-pick their method on every order
   - the one-page checkout redesign under this feature aims to remove checkout steps
+  - the redesign's step budget: checkout must reach payment confirmation
+    with at most one customer interaction after the page loads (Phase 9
+    dataset tuning, t1 only: sharpens the planted conflict — reviewers
+    rated both seeds below `major` when the collision was only implicit)
   - funnel analytics: returning customers spend a median 11 seconds selecting a payment method they used on the previous order
   - UX research flagged method selection as the top friction point for returning customers; marketing asked for a "one-tap pay" experience
   - scope: web checkout for signed-in returning customers; out of scope: guest checkout, native apps, adding new payment methods

@@ -5,8 +5,13 @@
   "template": "t1",
   "scenario": "comments-clarify-business",
   "ado_source_id": 58,
-  "exported_at": "2026-09-16T10:27:06+00:00",
+  "exported_at": "2026-09-18T07:17:13+00:00",
   "work_item": {
+    "commentVersionRef": {
+      "commentId": 507001,
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/58/comments/507001/versions/1",
+      "version": 1
+    },
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<p>Given a customer applies a gift card with an insufficient balance, when they pay, then the remaining amount is payable by card and the order completes in one payment step. </p><p>Given a gift-card balance covers the full total, when the customer pays, then the card step is skipped entirely. </p>",
       "Microsoft.VSTS.Common.Priority": 2,
@@ -19,21 +24,22 @@
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
-      "System.AuthorizedDate": "2026-09-16T10:26:55.723Z",
+      "System.AuthorizedDate": "2026-09-18T07:17:08.617Z",
       "System.BoardColumn": "New",
       "System.BoardColumnDone": false,
       "System.ChangedBy": {
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
-      "System.ChangedDate": "2026-09-16T10:26:55.723Z",
-      "System.CommentCount": 3,
+      "System.ChangedDate": "2026-09-18T07:17:08.617Z",
+      "System.CommentCount": 4,
       "System.CreatedBy": {
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
       "System.CreatedDate": "2026-09-08T14:05:01.163Z",
       "System.Description": "<p><b>Context:</b> Customers with a gift-card balance cannot combine it with a card payment at checkout; they ask support to burn the card in a separate transaction. The checkout payment-list flow is the existing integration point. </p><p><b>Scope:</b> This story allows paying with one gift card plus one card in a single order. Out of scope: multiple gift cards, native apps. </p>",
+      "System.History": "UX follow-up: an applied gift card can be removed again before the customer confirms the order (standard remove control, full amount back on the card step). Any payment failure shows the existing payment-failure page — no new failure UX in this story.",
       "System.Id": 58,
       "System.IterationId": 6,
       "System.IterationLevel1": "story-review",
@@ -42,13 +48,13 @@
       "System.Parent": 3,
       "System.PersonId": 23602939,
       "System.Reason": "New",
-      "System.Rev": 5,
+      "System.Rev": 6,
       "System.RevisedDate": "9999-01-01T00:00:00Z",
       "System.State": "New",
       "System.Tags": "checkout; gift-card; payments",
       "System.TeamProject": "story-review",
       "System.Title": "Split payment: gift card + card at checkout",
-      "System.Watermark": 144,
+      "System.Watermark": 149,
       "System.WorkItemType": "User Story",
       "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
       "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
@@ -57,7 +63,8 @@
     "id": 58,
     "multilineFieldsFormat": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "html",
-      "System.Description": "html"
+      "System.Description": "html",
+      "System.History": "html"
     },
     "relations": [
       {
@@ -69,7 +76,7 @@
         "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/3"
       }
     ],
-    "rev": 5,
+    "rev": 6,
     "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/58"
   },
   "comments": [
@@ -132,6 +139,26 @@
       "format": "html",
       "renderedText": "",
       "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/58/comments/499439"
+    },
+    {
+      "mentions": [],
+      "workItemId": 58,
+      "id": 507001,
+      "version": 1,
+      "text": "UX follow-up: an applied gift card can be removed again before the customer confirms the order (standard remove control, full amount back on the card step). Any payment failure shows the existing payment-failure page — no new failure UX in this story.",
+      "createdBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "createdDate": "2026-09-18T07:17:08.617Z",
+      "modifiedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "modifiedDate": "2026-09-18T07:17:08.617Z",
+      "format": "html",
+      "renderedText": "",
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/58/comments/507001"
     }
   ]
 }

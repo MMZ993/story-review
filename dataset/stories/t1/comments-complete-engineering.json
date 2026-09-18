@@ -5,8 +5,13 @@
   "template": "t1",
   "scenario": "comments-complete-engineering",
   "ado_source_id": 59,
-  "exported_at": "2026-09-16T10:27:06+00:00",
+  "exported_at": "2026-09-18T07:17:13+00:00",
   "work_item": {
+    "commentVersionRef": {
+      "commentId": 507002,
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/59/comments/507002/versions/1",
+      "version": 1
+    },
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<p>Given a delivery fails (timeout, 5xx), when the failure is detected, then the system redelivers automatically without manual action. </p><p>Given redeliveries are exhausted, when the last attempt fails, then the event lands on the dead-letter queue and pages the on-call integration owner; nothing is silently lost. </p>",
       "Microsoft.VSTS.Common.Priority": 2,
@@ -19,21 +24,22 @@
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
-      "System.AuthorizedDate": "2026-09-16T10:26:56.49Z",
+      "System.AuthorizedDate": "2026-09-18T07:17:08.77Z",
       "System.BoardColumn": "New",
       "System.BoardColumnDone": false,
       "System.ChangedBy": {
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
-      "System.ChangedDate": "2026-09-16T10:26:56.49Z",
-      "System.CommentCount": 3,
+      "System.ChangedDate": "2026-09-18T07:17:08.77Z",
+      "System.CommentCount": 4,
       "System.CreatedBy": {
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
       "System.CreatedDate": "2026-09-08T14:05:02.047Z",
       "System.Description": "<p><b>Context:</b> The warehouse fulfillment service consumes order events via a webhook; when it is down, deliveries fail and orders sit unfulfilled until manual replay (ops ran 14 manual replays last quarter, ~3h each). Webhook payloads are already idempotent on the consumer side (event-id deduplication verified by the platform team). </p><p><b>Scope:</b> This story adds automatic redelivery for failed webhook deliveries. Out of scope: webhook payload changes, new consumer endpoints. </p>",
+      "System.History": "Terminal client errors: HTTP 4xx responses from the webhook endpoint are not retried — they land on the dead-letter queue flagged 'terminal-client-error' for investigation, same as exhausted redeliveries.",
       "System.Id": 59,
       "System.IterationId": 6,
       "System.IterationLevel1": "story-review",
@@ -42,13 +48,13 @@
       "System.Parent": 4,
       "System.PersonId": 23602939,
       "System.Reason": "New",
-      "System.Rev": 6,
+      "System.Rev": 7,
       "System.RevisedDate": "9999-01-01T00:00:00Z",
       "System.State": "New",
       "System.Tags": "reliability; webhooks",
       "System.TeamProject": "story-review",
       "System.Title": "Automatic retry for failed fulfillment-webhook deliveries",
-      "System.Watermark": 145,
+      "System.Watermark": 150,
       "System.WorkItemType": "User Story",
       "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
       "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
@@ -57,7 +63,8 @@
     "id": 59,
     "multilineFieldsFormat": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "html",
-      "System.Description": "html"
+      "System.Description": "html",
+      "System.History": "html"
     },
     "relations": [
       {
@@ -69,7 +76,7 @@
         "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/4"
       }
     ],
-    "rev": 6,
+    "rev": 7,
     "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/59"
   },
   "comments": [
@@ -132,6 +139,26 @@
       "format": "html",
       "renderedText": "",
       "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/59/comments/499442"
+    },
+    {
+      "mentions": [],
+      "workItemId": 59,
+      "id": 507002,
+      "version": 1,
+      "text": "Terminal client errors: HTTP 4xx responses from the webhook endpoint are not retried — they land on the dead-letter queue flagged 'terminal-client-error' for investigation, same as exhausted redeliveries.",
+      "createdBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "createdDate": "2026-09-18T07:17:08.77Z",
+      "modifiedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "modifiedDate": "2026-09-18T07:17:08.77Z",
+      "format": "html",
+      "renderedText": "",
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/59/comments/507002"
     }
   ]
 }

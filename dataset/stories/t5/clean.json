@@ -5,7 +5,7 @@
   "template": "t5",
   "scenario": "clean",
   "ado_source_id": 42,
-  "exported_at": "2026-09-16T10:27:06+00:00",
+  "exported_at": "2026-09-18T07:17:13+00:00",
   "work_item": {
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>Order payment succeeded → confirmation email job sends the email within 2 minutes with the invoice PDF attached. </li><li>Invoice PDF rendered from the order API response → line items with unit prices, per-item VAT rate, and gross total match <code>GET /orders/{id}</code> exactly. </li><li>Hard-bouncing recipient address → email retried once after 5 minutes, then written to the mail audit log (no silent loss). </li><li>Invoice rendering failure → email still sent without the attachment; failure on the alerting dashboard; no customer-visible error. </li> </ul>",

@@ -152,7 +152,7 @@
   ],
   "expected_findings": {
     "review-business": {
-      "max_severity": "major",
+      "max_severity": "blocker",
       "required": [
         {
           "key": "B-1",
@@ -171,7 +171,7 @@
       ]
     },
     "review-engineering": {
-      "max_severity": "major",
+      "max_severity": "blocker",
       "required": [
         {
           "key": "E-1",
@@ -202,7 +202,7 @@
     "later": [
       {
         "key": "C-1",
-        "kind": "recurring",
+        "kind": "needs_po_clarification",
         "topic": "pilot-scope (turn 7) vs open-ended-scope (turn 2) — canonical re-eruption, re-widened at turn 8",
         "first_seen_turn": 7,
         "resolved_at_turn": null,

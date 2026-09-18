@@ -5,8 +5,13 @@
   "template": "t1",
   "scenario": "comments-benign",
   "ado_source_id": 57,
-  "exported_at": "2026-09-16T10:27:06+00:00",
+  "exported_at": "2026-09-18T07:17:13+00:00",
   "work_item": {
+    "commentVersionRef": {
+      "commentId": 507000,
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/57/comments/507000/versions/1",
+      "version": 1
+    },
     "fields": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "<p>Given an order whose payment succeeded, when the confirmation email is generated, then it contains a VAT breakdown table whose per-item rates and amounts match the data returned by GET /orders/{id} exactly. </p><p>Given an order with mixed VAT rates, when the table is rendered, then each line shows its own rate and the totals cross-check against the order API response. </p><p>Given VAT data is missing for an item, when the email is generated, then the email is sent without that row, the gap is logged to the mail audit log, and no customer-visible error occurs. </p>",
       "Microsoft.VSTS.Common.Priority": 2,
@@ -19,21 +24,22 @@
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
-      "System.AuthorizedDate": "2026-09-16T10:26:55.48Z",
+      "System.AuthorizedDate": "2026-09-18T07:17:08.407Z",
       "System.BoardColumn": "New",
       "System.BoardColumnDone": false,
       "System.ChangedBy": {
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
-      "System.ChangedDate": "2026-09-16T10:26:55.48Z",
-      "System.CommentCount": 3,
+      "System.ChangedDate": "2026-09-18T07:17:08.407Z",
+      "System.CommentCount": 4,
       "System.CreatedBy": {
         "displayName": "Story Author",
         "uniqueName": "<author>@example.com"
       },
       "System.CreatedDate": "2026-09-08T14:04:53.497Z",
       "System.Description": "<p><b>Context:</b> The confirmation email today lists totals only; customers opening expense claims ask support for the VAT split (~30 tickets/month tagged &quot;vat&quot;). The order API already returns per-item VAT rates and amounts (GET /orders/{id}), so this is email-template rendering only. </p><p><b>Reason:</b> Recurring, quantified support demand; no backend change needed — order data is complete. </p><p><b>Scope:</b> This story adds the VAT breakdown table to the confirmation email template. Out of scope: invoice PDF (separate story), credit notes. </p>",
+      "System.History": "Note: any failure of the order API itself (timeout, 5xx, network error) follows the existing confirmation-email job's standard failure handling (retry, ops alerting) — out of scope; only per-item VAT-data gaps are handled by this story.",
       "System.Id": 57,
       "System.IterationId": 6,
       "System.IterationLevel1": "story-review",
@@ -42,13 +48,13 @@
       "System.Parent": 4,
       "System.PersonId": 23602939,
       "System.Reason": "New",
-      "System.Rev": 5,
+      "System.Rev": 6,
       "System.RevisedDate": "9999-01-01T00:00:00Z",
       "System.State": "New",
       "System.Tags": "email; invoice; vat",
       "System.TeamProject": "story-review",
       "System.Title": "VAT breakdown table in the order confirmation email",
-      "System.Watermark": 143,
+      "System.Watermark": 148,
       "System.WorkItemType": "User Story",
       "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column": "New",
       "WEF_E56347085E6B44E8A7D74A8E3F18D281_Kanban.Column.Done": false,
@@ -57,7 +63,8 @@
     "id": 57,
     "multilineFieldsFormat": {
       "Microsoft.VSTS.Common.AcceptanceCriteria": "html",
-      "System.Description": "html"
+      "System.Description": "html",
+      "System.History": "html"
     },
     "relations": [
       {
@@ -69,7 +76,7 @@
         "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/4"
       }
     ],
-    "rev": 5,
+    "rev": 6,
     "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/57"
   },
   "comments": [
@@ -132,6 +139,26 @@
       "format": "html",
       "renderedText": "",
       "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/57/comments/499435"
+    },
+    {
+      "mentions": [],
+      "workItemId": 57,
+      "id": 507000,
+      "version": 1,
+      "text": "Note: any failure of the order API itself (timeout, 5xx, network error) follows the existing confirmation-email job's standard failure handling (retry, ops alerting) — out of scope; only per-item VAT-data gaps are handled by this story.",
+      "createdBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "createdDate": "2026-09-18T07:17:08.407Z",
+      "modifiedBy": {
+        "displayName": "Story Author",
+        "uniqueName": "<author>@example.com"
+      },
+      "modifiedDate": "2026-09-18T07:17:08.407Z",
+      "format": "html",
+      "renderedText": "",
+      "url": "https://dev.azure.com/$ADO_ORG/<project-id>/_apis/wit/workItems/57/comments/507000"
     }
   ]
 }
