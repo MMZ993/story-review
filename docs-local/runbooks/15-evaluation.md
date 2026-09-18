@@ -779,3 +779,62 @@ dataset bucket does not auto-sync with `dataset/` — any dataset repair
 must re-run the rsync + mcp-story revision roll; (3) smoke.py's
 facilitator opening turn uses a synthetic story — it does NOT guard the
 real-story opening-turn contract.
+
+### Increment 3, part 7 — D34 deployed, live opening-turn contract verified, run-26 t1 chunk + documented clean rerun (2026-09-17, dev server; owner-approved "continue with deploy and testing")
+
+1. **Facilitator engine** (D34 prompt, HEAD `4c81133`): deployed as
+   `facilitator-4c81133` = engine `2601224608992460800`; smoke.py PASS
+   (`invoke=none`). Retained (D5 prune list grows by one).
+2. **Orchestration** (corrective loop): image
+   `20260917-2039-4c81133` → revision `orchestration-00037-m4c`; env
+   verified via Cloud Run v2 API (facilitator pointer =
+   `2601224608992460800` / `facilitator-4c81133`); `/health` ok (report
+   cold-start blip on first probe — transient, min-instances 0).
+   Gotcha update: `gcloud run deploy` worked this time (runbook part-6
+   "use update" note was gcloud-version-specific).
+3. **AE probe** (`tmp/probe_ae_facilitator.py`, impersonated
+   sa-orchestration): opening-turn message replay (5121 chars) → raw reply
+   shows exactly the D34 P1 fence: `invoke=none` + 5 one-line
+   `resolved` resolutions for the info/minor findings. Stale probe nit:
+   `tmp/probe_facilitator.py`'s summary print uses dict access on
+   pydantic models (`'Finding' object is not subscriptable`) — message
+   render itself is fine.
+4. **Live flow-1 gate**: `POST /api/v1/sessions` story-01 via the public
+   domain → **201** (`sess-06fdb260-cc0d-544a-af17-8582c42bd749`;
+   user id in `/tmp/d34-verify-user.txt`; left active). Opening turn:
+   `invoke=none`, `readiness=ready`, clean reply. This is the exact
+   request that deterministically 422'd pre-D34 — the mixed live stack is
+   now converged on round-12b+P1 (all four engines current).
+   Operator gotcha: POST /sessions also requires `Idempotency-Key`
+   (UUID v4); a missing header surfaces as the generic
+   VALIDATION_ERROR "malformed request" 422 — easy to misread as the
+   old delegation 422.
+5. **Local stack rebuilt** (`make agents-compose-up`) to HEAD so compose
+   matches the deployed images; `/health` ok on 127.0.0.1:8130.
+6. **run-26 t1 (round-12b+P1, labeled run-26-p1)**: chunk A
+   (clean, business-weak, engineering-weak, comments-benign) **0/4** —
+   all four on the known reviewer severity-drift class: e.g. clean's
+   business reviewer minted B-1 `major` ("Potential for non-compliant
+   invoice content") + synthesis promoted C-1
+   (`needs_po_clarification`); the facilitator then behaved per the D34
+   fence (kept only B-1/C-1 open at turn 1, info findings resolved). No
+   D34-specific failure; no 422. Owner decision: rerun clean once, stop.
+   **Clean rerun PASS** (label `run26-p1-rerun`) — drift confirmed as
+   stochastic per the plan's documented-rerun practice; failing-run
+   evidence in `/tmp/run26-chunkA.log` + trend.md, passing capture in
+   `cases/t1_clean.json`.
+7. **run-26 remainder (owner-approved "test the rest of the stories,
+   only one template" — t2–t6 untouched)**: chunks B+C
+   (comments-clarify-business, comments-complete-engineering,
+   conflicting, hidden-conflict, partial-resolution, unresolvable) —
+   **0/6**, full-suite run-26 = 0/10 (+ the documented clean rerun
+   PASS). All failures the reviewer over-severization class, at a worse
+   amplitude than run-25: hidden-conflict minted B-1/B-2 `major` +
+   E-1 `blocker` (+ spurious `both` delegation with extra_context);
+   unresolvable minted every finding `blocker` over a `major` ceiling
+   and mis-kinded C-1 as `needs_po_clarification` (expected
+   `recurring`); partial-resolution left 6 issues open with C-1/C-2
+   unresolved in synthesis v3. No D34-specific failure, no 422.
+   Chunk logs: `/tmp/run26-chunkB.log`, `/tmp/run26-chunkC.log`.
+   Conclusion: reviewer severity calibration is now the single blocker
+   to a green suite (tuning session next).

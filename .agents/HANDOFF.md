@@ -8,24 +8,23 @@ of what was executed), `docs-local/local-decisions.md` (D1–D29),
 `docs-local/plans/`, `docs-local/development-plan.md`, and this file's own
 git history (the session log). Do not let this file grow back into an archive.
 
-Last updated: 2026-09-18 (dev server; D32 resolved by design change D34:
-P1 unified facilitator behavior — turn-1 resolutions severity-fenced to
-info/minor instead of positionally forbidden — plus an orchestration-side
-bounded corrective loop for the AE facilitator path. Implemented + tested
-locally; not yet deployed. Detail: docs-local/local-decisions.md D34.
+Last updated: 2026-09-17 (dev server; **D34 DEPLOYED + live-verified**:
+facilitator `4c81133` (engine `2601224608992460800`) + orchestration
+revision `orchestration-00037-m4c`; live story-01 flow-1 → 201 with the
+P1 opening-turn contract; run-26 t1 chunk A 0/4 on the known reviewer
+severity drift, documented clean rerun PASS. Detail: Runbook 15
+§Increment 3 part 7; design: docs-local/local-decisions.md D34.
 
 ## Next Session
 
 ### Remaining Tasks
 
-- **D34 follow-through (next)**: deploy the round-12b+P1 facilitator
-  prompt + the updated orchestration to GCP, probe-verify the
-  opening-turn contract on live (`tmp/probe_ae_facilitator.py`), and
-  converge live off the mixed stack. Then full t1 suite locally
-  (round-12b+P1, chunks of ≤4 via `bash tmp/run25-chunk.sh <scenario>`);
-  `JUDGE=1` when green.
-- Re-attempt reviewer re-review-scope discipline as a smaller additive
-  edit (round-12 regression follow-up).
+- **Reviewer severity calibration (top remaining failure class)**:
+  reviewers stochastically mint `major`/conflicts on clean stories
+  (run-24/25/26: B-1 + C-1), severity nowhere hard-validated; the D34
+  fence then correctly keeps them open. Fix via prompt round (smaller
+  additive re-review-scope discipline edit) or hard validation of
+  severity provenance.
 - Deferred Phase-8 review minors (Runbook 14 §Increment 7): env-pointer/
   version runtime cross-check; compaction checkpoint-boundary +
   genai-Content test nits; per-call summarizer client.
@@ -40,23 +39,27 @@ locally; not yet deployed. Detail: docs-local/local-decisions.md D34.
 
 ### Next Steps
 
-1. Deploy D34 (facilitator engine rebuild with the P1 prompt; orchestration
-   image with the corrective loop), probe-verify live opening turns, then
-   run the full t1 suite; if green holds, add `JUDGE=1`.
-2. Standing note: per plan risk list, a case failing solely on
-   demonstrated stochastic instability may get one documented rerun
-   (both outputs kept); consider codifying in the runner or runbook
-   practice if blips persist.
+1. Tackle reviewer severity calibration (see Remaining), then re-run the
+   full t1 suite (`bash tmp/run25-chunk.sh <scenario>`, chunks of ≤4);
+   if green holds, add `JUDGE=1`.
+2. Standing note: the plan's documented stochastic-instability rerun was
+   applied in run-26 (Runbook 15 §part 7); codify in the runner if blips
+   persist.
 
 Standing notes: dev Cloud SQL RUNNING (owner request — leave up; check
 `make db-pause` at next wrap-up if not needed); local compose stack
-intentionally up (round-12c facilitator + round-12b reviewer/synthesis
-images — matches HEAD `8bd58a7`); everything through `8bd58a7` pushed.
-Live probe sessions left active: `sess-135fa2a8…` (creator user id in
+rebuilt to HEAD `4c81133` (matches live); everything through `4c81133`
+pushed except this session's runbook/HANDOFF edit (uncommitted).
+Live probe sessions left active: `sess-06fdb260…` (D34 verify, user id
+in /tmp/d34-verify-user.txt, abandonable), `sess-135fa2a8…` (user id in
 /tmp/r12b-verify-user.txt, abandonable) and the known increment-7
 `sess-8031e95b…`; failed-create attempts leave no sessions. Superseded
-AE engines from this session (6618…, 5962…, 1202… facilitator 6618…+7322…)
-are retained — fold into the D5 prune list when the D32 fix lands.
+AE engines retained — fold into the D5 prune list: reviewers/synthesis
+`6a73636`… are current; old facilitators `6618…`, `7322…`
+(`5452be1`), `6251392106976247808` (`747d9d1`) are superseded by
+`2601224608992460800` (`facilitator-4c81133`). Probe nit:
+tmp/probe_facilitator.py's summary print uses dict access on pydantic
+models (fails after the render — harmless; fix when convenient).
 
 ### Verification and Review
 
@@ -106,6 +109,22 @@ Evidence: Runbook 13 §Mobile picker fix.
   `docs/initial-frozen`).
 
 ## Previous Session Summary
+
+**D34 deploy + run-26 (2026-09-17, dev server; detail: Runbook 15
+§Increment 3 part 7):** deployed `facilitator-4c81133` (engine
+`2601224608992460800`, smoke PASS) and orchestration image
+`20260917-2039-4c81133` (revision `orchestration-00037-m4c`, env
+verified, health green); AE probe shows the P1 fence; live story-01
+flow-1 → **201** (was the deterministic 422) — live converged off the
+mixed stack. Local compose rebuilt to HEAD. run-26 t1 chunk A (4
+cases) 0/4 — all on the known reviewer severity drift (B-1 major + C-1
+minted on clean; facilitator behaved per D34); owner-directed clean
+rerun **PASS**. Owner then directed the remaining six t1 scenarios
+(one template only; t2–t6 untouched): 0/6 — same over-severization
+class at worse amplitude (blocker inflation on hidden-conflict and
+unresolvable, C-1 mis-kinded), full suite **0/10**, no D34 failure,
+no 422. Chunk logs `/tmp/run26-chunkB.log` + `/tmp/run26-chunkC.log`.
+Nothing committed this session (runbook + HANDOFF updates pending).
 
 **D32 → D34 design decision + local implementation (2026-09-18, dev
 server):** with the owner, reframed the D32 root cause as a prompt-rule
