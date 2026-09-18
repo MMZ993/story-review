@@ -75,7 +75,15 @@ models (fails after the render — harmless; fix when convenient).
 
 ### Verification and Review
 
-This session (run 25 + GCP deploys): round-12 prompts baked + validated —
+This session (D35, 2026-09-18): `make orchestration-test` **231 passed**
+(+13, incl. TimedResult regression); evaluation unit tests **113 passed**
+(+9); dataset loader 37 passed; **run-28 t1 2/10 — clean + comments-benign
+PASS for the first time** (with `--tolerance minor-over-info`). One live
+bug found and fixed during run-28 (fence × TimedResult 500). Independent
+read-only review of the fence (gate-logic change) NOT yet done — do it
+before or at the start of the next session. Detail: Runbook 15 §part 8.
+
+Prior session (run 25 + GCP deploys): round-12 prompts baked + validated —
 **0/9, systematic reviewer regression**; A/B (reviewers back to round-11)
 PASS; round-12b validated (clean PASS) and committed. GCP: four `6a73636`
 engines + orchestration deployed; stale GCS story dataset synced +
